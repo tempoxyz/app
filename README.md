@@ -10,7 +10,7 @@ pnpm install
 
 ## Development
 
-````bash
+```bash
 pnpm dev # dev:moderato
 pnpm dev:moderato
 pnpm dev:presto
