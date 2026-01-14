@@ -23,7 +23,7 @@ import ExternalLinkIcon from '~icons/lucide/external-link'
 import ArrowLeftIcon from '~icons/lucide/arrow-left'
 import CheckIcon from '~icons/lucide/check'
 
-const BALANCES_API_URL = process.env.BALANCES_API_URL
+const BALANCES_API_URL = import.meta.env.VITE_BALANCES_API_URL
 
 type TokenMetadata = {
 	address: string
@@ -148,6 +148,7 @@ async function fetchTransactions(
 
 export const Route = createFileRoute('/_layout/$address')({
 	component: AddressView,
+	shouldReload: true,
 	loader: async ({ params }) => {
 		const assets = await fetchAssets(params.address as Address.Address)
 
