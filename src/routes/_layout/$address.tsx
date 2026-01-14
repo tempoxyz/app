@@ -1,5 +1,4 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { createIsomorphicFn } from '@tanstack/react-start'
 import { waapi, spring } from 'animejs'
 import type { Address } from 'ox'
 import * as React from 'react'
@@ -18,78 +17,12 @@ import { Layout } from '#comps/Layout'
 import { TokenIcon } from '#comps/TokenIcon'
 import { cx } from '#lib/css'
 import { useCopy } from '#lib/hooks'
+import { fetchAssets, type AssetData } from '#lib/server/assets.server'
 import { getWagmiConfig } from '#wagmi.config'
 import CopyIcon from '~icons/lucide/copy'
 import ExternalLinkIcon from '~icons/lucide/external-link'
 import ArrowLeftIcon from '~icons/lucide/arrow-left'
 import CheckIcon from '~icons/lucide/check'
-
-const getBalancesApiUrl = createIsomorphicFn()
-	.client(() => import.meta.env.VITE_BALANCES_API_URL)
-	.server(() => process.env.BALANCES_API_URL)
-
-type TokenMetadata = {
-	address: string
-	name: string
-	symbol: string
-	decimals: number
-	currency: string
-	priceUsd: number
-}
-
-type BalanceEntry = {
-	token: string
-	balance: string
-	valueUsd: number
-}
-
-type AssetData = {
-	address: Address.Address
-	metadata:
-		| { name?: string; symbol?: string; decimals?: number; priceUsd?: number }
-		| undefined
-	balance: string | undefined
-	valueUsd: number | undefined
-}
-
-async function fetchAssets(
-	accountAddress: Address.Address,
-): Promise<AssetData[] | null> {
-	const balancesApiUrl = getBalancesApiUrl()
-	if (!balancesApiUrl) return null
-
-	const [tokensRes, balancesRes] = await Promise.all([
-		fetch(`${balancesApiUrl}tokens`).catch(() => null),
-		fetch(`${balancesApiUrl}balances/${accountAddress}`).catch(() => null),
-	])
-
-	if (!tokensRes?.ok || !balancesRes?.ok) return []
-
-	const tokens = (await tokensRes.json()) as TokenMetadata[]
-	const balances = (await balancesRes.json()) as BalanceEntry[]
-
-	const balanceMap = new Map(
-		balances.map((b) => [
-			b.token.toLowerCase(),
-			{ balance: b.balance, valueUsd: b.valueUsd },
-		]),
-	)
-
-	return tokens.map((token) => {
-		const balanceData = balanceMap.get(token.address.toLowerCase())
-		return {
-			address: token.address as Address.Address,
-			metadata: {
-				name: token.name,
-				symbol: token.symbol,
-				decimals: token.decimals,
-				priceUsd: token.priceUsd,
-			},
-			balance: balanceData?.balance ?? '0',
-			valueUsd: balanceData?.valueUsd ?? 0,
-		}
-	})
-}
 
 type ApiTransaction = {
 	hash: string
@@ -154,7 +87,7 @@ export const Route = createFileRoute('/_layout/$address')({
 	component: AddressView,
 	shouldReload: true,
 	loader: async ({ params }) => {
-		const assets = await fetchAssets(params.address as Address.Address)
+		const assets = await fetchAssets({ data: { address: params.address } })
 
 		const tokenMetadataMap = new Map<
 			Address.Address,
@@ -574,7 +507,7 @@ function HoldingsTable({ assets }: { assets: AssetData[] }) {
 							{asset.metadata?.name ?? <span className="text-tertiary">…</span>}
 						</span>
 						<span
-							className="px-2 flex flex-col items-end justify-center overflow-hidden md:flex-row md:items-center"
+							className="px-2 flex flex-col items-end justify-center overflow-hidden md:flex-row md:items-center md:justify-end"
 							title={
 								asset.balance !== undefined &&
 								asset.metadata?.decimals !== undefined
