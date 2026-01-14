@@ -64,18 +64,6 @@
 		"presto": {
 			"name": "app-presto",
 			"main": "./src/index.server.ts",
-			"routes": [
-				{
-					"custom_domain": true,
-					"zone_name": "tempo.xyz",
-					"pattern": "app.presto.tempo.xyz"
-				},
-				{
-					"custom_domain": true,
-					"zone_name": "tempo.xyz",
-					"pattern": "app.mainnet.tempo.xyz"
-				}
-			],
 			"vars": {
 				"VITE_TEMPO_ENV": "presto"
 			},
