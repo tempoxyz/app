@@ -546,7 +546,7 @@ function HoldingsTable({ assets }: { assets: AssetData[] }) {
 								{asset.valueUsd !== undefined ? (
 									formatUsd(asset.valueUsd)
 								) : (
-									<span className="text-tertiary">…</span>
+									<span className="text-tertiary">−</span>
 								)}
 							</span>
 						</span>
