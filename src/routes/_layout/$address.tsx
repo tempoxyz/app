@@ -61,20 +61,23 @@ async function fetchTransactions(
 			return tokenMetadataMap.get(tokenAddress)
 		}
 
+		const receipts = await Promise.all(
+			txHashes.map((hash) =>
+				getTransactionReceipt(config, { hash: hash as `0x${string}` }).catch(
+					() => null,
+				),
+			),
+		)
+
 		const items: ActivityItem[] = []
-		for (const hash of txHashes) {
-			try {
-				const receipt = await getTransactionReceipt(config, {
-					hash: hash as `0x${string}`,
-				})
-				const events = parseKnownEvents(receipt, {
-					getTokenMetadata,
-					viewer: address,
-				})
-				items.push({ hash, events })
-			} catch {
-				// Skip failed receipts
-			}
+		for (let i = 0; i < txHashes.length; i++) {
+			const receipt = receipts[i]
+			if (!receipt) continue
+			const events = parseKnownEvents(receipt, {
+				getTokenMetadata,
+				viewer: address,
+			})
+			items.push({ hash: txHashes[i], events })
 		}
 
 		return items
@@ -504,7 +507,7 @@ function HoldingsTable({ assets }: { assets: AssetData[] }) {
 					>
 						<span className="px-2 text-primary flex items-center gap-1.5">
 							<TokenIcon address={asset.address} />
-							{asset.metadata?.name ?? <span className="text-tertiary">…</span>}
+							{asset.metadata?.name ?? <span className="text-tertiary">−</span>}
 						</span>
 						<span
 							className="px-2 flex flex-col items-end justify-center overflow-hidden md:flex-row md:items-center md:justify-end"
@@ -520,14 +523,14 @@ function HoldingsTable({ assets }: { assets: AssetData[] }) {
 								asset.metadata?.decimals !== undefined ? (
 									formatAmount(asset.balance, asset.metadata.decimals)
 								) : (
-									<span className="text-tertiary">…</span>
+									<span className="text-tertiary">−</span>
 								)}
 							</span>
 							<span className="truncate text-secondary text-[11px] md:hidden">
 								{asset.valueUsd !== undefined ? (
 									formatUsd(asset.valueUsd)
 								) : (
-									<span className="text-tertiary">…</span>
+									<span className="text-tertiary">−</span>
 								)}
 							</span>
 						</span>
