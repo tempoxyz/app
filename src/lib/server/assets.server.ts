@@ -48,18 +48,20 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 			]),
 		)
 
-		return tokens.map((token) => {
-			const balanceData = balanceMap.get(token.address.toLowerCase())
-			return {
-				address: token.address as Address.Address,
-				metadata: {
-					name: token.name,
-					symbol: token.symbol,
-					decimals: token.decimals,
-					priceUsd: token.priceUsd,
-				},
-				balance: balanceData?.balance ?? '0',
-				valueUsd: balanceData?.valueUsd ?? 0,
-			}
-		})
+		return tokens
+			.filter((token) => balanceMap.has(token.address.toLowerCase()))
+			.map((token) => {
+				const balanceData = balanceMap.get(token.address.toLowerCase())
+				return {
+					address: token.address as Address.Address,
+					metadata: {
+						name: token.name,
+						symbol: token.symbol,
+						decimals: token.decimals,
+						priceUsd: token.priceUsd,
+					},
+					balance: balanceData?.balance,
+					valueUsd: balanceData?.valueUsd,
+				}
+			})
 	})
