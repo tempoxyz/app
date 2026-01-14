@@ -234,7 +234,7 @@ function AddressView() {
 
 				<div className="flex flex-col gap-2">
 					{assetsData !== null && (
-						<Section title="Assets" defaultOpen>
+						<Section title={`Assets (${assetsData.length})`} defaultOpen>
 							<HoldingsTable assets={assetsData} />
 						</Section>
 					)}
