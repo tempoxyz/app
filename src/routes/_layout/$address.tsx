@@ -515,7 +515,7 @@ function HoldingsTable({ assets }: { assets: AssetData[] }) {
 									: undefined
 							}
 						>
-							<span className="truncate text-primary font-mono">
+							<span className="truncate text-primary font-mono text-right">
 								{asset.balance !== undefined &&
 								asset.metadata?.decimals !== undefined ? (
 									formatAmount(asset.balance, asset.metadata.decimals)
