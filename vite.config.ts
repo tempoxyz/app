@@ -5,6 +5,8 @@ import { tanstackStart as tanstack } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { readFileSync } from 'node:fs'
 import { parse } from 'jsonc-parser'
+import { visualizer } from 'rollup-plugin-visualizer'
+import Sonda from 'sonda/vite'
 import Icons from 'unplugin-icons/vite'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 
@@ -32,6 +34,8 @@ export default defineConfig((config) => {
 	const wranglerVars = getWranglerEnvVars(cloudflareEnv)
 
 	const showDevtools = env.VITE_ENABLE_DEVTOOLS !== 'false'
+	const analyze = env.ANALYZE === 'true'
+	const analyzeJson = env.ANALYZE_JSON === 'true'
 
 	const lastPort = (() => {
 		const index = args.lastIndexOf('--port')
@@ -55,6 +59,14 @@ export default defineConfig((config) => {
 				client: { entry: './src/index.client.tsx' },
 			}),
 			react(),
+			analyze && Sonda(),
+			analyzeJson &&
+				visualizer({
+					filename: 'stats.json',
+					template: 'raw-data',
+					gzipSize: true,
+					brotliSize: true,
+				}),
 		],
 		server: {
 			port,
