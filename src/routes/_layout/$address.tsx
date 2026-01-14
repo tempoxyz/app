@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { createIsomorphicFn } from '@tanstack/react-start'
 import { waapi, spring } from 'animejs'
 import type { Address } from 'ox'
 import * as React from 'react'
@@ -23,7 +24,9 @@ import ExternalLinkIcon from '~icons/lucide/external-link'
 import ArrowLeftIcon from '~icons/lucide/arrow-left'
 import CheckIcon from '~icons/lucide/check'
 
-const BALANCES_API_URL = process.env.BALANCES_API_URL
+const getBalancesApiUrl = createIsomorphicFn()
+	.client(() => import.meta.env.VITE_BALANCES_API_URL)
+	.server(() => process.env.BALANCES_API_URL)
 
 type TokenMetadata = {
 	address: string
@@ -52,11 +55,12 @@ type AssetData = {
 async function fetchAssets(
 	accountAddress: Address.Address,
 ): Promise<AssetData[] | null> {
-	if (!BALANCES_API_URL) return null
+	const balancesApiUrl = getBalancesApiUrl()
+	if (!balancesApiUrl) return null
 
 	const [tokensRes, balancesRes] = await Promise.all([
-		fetch(`${BALANCES_API_URL}tokens`).catch(() => null),
-		fetch(`${BALANCES_API_URL}balances/${accountAddress}`).catch(() => null),
+		fetch(`${balancesApiUrl}tokens`).catch(() => null),
+		fetch(`${balancesApiUrl}balances/${accountAddress}`).catch(() => null),
 	])
 
 	if (!tokensRes?.ok || !balancesRes?.ok) return []
