@@ -553,7 +553,6 @@ function HoldingsTable({ assets }: { assets: AssetData[] }) {
 			<div
 				className="grid grid-cols-subgrid col-span-3 md:col-span-4 overflow-y-auto focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px] rounded"
 				style={{ maxHeight: 'calc(100vh - 80px)' }}
-				tabIndex={0}
 			>
 				{filteredAssets.map((asset, index) => (
 					<div
@@ -567,9 +566,7 @@ function HoldingsTable({ assets }: { assets: AssetData[] }) {
 					>
 						<span className="px-2 text-primary flex items-center gap-1.5">
 							<TokenIcon address={asset.address} />
-							{asset.metadata?.name ?? (
-								<span className="text-tertiary">…</span>
-							)}
+							{asset.metadata?.name ?? <span className="text-tertiary">…</span>}
 						</span>
 						<span
 							className="px-2 flex flex-col items-end justify-center overflow-hidden md:flex-row md:items-center"
