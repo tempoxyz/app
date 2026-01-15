@@ -9,8 +9,11 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import * as React from 'react'
+import { I18nextProvider, useTranslation } from 'react-i18next'
 import { deserialize, type State, WagmiProvider } from 'wagmi'
 import { getWagmiConfig, getWagmiStateSSR } from '#wagmi.config'
+import { CommandMenuProvider } from '#comps/CommandMenu'
+import i18n, { isRtl } from '#lib/i18n'
 import css from './styles.css?url'
 
 export const Route = createRootRouteWithContext<{
@@ -21,12 +24,53 @@ export const Route = createRootRouteWithContext<{
 		meta: [
 			{ charSet: 'utf-8' },
 			{ name: 'viewport', content: 'width=device-width, initial-scale=1' },
-			{ title: 'App ⋅ Tempo' },
-			{ name: 'og:title', content: 'App ⋅ Tempo' },
-			{ name: 'description', content: 'Tempo App' },
-			{ name: 'og:description', content: 'Tempo App' },
+			{ title: 'Tempo' },
+			{ property: 'og:title', content: 'Tempo' },
+			{
+				name: 'description',
+				content:
+					'View your balances, send tokens, and track activity on Tempo – the fastest Ethereum L2.',
+			},
+			{
+				property: 'og:description',
+				content:
+					'View your balances, send tokens, and track activity on Tempo – the fastest Ethereum L2.',
+			},
+			{
+				property: 'og:image',
+				content: 'https://app.devnet.tempo.xyz/og-image.png',
+			},
+			{ property: 'og:image:width', content: '1200' },
+			{ property: 'og:image:height', content: '630' },
+			{ name: 'twitter:card', content: 'summary_large_image' },
+			{
+				name: 'twitter:image',
+				content: 'https://app.devnet.tempo.xyz/og-image.png',
+			},
 		],
 		links: [
+			// Preload critical fonts to prevent FOUC
+			{
+				rel: 'preload',
+				href: '/fonts/PilatTest-Regular.otf',
+				as: 'font',
+				type: 'font/otf',
+				crossOrigin: 'anonymous',
+			},
+			{
+				rel: 'preload',
+				href: '/fonts/PilatTest-Demi.otf',
+				as: 'font',
+				type: 'font/otf',
+				crossOrigin: 'anonymous',
+			},
+			{
+				rel: 'preload',
+				href: '/fonts/SourceSerif4-Light.woff2',
+				as: 'font',
+				type: 'font/woff2',
+				crossOrigin: 'anonymous',
+			},
 			{ rel: 'stylesheet', href: css },
 			{
 				rel: 'icon',
@@ -51,20 +95,53 @@ function RootComponent() {
 	const wagmiState = Route.useLoaderData({ select: deserialize<State> })
 
 	return (
-		<html lang="en" className="scheme-light-dark scrollbar-gutter-stable">
+		<I18nextProvider i18n={i18n}>
+			<RootDocument
+				queryClient={queryClient}
+				config={config}
+				wagmiState={wagmiState}
+			/>
+		</I18nextProvider>
+	)
+}
+
+function RootDocument({
+	queryClient,
+	config,
+	wagmiState,
+}: {
+	queryClient: QueryClient
+	config: ReturnType<typeof getWagmiConfig>
+	wagmiState: State | undefined
+}) {
+	const { i18n: i18nInstance } = useTranslation()
+	const lang = i18nInstance.language
+	const dir = isRtl(lang) ? 'rtl' : 'ltr'
+
+	return (
+		<html
+			lang={lang}
+			dir={dir}
+			className="scheme-light-dark scrollbar-gutter-stable"
+		>
 			<head>
 				<HeadContent />
 			</head>
 			<body className="antialiased">
 				<WagmiProvider config={config} initialState={wagmiState}>
 					<QueryClientProvider client={queryClient}>
-						<Outlet />
+						<CommandMenuProvider>
+							<Outlet />
+						</CommandMenuProvider>
 						{import.meta.env.MODE === 'development' &&
 							import.meta.env.VITE_ENABLE_DEVTOOLS === 'true' && (
 								<TanStackDevtools
 									config={{ position: 'bottom-right' }}
 									plugins={[
-										{ name: 'Tanstack Query', render: <ReactQueryDevtools /> },
+										{
+											name: 'Tanstack Query',
+											render: <ReactQueryDevtools />,
+										},
 										{
 											name: 'Tanstack Router',
 											render: <TanStackRouterDevtoolsPanel />,

@@ -79,6 +79,7 @@ export default defineConfig((config) => {
 		build: {
 			minify: 'oxc',
 			rollupOptions: {
+				external: ['cloudflare:workers'],
 				output: {
 					minify: {
 						compress:

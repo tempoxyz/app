@@ -1,9 +1,14 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import { useAccount, useConnect, useConnectors } from 'wagmi'
 import { Layout } from '#comps/Layout'
 import { cx } from '#lib/css'
 import ArrowRight from '~icons/lucide/arrow-right'
 import UserIcon from '~icons/lucide/user'
+import KeyIcon from '~icons/lucide/key-round'
+import FingerprintIcon from '~icons/lucide/fingerprint'
+import ClockIcon from '~icons/lucide/clock'
 
 const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
 
@@ -33,9 +38,56 @@ export const Route = createFileRoute('/_layout/')({
 })
 
 function Landing() {
+	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const [address, setAddress] = React.useState('')
 	const inputRef = React.useRef<HTMLInputElement>(null)
+
+	const account = useAccount()
+	const connect = useConnect()
+	const [connector] = useConnectors()
+	const [pendingAction, setPendingAction] = React.useState<
+		'signup' | 'signin' | 'reconnect' | null
+	>(null)
+	const [recentAddress, setRecentAddress] = React.useState<string | null>(null)
+
+	// Check for recently connected account
+	React.useEffect(() => {
+		try {
+			// Read from wagmi's cookie storage
+			const cookies = document.cookie.split(';')
+			for (const cookie of cookies) {
+				const [name, value] = cookie.trim().split('=')
+				if (name === 'wagmi.store') {
+					const decoded = decodeURIComponent(value)
+					const parsed = JSON.parse(decoded) as {
+						state?: {
+							connections?: { value?: [unknown, { accounts?: string[] }][] }
+						}
+					}
+					// The lastActiveCredential contains the public key which we can derive an address from
+					if (parsed?.state?.connections?.value?.[0]?.[1]?.accounts?.[0]) {
+						setRecentAddress(parsed.state.connections.value[0][1].accounts[0])
+					}
+				}
+			}
+		} catch (_e) {
+			// Ignore parsing errors
+		}
+	}, [])
+
+	React.useEffect(() => {
+		if (!connect.isPending && !connect.isSuccess) {
+			setPendingAction(null)
+		}
+	}, [connect.isPending, connect.isSuccess])
+
+	// Reset pending action on error
+	React.useEffect(() => {
+		if (connect.error) {
+			setPendingAction(null)
+		}
+	}, [connect.error])
 
 	const isValidAddress = address.startsWith('0x') && address.length === 42
 
@@ -47,17 +99,28 @@ function Landing() {
 	}
 
 	React.useEffect(() => {
-		inputRef.current?.focus()
-	}, [])
+		if (account.address) {
+			navigate({ to: '/$address', params: { address: account.address } })
+		}
+	}, [account.address, navigate])
+
+	React.useEffect(() => {
+		if (!account.address) {
+			inputRef.current?.focus()
+		}
+	}, [account.address])
 
 	return (
 		<>
-			<Layout.Header left="Search" right={null} />
+			<Layout.Header left={t('common.search')} right={null} />
 			<div className="flex flex-1 flex-col items-center justify-center">
-				<div className="grid place-items-center relative grid-flow-row gap-2 select-none w-full max-w-sm py-5 z-1">
-					<h1 className="text-[24px] font-semibold text-primary tracking-tight text-center">
-						Tempo account
+				<div className="grid place-items-center relative grid-flow-row gap-3 select-none w-full max-w-md px-4 py-6 z-1">
+					<h1 className="font-sans font-semibold text-[32px] sm:text-[36px] text-primary text-center -tracking-[0.03em]">
+						{t('landing.getStarted')}
 					</h1>
+					<p className="text-secondary text-[14px] sm:text-[15px] text-center -mt-1 mb-2 max-w-[280px]">
+						{t('landing.exploreDescription')}
+					</p>
 					<form onSubmit={handleSubmit} className="w-full relative">
 						<input
 							ref={inputRef}
@@ -65,48 +128,147 @@ function Landing() {
 							name="value"
 							value={address}
 							onChange={(e) => setAddress(e.target.value)}
-							placeholder="Enter a tempo address…"
-							className="bg-surface border-base-border border pl-[16px] pr-[60px] w-full placeholder:text-tertiary text-base-content rounded-[10px] focus-visible:border-focus outline-0 h-[52px] text-[17px]"
+							placeholder={t('landing.enterAddress')}
+							className="glass-input pl-4 pr-14 w-full placeholder:text-tertiary text-base-content rounded-2xl outline-0 h-[56px] text-[16px]"
 							spellCheck={false}
 							autoComplete="off"
 							autoCapitalize="none"
 							autoCorrect="off"
 							data-1p-ignore
 						/>
-						<div className="absolute top-[50%] -translate-y-[50%] right-[16px]">
+						<div className="absolute top-[50%] -translate-y-[50%] right-[14px]">
 							<button
 								type="submit"
 								disabled={!isValidAddress}
 								aria-label="Search"
 								className={cx(
-									'rounded-full! flex items-center justify-center active:translate-y-[0.5px] disabled:cursor-not-allowed size-[28px]',
+									'rounded-full flex items-center justify-center active:translate-y-[0.5px] disabled:cursor-not-allowed size-[32px] transition-all',
 									isValidAddress
-										? 'bg-accent text-base-plane cursor-pointer'
-										: 'bg-base-alt text-tertiary cursor-default',
+										? 'glass-button-accent cursor-pointer'
+										: 'bg-base-alt/50 text-tertiary cursor-default backdrop-blur-sm',
 								)}
 							>
-								<ArrowRight className="size-[16px]" />
+								<ArrowRight className="size-[18px]" />
 							</button>
 						</div>
 					</form>
-					<div className="flex items-center gap-1 text-[13px] flex-wrap justify-center">
+					<div className="flex items-center gap-1 text-[11px] justify-center mt-1">
 						{getExampleAccounts().map((addr) => (
 							<Link
 								key={addr}
 								to="/$address"
 								params={{ address: addr }}
 								className={cx(
-									'flex items-center gap-0.75 text-base-content-secondary hover:text-base-content',
-									'border border-base-border hover:border-accent focus-visible:border-accent',
-									'px-1.25 py-0.5 rounded-full! press-down bg-surface focus-visible:outline-none',
-									'focus-visible:duration-0 font-mono',
+									'flex items-center gap-0.5 text-tertiary hover:text-secondary',
+									'px-1.5 py-0.5 rounded press-down focus-visible:outline-none',
+									'transition-all font-mono text-[10px]',
 								)}
 							>
-								<UserIcon className="size-[14px] text-accent" />
+								<UserIcon className="size-[10px] text-accent/70" />
 								<span>{truncateAddress(addr)}</span>
 							</Link>
 						))}
 					</div>
+
+					<div className="w-full flex items-center gap-3 mt-4">
+						<div className="flex-1 h-px bg-base-border" />
+						<span className="text-tertiary text-[12px]">
+							{recentAddress
+								? t('landing.orUsePasskey')
+								: t('landing.orSignInWithPasskey')}
+						</span>
+						<div className="flex-1 h-px bg-base-border" />
+					</div>
+
+					<div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+						<button
+							type="button"
+							onClick={() => {
+								if (connector) {
+									setPendingAction('signup')
+									connect.connect({
+										connector,
+										capabilities: { type: 'sign-up' },
+									} as Parameters<typeof connect.connect>[0])
+								}
+							}}
+							disabled={connect.isPending}
+							className={cx(
+								'flex items-center gap-1 px-3 py-1.5 rounded-full justify-center',
+								'glass-button-accent font-medium text-[12px]',
+								'cursor-pointer press-down border border-transparent hover:border-white/30',
+								'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
+							)}
+						>
+							{pendingAction === 'signup' ? (
+								<span className="size-[12px] border-2 border-white/30 border-t-white rounded-full animate-spin" />
+							) : (
+								<KeyIcon className="size-[12px]" />
+							)}
+							<span>{t('common.signUp')}</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => {
+								if (connector) {
+									setPendingAction('signin')
+									connect.connect({ connector })
+								}
+							}}
+							disabled={connect.isPending}
+							className={cx(
+								'flex items-center gap-1 px-3 py-1.5 rounded-full justify-center',
+								'glass-button text-primary font-medium text-[12px]',
+								'cursor-pointer press-down border border-transparent hover:border-white/20',
+								'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
+							)}
+						>
+							{pendingAction === 'signin' ? (
+								<span className="size-[12px] border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+							) : (
+								<FingerprintIcon className="size-[12px]" />
+							)}
+							<span>{t('common.signIn')}</span>
+						</button>
+						{recentAddress && (
+							<button
+								type="button"
+								onClick={() => {
+									if (connector) {
+										setPendingAction('reconnect')
+										connect.connect({ connector })
+									}
+								}}
+								disabled={connect.isPending}
+								className={cx(
+									'flex items-center gap-1.5 px-3 py-1.5 rounded-full justify-center',
+									'glass-button text-primary font-medium text-[12px]',
+									'cursor-pointer press-down border border-transparent hover:border-accent/30',
+									'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
+								)}
+							>
+								{pendingAction === 'reconnect' ? (
+									<span className="size-[12px] border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+								) : (
+									<ClockIcon className="size-[12px] text-accent" />
+								)}
+								<span>
+									{t('common.continue')}{' '}
+									<span className="font-mono text-secondary">
+										{truncateAddress(recentAddress)}
+									</span>
+								</span>
+							</button>
+						)}
+					</div>
+
+					{connect.error && (
+						<div className="mt-3 px-4 py-3 rounded-xl glass-thin border border-negative/30 glow-negative">
+							<p className="text-negative text-[13px] text-center">
+								{connect.error.message}
+							</p>
+						</div>
+					)}
 				</div>
 			</div>
 		</>
