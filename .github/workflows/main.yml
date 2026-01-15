@@ -1,0 +1,48 @@
+name: Main
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: production
+  WRANGLER_SEND_METRICS: false
+
+jobs:
+  verify:
+    name: Verify
+    uses: ./.github/workflows/verify.yml
+    secrets: inherit
+
+  deploy:
+    name: Deploy (presto)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-dependencies
+
+      - name: Build
+        env:
+          NODE_ENV: production
+          CLOUDFLARE_ENV: presto
+        run: pnpm build
+
+      - name: Deploy Workers
+        uses: cloudflare/wrangler-action@v3
+        env:
+          NODE_ENV: production
+          CLOUDFLARE_ENV: presto
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: pnpm
+          command: deploy --env presto
