@@ -1,9 +1,4 @@
-import {
-	Link,
-	createFileRoute,
-	useNavigate,
-	useRouter,
-} from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { waapi, spring } from 'animejs'
 import type { Address } from 'ox'
@@ -283,7 +278,13 @@ async function fetchTransactions(
 	try {
 		const result = await fetchTransactionsFromExplorer({ data: { address } })
 
+		console.log('[Activity] Explorer result:', {
+			error: result.error,
+			txCount: result.transactions.length,
+		})
+
 		if (result.error || result.transactions.length === 0) {
+			console.log('[Activity] Returning empty - error or no txs')
 			return []
 		}
 
@@ -294,6 +295,11 @@ async function fetchTransactions(
 		const hashes = txData.map((tx) => tx.hash)
 
 		const receiptsResult = await fetchTransactionReceipts({ data: { hashes } })
+
+		console.log('[Activity] Receipts result:', {
+			count: receiptsResult.receipts.length,
+			withReceipt: receiptsResult.receipts.filter((r) => r.receipt).length,
+		})
 
 		const getTokenMetadata: GetTokenMetadataFn = (tokenAddress) => {
 			return tokenMetadataMap.get(tokenAddress)
@@ -313,13 +319,15 @@ async function fetchTransactions(
 					? new Date(txInfo.timestamp).getTime()
 					: Date.now()
 				items.push({ hash, events, timestamp })
-			} catch {
-				// Skip failed parsing
+			} catch (e) {
+				console.log('[Activity] Failed to parse receipt:', hash, e)
 			}
 		}
 
+		console.log('[Activity] Final items:', items.length)
 		return items
-	} catch {
+	} catch (e) {
+		console.error('[Activity] Fetch error:', e)
 		return []
 	}
 }
@@ -375,18 +383,32 @@ function eventTypeToActivityType(eventType: string): ActivityType {
 
 function AddressView() {
 	const { address } = Route.useParams()
-	const { assets: assetsData, activity } = Route.useLoaderData()
+	const { assets: initialAssets, activity } = Route.useLoaderData()
 	const { copy, notifying } = useCopy()
 	const [showZeroBalances, setShowZeroBalances] = React.useState(false)
 	const { setSummary } = useActivitySummary()
 	const { disconnect } = useDisconnect()
 	const navigate = useNavigate()
-	const router = useRouter()
 	const [searchValue, setSearchValue] = React.useState('')
 	const [searchFocused, setSearchFocused] = React.useState(false)
 	const account = useAccount()
 	const { sendTo, token: initialToken } = Route.useSearch()
 	const { t } = useTranslation()
+
+	// Assets state - starts from loader, can be refetched without page refresh
+	const [assetsData, setAssetsData] = React.useState(initialAssets)
+
+	// Sync with loader data when address changes
+	React.useEffect(() => {
+		setAssetsData(initialAssets)
+	}, [initialAssets])
+
+	// Refetch balances without full page refresh using server function
+	const refetchAssetsBalances = React.useCallback(async () => {
+		const newAssets = await fetchAssets({ data: { address } })
+		if (!newAssets || newAssets.length === 0) return
+		setAssetsData(newAssets)
+	}, [address])
 
 	// Optimistic balance adjustments: Map<tokenAddress, amountToSubtract>
 	const [optimisticAdjustments, setOptimisticAdjustments] = React.useState<
@@ -416,15 +438,14 @@ function AddressView() {
 	}, [])
 
 	const handleFaucetSuccess = React.useCallback(() => {
-		// Delay the invalidation to allow UI to show success state
-		setTimeout(() => router.invalidate(), 2000)
-	}, [router])
+		// Refetch balances without page refresh
+		refetchAssetsBalances()
+	}, [refetchAssetsBalances])
 
 	const handleSendSuccess = React.useCallback(() => {
 		// For sends, we rely on optimistic updates and delayed refresh
-		// Don't invalidate immediately as it disrupts the success UI
-		setTimeout(() => router.invalidate(), 3000)
-	}, [router])
+		setTimeout(() => refetchAssetsBalances(), 2000)
+	}, [refetchAssetsBalances])
 
 	React.useEffect(() => {
 		if (activity.length > 0) {
@@ -510,7 +531,14 @@ function AddressView() {
 				<div className="flex items-center justify-between mb-5">
 					<Link to="/" className="flex items-center gap-2 press-down">
 						<div className="size-[28px] bg-black dark:bg-white rounded-[3px] flex items-center justify-center">
-							<svg width="22" height="22" viewBox="0 0 269 269" fill="none">
+							<svg
+								width="22"
+								height="22"
+								viewBox="0 0 269 269"
+								fill="none"
+								aria-hidden="true"
+							>
+								<title>Tempo logo</title>
 								<path
 									d="M123.273 190.794H93.445L121.09 105.318H85.7334L93.445 80.2642H191.95L184.238 105.318H150.773L123.273 190.794Z"
 									className="fill-white dark:fill-black"
@@ -881,6 +909,7 @@ function QRCode({
 	return (
 		<svg
 			ref={svgRef}
+			role="img"
 			aria-label="QR Code - Click to copy address"
 			className={cx(
 				'rounded-lg bg-surface p-1.5 cursor-pointer outline-none border border-base-border hover:border-accent/50 transition-colors',
@@ -896,6 +925,7 @@ function QRCode({
 			onMouseMove={handleMouseMove}
 			onMouseLeave={() => setMousePos(null)}
 		>
+			<title>QR Code</title>
 			{cells.map(({ x, y }) => {
 				let opacity = 1
 				if (mousePos && !notifying) {
@@ -1179,7 +1209,9 @@ function HoldingsTable({
 						fill="none"
 						stroke="currentColor"
 						strokeWidth="2"
+						aria-hidden="true"
 					>
+						<title>No assets icon</title>
 						<circle cx="12" cy="12" r="10" />
 						<path d="M12 6v12M6 12h12" strokeLinecap="round" />
 					</svg>
@@ -1439,16 +1471,18 @@ function AssetRow({
 		}
 	}, [asset.balance, faucetState, faucetInitialBalance])
 
-	// Poll for balance updates while faucet is loading
+	// Poll for balance updates while faucet is loading (but not during send)
 	React.useEffect(() => {
 		if (faucetState !== 'loading') return
+		if (sendState === 'sending') return
 		const interval = setInterval(() => {
 			onFaucetSuccess?.()
 		}, 1500)
 		return () => clearInterval(interval)
-	}, [faucetState, onFaucetSuccess])
+	}, [faucetState, sendState, onFaucetSuccess])
 
 	const handleFaucet = async () => {
+		if (faucetState !== 'idle') return
 		setFaucetInitialBalance(asset.balance ?? null)
 		setFaucetState('loading')
 		try {
@@ -1687,7 +1721,7 @@ function AssetRow({
 							e.stopPropagation()
 							if (isFaucetToken) handleFaucet()
 						}}
-						disabled={faucetState === 'loading' || !isFaucetToken}
+						disabled={faucetState !== 'idle' || !isFaucetToken}
 						className={cx(
 							'flex items-center justify-center size-[24px] rounded-md transition-colors',
 							isFaucetToken
