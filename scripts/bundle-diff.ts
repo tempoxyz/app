@@ -304,9 +304,9 @@ async function main() {
 	let baseline: BundleStats | null = null
 
 	if (options.baselinePath && existsSync(options.baselinePath)) {
-		baseline = JSON.parse(readFileSync(options.baselinePath, 'utf-8'))
+		baseline = JSON.parse(readFileSync(options.baselinePath, 'utf-8')) as BundleStats
 	} else if (existsSync(BASELINE_FILE)) {
-		baseline = JSON.parse(readFileSync(BASELINE_FILE, 'utf-8'))
+		baseline = JSON.parse(readFileSync(BASELINE_FILE, 'utf-8')) as BundleStats
 	}
 
 	printReport(current, baseline, options)

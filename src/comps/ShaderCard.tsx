@@ -38,7 +38,7 @@ const WORDMARK_FLOW_DIRECTION = -1
 const FADE_IN_DURATION = 150
 
 const DEFAULT_AMBIENT_COLORS: Array<[number, number, number]> = [
-	[0.231, 0.510, 0.965], // blue (#3b82f6)
+	[0.231, 0.51, 0.965], // blue (#3b82f6)
 	[0.133, 0.773, 0.369], // green (#22c55e)
 	[0.545, 0.361, 0.965], // purple (#8b5cf6)
 ]
@@ -90,11 +90,16 @@ void main() {
 `
 
 // Generate gradient shader with colors embedded as constants
-function createGradientShaderSource(colors: Array<[number, number, number]>): string {
+function createGradientShaderSource(
+	colors: Array<[number, number, number]>,
+): string {
 	const n = colors.length
 
 	const colorDecls = colors
-		.map((c, i) => `vec3 c${i} = vec3(${c[0].toFixed(3)}, ${c[1].toFixed(3)}, ${c[2].toFixed(3)});`)
+		.map(
+			(c, i) =>
+				`vec3 c${i} = vec3(${c[0].toFixed(3)}, ${c[1].toFixed(3)}, ${c[2].toFixed(3)});`,
+		)
 		.join('\n\t')
 
 	let colorSelect = ''
@@ -408,10 +413,24 @@ function createProgram(
 	return program
 }
 
-function createFramebuffer(gl: WebGL2RenderingContext, width: number, height: number) {
+function createFramebuffer(
+	gl: WebGL2RenderingContext,
+	width: number,
+	height: number,
+) {
 	const texture = gl.createTexture()
 	gl.bindTexture(gl.TEXTURE_2D, texture)
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+	gl.texImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA8,
+		width,
+		height,
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		null,
+	)
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
@@ -419,7 +438,13 @@ function createFramebuffer(gl: WebGL2RenderingContext, width: number, height: nu
 
 	const framebuffer = gl.createFramebuffer()
 	gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+	gl.framebufferTexture2D(
+		gl.FRAMEBUFFER,
+		gl.COLOR_ATTACHMENT0,
+		gl.TEXTURE_2D,
+		texture,
+		0,
+	)
 
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 	gl.bindTexture(gl.TEXTURE_2D, null)
@@ -427,7 +452,9 @@ function createFramebuffer(gl: WebGL2RenderingContext, width: number, height: nu
 	return { framebuffer, texture }
 }
 
-function createWordmarkTexture(gl: WebGL2RenderingContext): WebGLTexture | null {
+function createWordmarkTexture(
+	gl: WebGL2RenderingContext,
+): WebGLTexture | null {
 	const canvas = document.createElement('canvas')
 	canvas.width = Math.ceil(TEMPO_WIDTH * WORDMARK_TEXTURE_SCALE)
 	canvas.height = Math.ceil(TEMPO_HEIGHT * WORDMARK_TEXTURE_SCALE)
@@ -462,7 +489,10 @@ export function ShaderCard({
 	ambientColors,
 	ambientIntensity,
 }: ShaderCardProps) {
-	const colors = ambientColors && ambientColors.length > 0 ? ambientColors : DEFAULT_AMBIENT_COLORS
+	const colors =
+		ambientColors && ambientColors.length > 0
+			? ambientColors
+			: DEFAULT_AMBIENT_COLORS
 	const intensity = ambientIntensity ?? DEFAULT_AMBIENT_INTENSITY
 	const canvasRef = React.useRef<HTMLCanvasElement>(null)
 	const startTimeRef = React.useRef<number | null>(null)
@@ -484,24 +514,38 @@ export function ShaderCard({
 		// Create programs
 		// Firefox has a shader compiler bug with identical colors in if-else chains.
 		// Only apply variation if there are duplicate colors.
-		const colorKeys = colors.map(c => c.join(','))
+		const colorKeys = colors.map((c) => c.join(','))
 		const hasDuplicates = new Set(colorKeys).size < colors.length
 		const variedColors: Array<[number, number, number]> = hasDuplicates
 			? colors.map((c, i) => {
-				const shift = (i - Math.floor(colors.length / 2)) * 0.08
-				return [
-					Math.max(0, Math.min(1, c[0] + shift)),
-					Math.max(0, Math.min(1, c[1] + shift)),
-					Math.max(0, Math.min(1, c[2] + shift)),
-				]
-			})
+					const shift = (i - Math.floor(colors.length / 2)) * 0.08
+					return [
+						Math.max(0, Math.min(1, c[0] + shift)),
+						Math.max(0, Math.min(1, c[1] + shift)),
+						Math.max(0, Math.min(1, c[2] + shift)),
+					]
+				})
 			: colors
 		const gradientShaderSource = createGradientShaderSource(variedColors)
-		const gradientProgram = createProgram(gl, vertexShader, gradientShaderSource)
+		const gradientProgram = createProgram(
+			gl,
+			vertexShader,
+			gradientShaderSource,
+		)
 		const blurProgram = createProgram(gl, vertexShader, BLUR_SHADER)
 		const compositeProgram = createProgram(gl, vertexShader, COMPOSITE_SHADER)
-		const liquidglassProgram = createProgram(gl, vertexShader, LIQUIDGLASS_SHADER)
-		if (!gradientProgram || !blurProgram || !compositeProgram || !liquidglassProgram) return
+		const liquidglassProgram = createProgram(
+			gl,
+			vertexShader,
+			LIQUIDGLASS_SHADER,
+		)
+		if (
+			!gradientProgram ||
+			!blurProgram ||
+			!compositeProgram ||
+			!liquidglassProgram
+		)
+			return
 
 		// Create quad buffer
 		const positionBuffer = gl.createBuffer()
@@ -561,7 +605,8 @@ export function ShaderCard({
 
 			const elapsed = timestamp - startTimeRef.current
 			const time = elapsed / 16.67
-			const wordmarkTime = (elapsed % WORDMARK_ANIMATION_DURATION) / WORDMARK_ANIMATION_DURATION
+			const wordmarkTime =
+				(elapsed % WORDMARK_ANIMATION_DURATION) / WORDMARK_ANIMATION_DURATION
 			const fadeElapsed = fadeStartTime ? timestamp - fadeStartTime : 0
 			const fadeIn = Math.min(1, fadeElapsed / FADE_IN_DURATION)
 
@@ -581,18 +626,54 @@ export function ShaderCard({
 			gl.useProgram(gradientProgram)
 			setupPositionAttrib(gradientProgram)
 			gl.uniform1f(gl.getUniformLocation(gradientProgram, 'u_time'), time)
-			gl.uniform2f(gl.getUniformLocation(gradientProgram, 'u_resolution'), currentWidth, currentHeight)
-			gl.uniform1f(gl.getUniformLocation(gradientProgram, 'u_intensity'), intensity)
-			gl.uniform1f(gl.getUniformLocation(gradientProgram, 'u_rotationSpeed'), AMBIENT_ROTATION_SPEED)
-			gl.uniform2f(gl.getUniformLocation(gradientProgram, 'u_driftAmplitude'), AMBIENT_DRIFT_AMPLITUDE_X, AMBIENT_DRIFT_AMPLITUDE_Y)
-			gl.uniform2f(gl.getUniformLocation(gradientProgram, 'u_driftSpeed'), AMBIENT_DRIFT_SPEED_X, AMBIENT_DRIFT_SPEED_Y)
-			gl.uniform2f(gl.getUniformLocation(gradientProgram, 'u_basePos'), AMBIENT_BASE_POS_X, AMBIENT_BASE_POS_Y)
+			gl.uniform2f(
+				gl.getUniformLocation(gradientProgram, 'u_resolution'),
+				currentWidth,
+				currentHeight,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(gradientProgram, 'u_intensity'),
+				intensity,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(gradientProgram, 'u_rotationSpeed'),
+				AMBIENT_ROTATION_SPEED,
+			)
+			gl.uniform2f(
+				gl.getUniformLocation(gradientProgram, 'u_driftAmplitude'),
+				AMBIENT_DRIFT_AMPLITUDE_X,
+				AMBIENT_DRIFT_AMPLITUDE_Y,
+			)
+			gl.uniform2f(
+				gl.getUniformLocation(gradientProgram, 'u_driftSpeed'),
+				AMBIENT_DRIFT_SPEED_X,
+				AMBIENT_DRIFT_SPEED_Y,
+			)
+			gl.uniform2f(
+				gl.getUniformLocation(gradientProgram, 'u_basePos'),
+				AMBIENT_BASE_POS_X,
+				AMBIENT_BASE_POS_Y,
+			)
 			const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-			gl.uniform1f(gl.getUniformLocation(gradientProgram, 'u_pulseBase'), isDark ? AMBIENT_PULSE_BASE_DARK : AMBIENT_PULSE_BASE_LIGHT)
-			gl.uniform1f(gl.getUniformLocation(gradientProgram, 'u_pulseAmplitude'), AMBIENT_PULSE_AMPLITUDE)
-			gl.uniform1f(gl.getUniformLocation(gradientProgram, 'u_pulseSpeed'), AMBIENT_PULSE_SPEED)
+			gl.uniform1f(
+				gl.getUniformLocation(gradientProgram, 'u_pulseBase'),
+				isDark ? AMBIENT_PULSE_BASE_DARK : AMBIENT_PULSE_BASE_LIGHT,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(gradientProgram, 'u_pulseAmplitude'),
+				AMBIENT_PULSE_AMPLITUDE,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(gradientProgram, 'u_pulseSpeed'),
+				AMBIENT_PULSE_SPEED,
+			)
 			const baseColor = isDark ? [0.098, 0.098, 0.098] : [0.988, 0.988, 0.988] // #191919 / #fcfcfc
-			gl.uniform3f(gl.getUniformLocation(gradientProgram, 'u_baseColor'), baseColor[0], baseColor[1], baseColor[2])
+			gl.uniform3f(
+				gl.getUniformLocation(gradientProgram, 'u_baseColor'),
+				baseColor[0],
+				baseColor[1],
+				baseColor[2],
+			)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
@@ -607,7 +688,11 @@ export function ShaderCard({
 			gl.activeTexture(gl.TEXTURE0)
 			gl.bindTexture(gl.TEXTURE_2D, fb1.texture)
 			gl.uniform1i(gl.getUniformLocation(blurProgram, 'u_texture'), 0)
-			gl.uniform2f(gl.getUniformLocation(blurProgram, 'u_resolution'), currentWidth, currentHeight)
+			gl.uniform2f(
+				gl.getUniformLocation(blurProgram, 'u_resolution'),
+				currentWidth,
+				currentHeight,
+			)
 			gl.uniform2f(gl.getUniformLocation(blurProgram, 'u_direction'), 1.0, 0.0)
 			gl.uniform1f(gl.getUniformLocation(blurProgram, 'u_radius'), 350.0)
 
@@ -622,7 +707,11 @@ export function ShaderCard({
 			gl.activeTexture(gl.TEXTURE0)
 			gl.bindTexture(gl.TEXTURE_2D, fb2.texture)
 			gl.uniform1i(gl.getUniformLocation(blurProgram, 'u_texture'), 0)
-			gl.uniform2f(gl.getUniformLocation(blurProgram, 'u_resolution'), currentWidth, currentHeight)
+			gl.uniform2f(
+				gl.getUniformLocation(blurProgram, 'u_resolution'),
+				currentWidth,
+				currentHeight,
+			)
 			gl.uniform2f(gl.getUniformLocation(blurProgram, 'u_direction'), 0.0, 1.0)
 			gl.uniform1f(gl.getUniformLocation(blurProgram, 'u_radius'), 350.0)
 
@@ -637,7 +726,11 @@ export function ShaderCard({
 			gl.activeTexture(gl.TEXTURE0)
 			gl.bindTexture(gl.TEXTURE_2D, fb1.texture)
 			gl.uniform1i(gl.getUniformLocation(blurProgram, 'u_texture'), 0)
-			gl.uniform2f(gl.getUniformLocation(blurProgram, 'u_resolution'), currentWidth, currentHeight)
+			gl.uniform2f(
+				gl.getUniformLocation(blurProgram, 'u_resolution'),
+				currentWidth,
+				currentHeight,
+			)
 			gl.uniform2f(gl.getUniformLocation(blurProgram, 'u_direction'), 1.0, 0.0)
 			gl.uniform1f(gl.getUniformLocation(blurProgram, 'u_radius'), 350.0)
 
@@ -652,7 +745,11 @@ export function ShaderCard({
 			gl.activeTexture(gl.TEXTURE0)
 			gl.bindTexture(gl.TEXTURE_2D, fb2.texture)
 			gl.uniform1i(gl.getUniformLocation(blurProgram, 'u_texture'), 0)
-			gl.uniform2f(gl.getUniformLocation(blurProgram, 'u_resolution'), currentWidth, currentHeight)
+			gl.uniform2f(
+				gl.getUniformLocation(blurProgram, 'u_resolution'),
+				currentWidth,
+				currentHeight,
+			)
 			gl.uniform2f(gl.getUniformLocation(blurProgram, 'u_direction'), 0.0, 1.0)
 			gl.uniform1f(gl.getUniformLocation(blurProgram, 'u_radius'), 350.0)
 
@@ -669,22 +766,56 @@ export function ShaderCard({
 
 			gl.activeTexture(gl.TEXTURE0)
 			gl.bindTexture(gl.TEXTURE_2D, fb1.texture)
-			gl.uniform1i(gl.getUniformLocation(compositeProgram, 'u_gradientTexture'), 0)
+			gl.uniform1i(
+				gl.getUniformLocation(compositeProgram, 'u_gradientTexture'),
+				0,
+			)
 
 			gl.activeTexture(gl.TEXTURE1)
 			gl.bindTexture(gl.TEXTURE_2D, wordmarkTexture)
-			gl.uniform1i(gl.getUniformLocation(compositeProgram, 'u_wordmarkTexture'), 1)
+			gl.uniform1i(
+				gl.getUniformLocation(compositeProgram, 'u_wordmarkTexture'),
+				1,
+			)
 
-			gl.uniform2f(gl.getUniformLocation(compositeProgram, 'u_resolution'), currentWidth, currentHeight)
+			gl.uniform2f(
+				gl.getUniformLocation(compositeProgram, 'u_resolution'),
+				currentWidth,
+				currentHeight,
+			)
 			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_fadeIn'), fadeIn)
-			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_rowHeight'), WORDMARK_ROW_HEIGHT)
-			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_rowGap'), WORDMARK_ROW_GAP)
-			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_patternLength'), WORDMARK_PATTERN_LENGTH)
-			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_stretchMin'), WORDMARK_STRETCH_MIN)
-			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_stretchMax'), WORDMARK_STRETCH_MAX)
-			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_opacity'), WORDMARK_OPACITY)
-			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_flowDirection'), WORDMARK_FLOW_DIRECTION)
-			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_time'), wordmarkTime)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_rowHeight'),
+				WORDMARK_ROW_HEIGHT,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_rowGap'),
+				WORDMARK_ROW_GAP,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_patternLength'),
+				WORDMARK_PATTERN_LENGTH,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_stretchMin'),
+				WORDMARK_STRETCH_MIN,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_stretchMax'),
+				WORDMARK_STRETCH_MAX,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_opacity'),
+				WORDMARK_OPACITY,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_flowDirection'),
+				WORDMARK_FLOW_DIRECTION,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_time'),
+				wordmarkTime,
+			)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
@@ -704,19 +835,56 @@ export function ShaderCard({
 			gl.bindTexture(gl.TEXTURE_2D, fb2.texture)
 			gl.uniform1i(gl.getUniformLocation(liquidglassProgram, 'u_texture'), 0)
 
-			gl.uniform2f(gl.getUniformLocation(liquidglassProgram, 'u_resolution'), canvas.width, canvas.height)
+			gl.uniform2f(
+				gl.getUniformLocation(liquidglassProgram, 'u_resolution'),
+				canvas.width,
+				canvas.height,
+			)
 			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_time'), time)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_power'), LIQUIDGLASS_POWER)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_borderWidth'), LIQUIDGLASS_BORDER_WIDTH)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_extend'), LIQUIDGLASS_CANVAS_EXTEND * (window.devicePixelRatio || 1))
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_refractA'), LIQUIDGLASS_REFRACT_A)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_refractB'), LIQUIDGLASS_REFRACT_B)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_refractC'), LIQUIDGLASS_REFRACT_C)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_refractD'), LIQUIDGLASS_REFRACT_D)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_refractPower'), LIQUIDGLASS_REFRACT_POWER)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_glowWeight'), LIQUIDGLASS_GLOW_WEIGHT)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_glowSpeed'), LIQUIDGLASS_GLOW_SPEED)
-			gl.uniform1f(gl.getUniformLocation(liquidglassProgram, 'u_noise'), LIQUIDGLASS_NOISE)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_power'),
+				LIQUIDGLASS_POWER,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_borderWidth'),
+				LIQUIDGLASS_BORDER_WIDTH,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_extend'),
+				LIQUIDGLASS_CANVAS_EXTEND * (window.devicePixelRatio || 1),
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_refractA'),
+				LIQUIDGLASS_REFRACT_A,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_refractB'),
+				LIQUIDGLASS_REFRACT_B,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_refractC'),
+				LIQUIDGLASS_REFRACT_C,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_refractD'),
+				LIQUIDGLASS_REFRACT_D,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_refractPower'),
+				LIQUIDGLASS_REFRACT_POWER,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_glowWeight'),
+				LIQUIDGLASS_GLOW_WEIGHT,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_glowSpeed'),
+				LIQUIDGLASS_GLOW_SPEED,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(liquidglassProgram, 'u_noise'),
+				LIQUIDGLASS_NOISE,
+			)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 

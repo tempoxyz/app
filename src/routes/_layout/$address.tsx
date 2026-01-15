@@ -2844,14 +2844,6 @@ function AssetRow({
 		return () => document.removeEventListener('keydown', handleKeyDown)
 	}, [isExpanded, onToggleSend])
 
-	React.useEffect(() => {
-		if (sendState === 'sent') {
-			setShowToast(true)
-			const timeout = setTimeout(() => setShowToast(false), 2000)
-			return () => clearTimeout(timeout)
-		}
-	}, [sendState])
-
 	const handleSend = async () => {
 		if (!isValidSend || parsedAmount === 0n) return
 

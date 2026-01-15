@@ -9,16 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DemoRouteImport } from './routes/demo'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAddressRouteImport } from './routes/_layout/$address'
 
-const DemoRoute = DemoRouteImport.update({
-  id: '/demo',
-  path: '/demo',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
@@ -35,44 +29,33 @@ const LayoutAddressRoute = LayoutAddressRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/demo': typeof DemoRoute
   '/$address': typeof LayoutAddressRoute
   '/': typeof LayoutIndexRoute
 }
 export interface FileRoutesByTo {
-  '/demo': typeof DemoRoute
   '/$address': typeof LayoutAddressRoute
   '/': typeof LayoutIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
-  '/demo': typeof DemoRoute
   '/_layout/$address': typeof LayoutAddressRoute
   '/_layout/': typeof LayoutIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/demo' | '/$address' | '/'
+  fullPaths: '/$address' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/demo' | '/$address' | '/'
-  id: '__root__' | '/_layout' | '/demo' | '/_layout/$address' | '/_layout/'
+  to: '/$address' | '/'
+  id: '__root__' | '/_layout' | '/_layout/$address' | '/_layout/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
-  DemoRoute: typeof DemoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/demo': {
-      id: '/demo'
-      path: '/demo'
-      fullPath: '/demo'
-      preLoaderRoute: typeof DemoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_layout': {
       id: '/_layout'
       path: ''
@@ -112,7 +95,6 @@ const LayoutRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
-  DemoRoute: DemoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

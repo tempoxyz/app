@@ -189,46 +189,8 @@ const getRpcUrls = createIsomorphicFn()
 
 function getTempoTransport() {
 	const rpcUrls = getRpcUrls()
-
-	// Log only tx-related RPC calls
-	const debugHttp = (url: string) => {
-		const base = http(url, { batch: true })
-		return (cfg: Parameters<typeof base>[0]) => {
-			const t = base(cfg)
-			return {
-				...t,
-				async request(args: { method: string; params?: unknown[] }) {
-					if (args.method.includes('send') || args.method.includes('sign')) {
-						console.log(
-							'[RPC]',
-							args.method,
-							`${args.params?.[0]?.slice?.(0, 40)}...`,
-						)
-					}
-					try {
-						const res = await t.request(args)
-						if (args.method.includes('send') || args.method.includes('sign')) {
-							console.log(
-								'[RPC]',
-								args.method,
-								'ok',
-								typeof res === 'string' ? `${res.slice(0, 20)}...` : res,
-							)
-						}
-						return res
-					} catch (e: unknown) {
-						if (args.method.includes('send') || args.method.includes('sign')) {
-							console.error('[RPC]', args.method, 'err', (e as Error).message)
-						}
-						throw e
-					}
-				},
-			}
-		}
-	}
-
 	return fallback([
-		...rpcUrls.http.map((url: string) => debugHttp(url)),
+		...rpcUrls.http.map((url: string) => http(url, { batch: true })),
 		...rpcUrls.webSocket.map(webSocket),
 	])
 }
