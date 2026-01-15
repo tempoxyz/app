@@ -12,7 +12,7 @@ const AMBIENT_DRIFT_SPEED_Y = 0.004
 const AMBIENT_BASE_POS_X = 30
 const AMBIENT_BASE_POS_Y = 70
 const AMBIENT_PULSE_BASE_DARK = 0.18
-const AMBIENT_PULSE_BASE_LIGHT = 0.18
+const AMBIENT_PULSE_BASE_LIGHT = 0.29
 const AMBIENT_PULSE_AMPLITUDE = 0.08
 const AMBIENT_PULSE_SPEED = 0.02
 
@@ -26,7 +26,8 @@ const WORDMARK_ROW_GAP = 30
 const WORDMARK_PATTERN_LENGTH = 15
 const WORDMARK_STRETCH_MIN = 1.0
 const WORDMARK_STRETCH_MAX = 4.0
-const WORDMARK_OPACITY = 0.1
+const WORDMARK_OPACITY_DARK = 0.1
+const WORDMARK_OPACITY_LIGHT = 0.15
 const WORDMARK_STROKE_WIDTH = 0.6
 const WORDMARK_TEXTURE_SCALE = 4
 const WORDMARK_FLOW_DIRECTION = -1
@@ -667,7 +668,7 @@ export function ShaderCard({
 				gl.getUniformLocation(gradientProgram, 'u_pulseSpeed'),
 				AMBIENT_PULSE_SPEED,
 			)
-			const baseColor = isDark ? [0.098, 0.098, 0.098] : [0.82, 0.82, 0.82] // #191919 / #d1d1d1
+			const baseColor = isDark ? [0.098, 0.098, 0.098] : [0.96, 0.96, 0.96] // #191919 / #f5f5f5
 			gl.uniform3f(
 				gl.getUniformLocation(gradientProgram, 'u_baseColor'),
 				baseColor[0],
@@ -806,7 +807,7 @@ export function ShaderCard({
 			)
 			gl.uniform1f(
 				gl.getUniformLocation(compositeProgram, 'u_opacity'),
-				WORDMARK_OPACITY,
+				isDark ? WORDMARK_OPACITY_DARK : WORDMARK_OPACITY_LIGHT,
 			)
 			gl.uniform1f(
 				gl.getUniformLocation(compositeProgram, 'u_flowDirection'),

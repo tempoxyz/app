@@ -106,12 +106,13 @@ export function Intro() {
 			/>
 			<div className="relative flex flex-col items-start gap-y-2 z-10 max-md:gap-y-1.5">
 				<TempoWordmark />
-				<p className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] text-[#505050] dark:text-secondary max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none">
+				<p className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] text-[#505050] max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none">
 					{t('intro.tagline')}
 				</p>
 				<div className="flex gap-1.5 flex-wrap isolate">
 					<a
-						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium text-white/90 bg-white/10 border border-white/15 rounded-full hover:text-white hover:border-white/30 hover:bg-white/15 transition-all"
+						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
+						style={{ color: 'light-dark(#505050, white)' }}
 						href="https://tempo.xyz"
 						rel="noreferrer"
 						target="_blank"
@@ -120,7 +121,8 @@ export function Intro() {
 						{t('intro.website')}
 					</a>
 					<a
-						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium text-white/90 bg-white/10 border border-white/15 rounded-full hover:text-white hover:border-white/30 hover:bg-white/15 transition-all"
+						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
+						style={{ color: 'light-dark(#505050, white)' }}
 						href="https://docs.tempo.xyz"
 						rel="noreferrer"
 						target="_blank"
