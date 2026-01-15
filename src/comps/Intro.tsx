@@ -115,7 +115,7 @@ export function Intro() {
 		<div
 			ref={cardRef}
 			style={{ opacity: 0 }}
-			className="relative flex min-h-full flex-col items-start justify-end px-7 sm:px-8 py-7 max-md:min-h-[120px] max-md:py-4 max-md:px-5"
+			className="relative flex min-h-full flex-col items-start justify-end px-5 sm:px-6 py-5 max-md:min-h-[120px] max-md:py-3 max-md:px-4"
 		>
 			<ShaderCard
 				className="max-md:hidden pointer-events-none"
