@@ -103,6 +103,40 @@ const FAUCET_TOKEN_DEFAULTS: AssetData[] = [
 	},
 ]
 
+export const Route = createFileRoute('/_layout/$address')({
+	component: RouteComponent,
+	validateSearch: z.object({
+		test: z.optional(z.boolean()),
+		sendTo: z.optional(z.string()),
+		token: z.optional(z.string()),
+	}),
+	beforeLoad: ({ params }) => {
+		if (!Address.validate(params.address)) throw notFound()
+	},
+	loader: async ({ params }) => {
+		const assets = await fetchAssets({ data: { address: params.address } })
+
+		const tokenMetadataMap = new Map<
+			Address.Address,
+			{ decimals: number; symbol: string }
+		>()
+		for (const asset of assets ?? []) {
+			if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
+				tokenMetadataMap.set(asset.address, {
+					decimals: asset.metadata.decimals,
+					symbol: asset.metadata.symbol,
+				})
+			}
+		}
+
+		const activity = await fetchTransactions(
+			params.address as Address.Address,
+			tokenMetadataMap,
+		)
+		return { assets: assets ?? [], activity }
+	},
+})
+
 const faucetFundAddress = createServerFn({ method: 'POST' })
 	.inputValidator((data: { address: string }) => data)
 	.handler(async ({ data }) => {
@@ -738,52 +772,7 @@ async function fetchTransactions(
 	}
 }
 
-export const Route = createFileRoute('/_layout/$address')({
-	component: AddressView,
-	validateSearch: z.object({
-		test: z.optional(z.boolean()),
-		sendTo: z.optional(z.string()),
-		token: z.optional(z.string()),
-	}),
-	beforeLoad: ({ params }) => {
-		if (!Address.validate(params.address)) throw notFound()
-	},
-	loader: async ({ params }) => {
-		const assets = await fetchAssets({ data: { address: params.address } })
-
-		const tokenMetadataMap = new Map<
-			Address.Address,
-			{ decimals: number; symbol: string }
-		>()
-		for (const asset of assets ?? []) {
-			if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
-				tokenMetadataMap.set(asset.address, {
-					decimals: asset.metadata.decimals,
-					symbol: asset.metadata.symbol,
-				})
-			}
-		}
-
-		const activity = await fetchTransactions(
-			params.address as Address.Address,
-			tokenMetadataMap,
-		)
-		return { assets: assets ?? [], activity }
-	},
-})
-
-function eventTypeToActivityType(eventType: string): ActivityType {
-	const type = eventType.toLowerCase()
-	if (type.includes('send') || type.includes('transfer')) return 'send'
-	if (type.includes('receive')) return 'received'
-	if (type.includes('swap') || type.includes('exchange')) return 'swap'
-	if (type.includes('mint')) return 'mint'
-	if (type.includes('burn')) return 'burn'
-	if (type.includes('approve') || type.includes('approval')) return 'approve'
-	return 'unknown'
-}
-
-function AddressView() {
+function RouteComponent() {
 	const { address } = Route.useParams()
 	const { assets: initialAssets, activity: initialActivity } =
 		Route.useLoaderData()
@@ -1284,6 +1273,17 @@ function AddressView() {
 			</div>
 		</AccessKeysProvider>
 	)
+}
+
+function eventTypeToActivityType(eventType: string): ActivityType {
+	const type = eventType.toLowerCase()
+	if (type.includes('send') || type.includes('transfer')) return 'send'
+	if (type.includes('receive')) return 'received'
+	if (type.includes('swap') || type.includes('exchange')) return 'swap'
+	if (type.includes('mint')) return 'mint'
+	if (type.includes('burn')) return 'burn'
+	if (type.includes('approve') || type.includes('approval')) return 'approve'
+	return 'unknown'
 }
 
 function QRCode({
