@@ -46,11 +46,6 @@
 				{
 					"custom_domain": true,
 					"zone_name": "tempo.xyz",
-					"pattern": "app.tempo.xyz"
-				},
-				{
-					"custom_domain": true,
-					"zone_name": "tempo.xyz",
 					"pattern": "app.moderato.tempo.xyz"
 				}
 			],
@@ -74,6 +69,11 @@
 			"name": "app-presto",
 			"main": "./src/index.server.ts",
 			"routes": [
+				{
+					"custom_domain": true,
+					"zone_name": "tempo.xyz",
+					"pattern": "app.tempo.xyz"
+				},
 				{
 					"custom_domain": true,
 					"zone_name": "tempo.xyz",
