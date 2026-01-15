@@ -106,7 +106,10 @@ export function Intro() {
 			/>
 			<div className="relative flex flex-col items-start gap-y-2 z-10 max-md:gap-y-1.5">
 				<TempoWordmark />
-				<p className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] text-[#505050] max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none">
+				<p
+					className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none"
+					style={{ color: 'light-dark(#505050, rgba(255,255,255,0.7))' }}
+				>
 					{t('intro.tagline')}
 				</p>
 				<div className="flex gap-1.5 flex-wrap isolate">

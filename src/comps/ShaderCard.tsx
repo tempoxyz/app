@@ -25,7 +25,7 @@ const WORDMARK_ROW_HEIGHT = 48
 const WORDMARK_ROW_GAP = 30
 const WORDMARK_PATTERN_LENGTH = 15
 const WORDMARK_STRETCH_MIN = 1.0
-const WORDMARK_STRETCH_MAX = 4.0
+const WORDMARK_STRETCH_MAX = 3.0
 const WORDMARK_OPACITY_DARK = 0.1
 const WORDMARK_OPACITY_LIGHT = 0.15
 const WORDMARK_STROKE_WIDTH = 0.6
@@ -49,8 +49,8 @@ const DEFAULT_AMBIENT_INTENSITY = 0.7
 // LIQUIDGLASS SETTINGS
 // =============================================================================
 
-const LIQUIDGLASS_POWER = 12.0
-const LIQUIDGLASS_BORDER_WIDTH = 0.15
+const LIQUIDGLASS_POWER = 22.0
+const LIQUIDGLASS_BORDER_WIDTH = 0.03
 const LIQUIDGLASS_REFRACT_A = 0.992
 const LIQUIDGLASS_REFRACT_B = 2.332
 const LIQUIDGLASS_REFRACT_C = 4.544
@@ -234,6 +234,7 @@ uniform float u_stretchMax;
 uniform float u_opacity;
 uniform float u_flowDirection;
 uniform float u_time;
+uniform vec3 u_wordmarkColor;
 
 const float PI = 3.14159265359;
 const float TEMPO_WIDTH = 227.0;
@@ -270,7 +271,7 @@ vec4 sampleWordmark(vec2 pixelCoord) {
 	}
 
 	vec4 texColor = texture(u_wordmarkTexture, vec2(texX, 1.0 - texY));
-	return vec4(texColor.rgb, texColor.a * u_opacity);
+	return vec4(u_wordmarkColor, texColor.a * u_opacity);
 }
 
 void main() {
@@ -808,6 +809,13 @@ export function ShaderCard({
 			gl.uniform1f(
 				gl.getUniformLocation(compositeProgram, 'u_opacity'),
 				isDark ? WORDMARK_OPACITY_DARK : WORDMARK_OPACITY_LIGHT,
+			)
+			const wordmarkColor = isDark ? [0.961, 0.961, 0.961] : [0.039, 0.039, 0.039] // #f5f5f5 / #0a0a0a (color-primary)
+			gl.uniform3f(
+				gl.getUniformLocation(compositeProgram, 'u_wordmarkColor'),
+				wordmarkColor[0],
+				wordmarkColor[1],
+				wordmarkColor[2],
 			)
 			gl.uniform1f(
 				gl.getUniformLocation(compositeProgram, 'u_flowDirection'),
