@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { waapi, spring } from 'animejs'
 import { useTranslation } from 'react-i18next'
 import { ShaderCard } from './ShaderCard'
 import { useActivitySummary, type ActivityType } from '#lib/activity-context'
@@ -93,12 +94,29 @@ function useAmbientColors() {
 	return { colors, intensity }
 }
 
+const INTRO_APPEAR_DELAY = 50
+const cardSpring = spring({ mass: 1, stiffness: 800, damping: 60 })
+
 export function Intro() {
 	const { t } = useTranslation()
 	const { colors, intensity } = useAmbientColors()
+	const cardRef = React.useRef<HTMLDivElement>(null)
+
+	React.useEffect(() => {
+		const el = cardRef.current
+		if (!el) return
+		const timer = setTimeout(() => {
+			waapi.animate(el, { opacity: [0, 1], scale: [0.98, 1], ease: cardSpring })
+		}, INTRO_APPEAR_DELAY)
+		return () => clearTimeout(timer)
+	}, [])
 
 	return (
-		<div className="relative flex min-h-full flex-col items-start justify-end px-7 sm:px-8 py-7 max-md:min-h-[120px] max-md:py-4 max-md:px-5">
+		<div
+			ref={cardRef}
+			style={{ opacity: 0 }}
+			className="relative flex min-h-full flex-col items-start justify-end px-5 sm:px-6 py-5 max-md:min-h-[120px] max-md:py-3 max-md:px-4"
+		>
 			<ShaderCard
 				className="max-md:hidden pointer-events-none"
 				ambientColors={colors}

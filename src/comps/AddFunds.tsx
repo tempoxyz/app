@@ -79,7 +79,7 @@ export function AddFunds(props: AddFunds.Props) {
 			<div className="flex flex-col gap-3 py-2.5">
 				<div className="flex flex-col gap-1">
 					<p className="text-[12px] text-tertiary">
-						Add funds to your account using Apple Pay. USDC will arrive on Base.
+						Add funds to your account using Apple Pay.
 					</p>
 				</div>
 
