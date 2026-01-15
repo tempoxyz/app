@@ -2,9 +2,6 @@
 dist/
 
 # dev
-.vscode/*
-!.vscode/launch.json
-!.vscode/*.code-snippets
 .idea/workspace.xml
 .idea/usage.statistics.xml
 .idea/shelf
@@ -25,6 +22,3 @@ pnpm-debug.log*
 
 # misc
 .DS_Store
-
-# generated
-worker-configuration.d.ts

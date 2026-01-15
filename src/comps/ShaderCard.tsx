@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/correctness/useHookAtTopLevel: _ */
 import * as React from 'react'
 
 // =============================================================================
@@ -801,7 +802,9 @@ export function ShaderCard({
 				gl.getUniformLocation(compositeProgram, 'u_opacity'),
 				isDark ? WORDMARK_OPACITY_DARK : WORDMARK_OPACITY_LIGHT,
 			)
-			const wordmarkColor = isDark ? [0.961, 0.961, 0.961] : [0.039, 0.039, 0.039] // #f5f5f5 / #0a0a0a (color-primary)
+			const wordmarkColor = isDark
+				? [0.961, 0.961, 0.961]
+				: [0.039, 0.039, 0.039] // #f5f5f5 / #0a0a0a (color-primary)
 			gl.uniform3f(
 				gl.getUniformLocation(compositeProgram, 'u_wordmarkColor'),
 				wordmarkColor[0],

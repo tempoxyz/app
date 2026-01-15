@@ -137,7 +137,7 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 
 			const incomingQuery = qb
 				.selectFrom('transfer')
-				.select((eb: any) => [
+				.select((eb) => [
 					eb.ref('address').as('token'),
 					eb.fn.sum('amount').as('received'),
 				])
@@ -147,7 +147,7 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 
 			const outgoingQuery = qb
 				.selectFrom('transfer')
-				.select((eb: any) => [
+				.select((eb) => [
 					eb.ref('address').as('token'),
 					eb.fn.sum('amount').as('sent'),
 				])
