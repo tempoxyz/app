@@ -22,6 +22,7 @@ import {
 	parseKnownEvents,
 	preferredEventsFilter,
 	getPerspectiveEvent,
+	expandSelfSends,
 	type KnownEvent,
 	type GetTokenMetadataFn,
 } from '#comps/activity'
@@ -55,7 +56,7 @@ import LogOutIcon from '~icons/lucide/log-out'
 import LogInIcon from '~icons/lucide/log-in'
 import DropletIcon from '~icons/lucide/droplet'
 import { useTranslation } from 'react-i18next'
-import i18n from '#lib/i18n'
+import i18n, { isRtl } from '#lib/i18n'
 
 // Tokens that can be funded via the faucet
 const FAUCET_TOKEN_ADDRESSES = new Set([
@@ -286,7 +287,7 @@ async function fetchTransactions(
 			return []
 		}
 
-		const txData = result.transactions.slice(0, 10) as Array<{
+		const txData = result.transactions.slice(0, 50) as Array<{
 			hash: string
 			timestamp?: string
 		}>
@@ -387,23 +388,62 @@ function AddressView() {
 	const { sendTo, token: initialToken } = Route.useSearch()
 	const { t } = useTranslation()
 
+	// Optimistic balance adjustments: Map<tokenAddress, amountToSubtract>
+	const [optimisticAdjustments, setOptimisticAdjustments] = React.useState<
+		Map<string, bigint>
+	>(new Map())
+
 	const isOwnProfile = account.address?.toLowerCase() === address.toLowerCase()
 
+	const applyOptimisticUpdate = React.useCallback(
+		(tokenAddress: string, amount: bigint) => {
+			setOptimisticAdjustments((prev) => {
+				const next = new Map(prev)
+				const current = next.get(tokenAddress.toLowerCase()) ?? 0n
+				next.set(tokenAddress.toLowerCase(), current + amount)
+				return next
+			})
+		},
+		[],
+	)
+
+	const clearOptimisticUpdate = React.useCallback((tokenAddress: string) => {
+		setOptimisticAdjustments((prev) => {
+			const next = new Map(prev)
+			next.delete(tokenAddress.toLowerCase())
+			return next
+		})
+	}, [])
+
 	const handleFaucetSuccess = React.useCallback(() => {
-		router.invalidate()
+		// Delay the invalidation to allow UI to show success state
+		setTimeout(() => router.invalidate(), 2000)
+	}, [router])
+
+	const handleSendSuccess = React.useCallback(() => {
+		// For sends, we rely on optimistic updates and delayed refresh
+		// Don't invalidate immediately as it disrupts the success UI
+		setTimeout(() => router.invalidate(), 3000)
 	}, [router])
 
 	React.useEffect(() => {
 		if (activity.length > 0) {
-			const types = [
-				...new Set(
-					activity.flatMap((item) =>
-						item.events.map((e) => eventTypeToActivityType(e.type)),
-					),
-				),
-			]
+			const typeCounts: Record<string, number> = {}
+			for (const item of activity) {
+				for (const e of item.events) {
+					const type = eventTypeToActivityType(e.type)
+					typeCounts[type] = (typeCounts[type] ?? 0) + 1
+				}
+			}
+			const types = Object.keys(typeCounts) as Array<
+				ReturnType<typeof eventTypeToActivityType>
+			>
 			setSummary({
 				types,
+				typeCounts: typeCounts as Record<
+					ReturnType<typeof eventTypeToActivityType>,
+					number
+				>,
 				count: activity.length,
 				recentTimestamp: Date.now(),
 			})
@@ -413,19 +453,43 @@ function AddressView() {
 		return () => setSummary(null)
 	}, [activity, setSummary])
 
-	const totalValue = assetsData.reduce(
-		(sum, asset) => sum + (asset.valueUsd ?? 0),
-		0,
-	)
 	const dedupedAssets = assetsData.filter(
 		(a, i, arr) => arr.findIndex((b) => b.address === a.address) === i,
 	)
-	const assetsWithBalance = dedupedAssets.filter(
+
+	// Apply optimistic adjustments to assets
+	const adjustedAssets = React.useMemo(() => {
+		return dedupedAssets.map((asset) => {
+			const adjustment = optimisticAdjustments.get(asset.address.toLowerCase())
+			if (!adjustment || !asset.balance) return asset
+
+			const currentBalance = BigInt(asset.balance)
+			const newBalance = currentBalance - adjustment
+			const newBalanceStr = newBalance > 0n ? newBalance.toString() : '0'
+
+			// Recalculate USD value
+			const decimals = asset.metadata?.decimals ?? 18
+			const priceUsd = asset.metadata?.priceUsd ?? 0
+			const newValueUsd = (Number(newBalance) / 10 ** decimals) * priceUsd
+
+			return {
+				...asset,
+				balance: newBalanceStr,
+				valueUsd: newValueUsd > 0 ? newValueUsd : 0,
+			}
+		})
+	}, [dedupedAssets, optimisticAdjustments])
+
+	const totalValue = adjustedAssets.reduce(
+		(sum, asset) => sum + (asset.valueUsd ?? 0),
+		0,
+	)
+	const assetsWithBalance = adjustedAssets.filter(
 		(a) =>
 			(a.balance && a.balance !== '0') ||
 			FAUCET_TOKEN_ADDRESSES.has(a.address.toLowerCase()),
 	)
-	const displayedAssets = showZeroBalances ? dedupedAssets : assetsWithBalance
+	const displayedAssets = showZeroBalances ? adjustedAssets : assetsWithBalance
 
 	return (
 		<>
@@ -575,7 +639,9 @@ function AddressView() {
 							assets={displayedAssets}
 							address={address}
 							onFaucetSuccess={handleFaucetSuccess}
-							onSendSuccess={handleFaucetSuccess}
+							onSendSuccess={handleSendSuccess}
+							onOptimisticSend={applyOptimisticUpdate}
+							onOptimisticClear={clearOptimisticUpdate}
 							isOwnProfile={isOwnProfile}
 							connectedAddress={account.address}
 							initialSendTo={sendTo}
@@ -873,6 +939,7 @@ function SettingsSection({ assets }: { assets: AssetData[] }) {
 			const saved = localStorage.getItem('tempo-language')
 			if (saved) {
 				i18n.changeLanguage(saved)
+				document.documentElement.dir = isRtl(saved) ? 'rtl' : 'ltr'
 				return saved
 			}
 		}
@@ -886,6 +953,7 @@ function SettingsSection({ assets }: { assets: AssetData[] }) {
 		i18n.changeLanguage(lang)
 		if (typeof window !== 'undefined') {
 			localStorage.setItem('tempo-language', lang)
+			document.documentElement.dir = isRtl(lang) ? 'rtl' : 'ltr'
 		}
 	}, [])
 
@@ -1069,6 +1137,8 @@ function HoldingsTable({
 	address,
 	onFaucetSuccess,
 	onSendSuccess,
+	onOptimisticSend,
+	onOptimisticClear,
 	isOwnProfile,
 	connectedAddress,
 	initialSendTo,
@@ -1078,6 +1148,8 @@ function HoldingsTable({
 	address: string
 	onFaucetSuccess?: () => void
 	onSendSuccess?: () => void
+	onOptimisticSend?: (tokenAddress: string, amount: bigint) => void
+	onOptimisticClear?: (tokenAddress: string) => void
 	isOwnProfile: boolean
 	connectedAddress?: string
 	initialSendTo?: string
@@ -1112,7 +1184,9 @@ function HoldingsTable({
 						<path d="M12 6v12M6 12h12" strokeLinecap="round" />
 					</svg>
 				</div>
-				<p className="text-[13px] text-secondary">{t('portfolio.noAssetsFound')}</p>
+				<p className="text-[13px] text-secondary">
+					{t('portfolio.noAssetsFound')}
+				</p>
 			</div>
 		)
 	}
@@ -1161,8 +1235,13 @@ function HoldingsTable({
 						onSendComplete={(symbol) => {
 							setToastMessage(`Sent ${symbol} successfully`)
 							setSendingToken(null)
+							onOptimisticClear?.(asset.address)
 							onSendSuccess?.()
 						}}
+						onSendError={() => {
+							onOptimisticClear?.(asset.address)
+						}}
+						onOptimisticSend={onOptimisticSend}
 						onFaucetSuccess={onFaucetSuccess}
 						isOwnProfile={isOwnProfile}
 						initialRecipient={
@@ -1190,11 +1269,49 @@ function HoldingsTable({
 
 function BouncingDots() {
 	return (
-		<span className="inline-flex gap-[2px]">
-			<span className="size-[4px] bg-current rounded-full animate-[bounce_0.6s_ease-in-out_infinite]" />
-			<span className="size-[4px] bg-current rounded-full animate-[bounce_0.6s_ease-in-out_0.1s_infinite]" />
-			<span className="size-[4px] bg-current rounded-full animate-[bounce_0.6s_ease-in-out_0.2s_infinite]" />
+		<span className="inline-flex gap-[3px] animate-[fadeIn_0.2s_ease-out]">
+			<span className="size-[5px] bg-current rounded-full animate-[pulse_1s_ease-in-out_infinite] opacity-60" />
+			<span className="size-[5px] bg-current rounded-full animate-[pulse_1s_ease-in-out_0.15s_infinite] opacity-60" />
+			<span className="size-[5px] bg-current rounded-full animate-[pulse_1s_ease-in-out_0.3s_infinite] opacity-60" />
 		</span>
+	)
+}
+
+function FillingDroplet() {
+	return (
+		<svg
+			width="14"
+			height="14"
+			viewBox="0 0 24 24"
+			fill="none"
+			xmlns="http://www.w3.org/2000/svg"
+			className="text-accent"
+		>
+			<defs>
+				<clipPath id="droplet-clip">
+					<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+				</clipPath>
+			</defs>
+			<path
+				d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"
+				stroke="currentColor"
+				strokeWidth="2"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				fill="none"
+			/>
+			<g clipPath="url(#droplet-clip)">
+				<rect
+					x="0"
+					y="24"
+					width="24"
+					height="24"
+					fill="currentColor"
+					opacity="0.5"
+					className="animate-fill-up-rect"
+				/>
+			</g>
+		</svg>
 	)
 }
 
@@ -1205,6 +1322,8 @@ function AssetRow({
 	isExpanded,
 	onToggleSend,
 	onSendComplete,
+	onSendError,
+	onOptimisticSend,
 	onFaucetSuccess,
 	isOwnProfile,
 	initialRecipient,
@@ -1215,6 +1334,8 @@ function AssetRow({
 	isExpanded: boolean
 	onToggleSend: () => void
 	onSendComplete: (symbol: string) => void
+	onSendError?: () => void
+	onOptimisticSend?: (tokenAddress: string, amount: bigint) => void
 	onFaucetSuccess?: () => void
 	isOwnProfile: boolean
 	initialRecipient?: string
@@ -1228,6 +1349,12 @@ function AssetRow({
 	const [faucetState, setFaucetState] = React.useState<
 		'idle' | 'loading' | 'done'
 	>('idle')
+	const [faucetInitialBalance, setFaucetInitialBalance] = React.useState<
+		string | null
+	>(null)
+	const [pendingSendAmount, setPendingSendAmount] = React.useState<
+		bigint | null
+	>(null)
 	const recipientInputRef = React.useRef<HTMLInputElement>(null)
 	const amountInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -1243,18 +1370,27 @@ function AssetRow({
 			hash: txHash,
 		})
 
+	// Apply optimistic update when txHash appears (wallet signed)
+	React.useEffect(() => {
+		if (txHash && pendingSendAmount) {
+			onOptimisticSend?.(asset.address, pendingSendAmount)
+		}
+	}, [txHash, pendingSendAmount, asset.address, onOptimisticSend])
+
 	// Handle transaction confirmation
 	React.useEffect(() => {
 		if (isConfirmed) {
 			setSendState('sent')
+			setPendingSendAmount(null)
+			// Trigger balance refresh immediately
+			onSendComplete(asset.metadata?.symbol || shortenAddress(asset.address, 3))
+			// Reset UI state and collapse form after animation
 			setTimeout(() => {
 				setSendState('idle')
 				setRecipient('')
 				setAmount('')
 				resetWrite()
-				onSendComplete(
-					asset.metadata?.symbol || shortenAddress(asset.address, 3),
-				)
+				onToggleSend()
 			}, 1500)
 		}
 	}, [
@@ -1263,24 +1399,28 @@ function AssetRow({
 		asset.address,
 		onSendComplete,
 		resetWrite,
+		onToggleSend,
 	])
 
 	// Handle write errors
 	React.useEffect(() => {
 		if (writeError) {
 			setSendState('error')
+			setPendingSendAmount(null)
 			const shortMessage =
 				'shortMessage' in writeError
 					? (writeError.shortMessage as string)
 					: writeError.message
 			setSendError(shortMessage || 'Transaction failed')
+			// Revert optimistic update on error
+			onSendError?.()
 			setTimeout(() => {
 				setSendState('idle')
 				setSendError(null)
 				resetWrite()
 			}, 3000)
 		}
-	}, [writeError, resetWrite])
+	}, [writeError, resetWrite, onSendError])
 
 	// Update send state based on pending/confirming
 	React.useEffect(() => {
@@ -1289,28 +1429,42 @@ function AssetRow({
 		}
 	}, [isPending, isConfirming])
 
+	// Watch for balance changes while faucet is loading
+	React.useEffect(() => {
+		if (faucetState !== 'loading' || faucetInitialBalance === null) return
+		if (asset.balance !== faucetInitialBalance) {
+			setFaucetState('done')
+			setFaucetInitialBalance(null)
+			setTimeout(() => setFaucetState('idle'), 1500)
+		}
+	}, [asset.balance, faucetState, faucetInitialBalance])
+
+	// Poll for balance updates while faucet is loading
+	React.useEffect(() => {
+		if (faucetState !== 'loading') return
+		const interval = setInterval(() => {
+			onFaucetSuccess?.()
+		}, 1500)
+		return () => clearInterval(interval)
+	}, [faucetState, onFaucetSuccess])
+
 	const handleFaucet = async () => {
+		setFaucetInitialBalance(asset.balance ?? null)
 		setFaucetState('loading')
 		try {
 			const result = await faucetFundAddress({ data: { address } })
 			if (!result.success) {
 				console.error('Faucet error:', result.error)
 				setFaucetState('idle')
+				setFaucetInitialBalance(null)
 				return
 			}
-			setFaucetState('done')
-			// Delay refresh to let the transaction propagate
-			setTimeout(() => {
-				setFaucetState('idle')
-				onFaucetSuccess?.()
-			}, 3000)
-			// Also trigger a second refresh after more time for slower propagation
-			setTimeout(() => {
-				onFaucetSuccess?.()
-			}, 6000)
+			// Trigger first refresh
+			onFaucetSuccess?.()
 		} catch (err) {
 			console.error('Faucet error:', err)
 			setFaucetState('idle')
+			setFaucetInitialBalance(null)
 		}
 	}
 
@@ -1337,6 +1491,8 @@ function AssetRow({
 
 	const handleSend = () => {
 		if (!isValidSend || parsedAmount === 0n) return
+		// Store pending amount - optimistic update will apply after wallet signature
+		setPendingSendAmount(parsedAmount)
 		writeContract({
 			address: asset.address as `0x${string}`,
 			abi: erc20Abi,
@@ -1383,40 +1539,39 @@ function AssetRow({
 				}}
 				className="flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-2.5 sm:py-0 rounded-xl hover:glass-thin transition-all sm:h-[52px]"
 			>
-				<div className="flex items-center gap-2 flex-1 min-w-0">
-					<TokenIcon address={asset.address} className="size-[28px] shrink-0" />
+				<div className="flex items-center gap-1.5 flex-1 min-w-0">
+					<TokenIcon address={asset.address} className="size-[24px] shrink-0" />
 					<input
 						ref={recipientInputRef}
 						type="text"
 						value={recipient}
 						onChange={(e) => setRecipient(e.target.value)}
-						placeholder="Recipient 0x..."
-						className="flex-1 min-w-0 h-[36px] px-4 rounded-full border border-card-border bg-base text-[13px] text-primary font-mono placeholder:font-sans placeholder:text-tertiary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30"
+						placeholder="0x..."
+						className="flex-1 min-w-0 h-[32px] pl-1 pr-2 rounded-lg border border-card-border bg-base text-[12px] text-primary font-mono text-left placeholder:text-tertiary focus:outline-none focus:border-accent"
 					/>
 				</div>
-				<div className="flex items-center gap-2 pl-9 sm:pl-0">
-					<div className="relative w-[140px] shrink-0">
-						<input
-							ref={amountInputRef}
-							type="text"
-							inputMode="decimal"
-							value={amount}
-							onChange={(e) => setAmount(e.target.value)}
-							placeholder="Amount"
-							className="w-full h-[36px] pl-4 pr-14 rounded-full border border-card-border bg-base text-[13px] text-primary font-mono placeholder:font-sans placeholder:text-tertiary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30"
-						/>
-						<button
-							type="button"
-							onClick={handleMax}
-							className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-accent hover:text-accent/70 cursor-pointer transition-colors"
-						>
-							MAX
-						</button>
-					</div>
+				<div className="flex items-center gap-1 pl-7 sm:pl-0">
+					<input
+						ref={amountInputRef}
+						type="text"
+						inputMode="decimal"
+						value={amount}
+						onChange={(e) => setAmount(e.target.value)}
+						placeholder="0.00"
+						style={{ width: `${Math.max(6, (amount || '0.00').length) + 1}ch` }}
+						className="min-w-[7ch] max-w-[14ch] h-[32px] pl-1 pr-1 rounded-lg border border-card-border bg-base text-[12px] text-primary font-mono text-left placeholder:text-tertiary focus:outline-none focus:border-accent"
+					/>
+					<button
+						type="button"
+						onClick={handleMax}
+						className="h-[32px] px-2 rounded-lg border border-card-border bg-base text-[10px] font-medium text-accent hover:bg-base-alt cursor-pointer transition-colors"
+					>
+						MAX
+					</button>
 					<button
 						type="submit"
 						className={cx(
-							'h-[32px] px-4 rounded-full press-down transition-colors flex items-center justify-center gap-1.5 shrink-0 text-[12px] font-medium',
+							'size-[32px] rounded-lg press-down transition-colors flex items-center justify-center shrink-0',
 							sendState === 'sent'
 								? 'bg-positive text-white cursor-default'
 								: sendState === 'error'
@@ -1434,19 +1589,16 @@ function AssetRow({
 						) : sendState === 'error' ? (
 							<XIcon className="size-[14px]" />
 						) : (
-							<>
-								<SendIcon className="size-[14px]" />
-								<span className="hidden sm:inline">Send</span>
-							</>
+							<SendIcon className="size-[14px]" />
 						)}
 					</button>
 					<button
 						type="button"
 						onClick={handleToggle}
-						className="size-[32px] flex items-center justify-center cursor-pointer text-tertiary hover:text-primary hover:bg-base-alt rounded-full transition-colors shrink-0"
+						className="size-[32px] flex items-center justify-center cursor-pointer text-tertiary hover:text-primary hover:bg-base-alt rounded-lg transition-colors shrink-0"
 						title="Cancel"
 					>
-						<XIcon className="size-[16px]" />
+						<XIcon className="size-[14px]" />
 					</button>
 				</div>
 				{sendError && (
@@ -1478,14 +1630,19 @@ function AssetRow({
 				</span>
 			</span>
 			<span
-				className="px-2 flex items-center justify-end overflow-hidden min-w-0"
+				className="px-2 flex items-center justify-end overflow-hidden min-w-0 relative"
 				title={
 					asset.balance !== undefined && asset.metadata?.decimals !== undefined
 						? formatAmount(asset.balance, asset.metadata.decimals)
 						: undefined
 				}
 			>
-				<span className="flex flex-col items-end min-w-0">
+				<span
+					className={cx(
+						'flex flex-col items-end min-w-0 transition-opacity duration-300',
+						faucetState === 'loading' && 'opacity-15',
+					)}
+				>
 					<span className="text-primary font-sans text-[14px] tabular-nums text-right truncate max-w-full">
 						{asset.balance !== undefined &&
 						asset.metadata?.decimals !== undefined ? (
@@ -1502,6 +1659,11 @@ function AssetRow({
 						)}
 					</span>
 				</span>
+				{faucetState === 'loading' && (
+					<span className="absolute inset-0 flex items-center justify-end pr-2">
+						<BouncingDots />
+					</span>
+				)}
 			</span>
 			<span className="pl-1 flex items-center justify-start">
 				<span className="text-[9px] font-medium text-tertiary bg-base-alt px-1 py-0.5 rounded font-mono whitespace-nowrap">
@@ -1535,10 +1697,10 @@ function AssetRow({
 						title={isFaucetToken ? 'Request tokens' : undefined}
 						aria-hidden={!isFaucetToken}
 					>
-						{faucetState === 'loading' ? (
-							<BouncingDots />
-						) : faucetState === 'done' ? (
+						{faucetState === 'done' ? (
 							<CheckIcon className="size-[14px] text-positive" />
+						) : faucetState === 'loading' ? (
+							<FillingDroplet />
 						) : (
 							<DropletIcon className="size-[14px] text-tertiary hover:text-accent transition-colors" />
 						)}
@@ -1560,7 +1722,7 @@ function AssetRow({
 	)
 }
 
-const ACTIVITY_PAGE_SIZE = 5
+const ACTIVITY_PAGE_SIZE = 10
 
 function ActivityList({
 	activity,
@@ -1640,11 +1802,17 @@ function ActivityRow({
 	const { t } = useTranslation()
 	const [showModal, setShowModal] = React.useState(false)
 
+	// Expand self-sends to show both Send and Received
+	const expandedEvents = React.useMemo(
+		() => expandSelfSends(item.events, viewer),
+		[item.events, viewer],
+	)
+
 	return (
 		<>
 			<div className="group flex items-center gap-2 px-3 h-[48px] rounded-xl hover:glass-thin transition-all">
 				<TxDescription.ExpandGroup
-					events={item.events}
+					events={expandedEvents}
 					seenAs={viewer}
 					transformEvent={transformEvent}
 					limitFilter={preferredEventsFilter}
@@ -1771,7 +1939,7 @@ function TransactionModal({
 		<div
 			ref={overlayRef}
 			className={cx(
-				'fixed inset-0 left-[calc(45vw+8px)] max-lg:left-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-200',
+				'fixed inset-0 left-[calc(45vw+8px)] max-lg:left-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-md transition-opacity duration-200',
 				isVisible ? 'opacity-100' : 'opacity-0',
 			)}
 			onClick={handleClose}
@@ -1807,7 +1975,9 @@ function TransactionModal({
 								</a>
 							</div>
 							<div className="flex justify-between items-end gap-4">
-								<span className="text-tertiary shrink-0">{t('receipt.sender')}</span>
+								<span className="text-tertiary shrink-0">
+									{t('receipt.sender')}
+								</span>
 								<a
 									href={`https://explore.mainnet.tempo.xyz/address/${viewer}`}
 									target="_blank"
@@ -1818,7 +1988,9 @@ function TransactionModal({
 								</a>
 							</div>
 							<div className="flex justify-between items-end">
-								<span className="text-tertiary shrink-0">{t('receipt.hash')}</span>
+								<span className="text-tertiary shrink-0">
+									{t('receipt.hash')}
+								</span>
 								<span className="text-right">{shortenAddress(hash, 6)}</span>
 							</div>
 							<div className="flex justify-between items-end">
@@ -1863,7 +2035,7 @@ function TransactionModal({
 						href={`https://explore.mainnet.tempo.xyz/tx/${hash}`}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="press-down text-[13px] font-sans px-[12px] py-[12px] flex items-center justify-center gap-[8px] glass-button rounded-bl-[16px] rounded-br-[16px] text-tertiary hover:text-primary -mt-px"
+						className="press-down text-[13px] font-sans px-[12px] py-[12px] flex items-center justify-center gap-[8px] liquid-glass-premium rounded-bl-[16px] rounded-br-[16px] text-tertiary hover:text-primary border-t border-base-border"
 					>
 						<span>{t('common.viewTransaction')}</span>
 						<span aria-hidden="true">→</span>

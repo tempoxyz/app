@@ -556,6 +556,25 @@ input[type="number"] {
 	}
 }
 
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 0.4;
+	}
+	50% {
+		opacity: 0.8;
+	}
+}
+
 /* Floating animation for glass elements */
 @utility float-subtle {
 	animation: float-subtle 6s ease-in-out infinite;
@@ -588,4 +607,18 @@ input[type="number"] {
 	box-shadow:
 		0 0 0 1px light-dark(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.1)),
 		0 0 0 4px light-dark(rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.25));
+}
+
+/* Fill up animation for faucet droplet SVG rect */
+@keyframes fill-up-rect {
+	0% {
+		transform: translateY(0);
+	}
+	100% {
+		transform: translateY(-24px);
+	}
+}
+
+.animate-fill-up-rect {
+	animation: fill-up-rect 1.5s ease-in-out infinite;
 }
