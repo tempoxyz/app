@@ -37,7 +37,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!**/routeTree.gen.ts"]
+		"includes": ["**", "!**/routeTree.gen.ts", "!worker-configuration.d.ts"]
 	},
 	"formatter": {
 		"enabled": true,

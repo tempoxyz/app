@@ -57,29 +57,10 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 				.where('from', '=', address)
 				.groupBy('address')
 
-			const tokenCreatedQuery = QB.withSignatures([TOKEN_CREATED_EVENT])
-				.selectFrom('tokencreated')
-				.select(['token', 'name', 'symbol', 'currency'])
-				.where('chain', '=', chainId as never)
-
-			const [incomingResult, outgoingResult, tokenCreatedResult] =
-				await Promise.all([
-					incomingQuery.execute(),
-					outgoingQuery.execute(),
-					tokenCreatedQuery.execute(),
-				])
-
-			const tokenMetadata = new Map<
-				string,
-				{ name: string; symbol: string; currency: string }
-			>()
-			for (const row of tokenCreatedResult) {
-				tokenMetadata.set(String(row.token).toLowerCase(), {
-					name: String(row.name),
-					symbol: String(row.symbol),
-					currency: String(row.currency),
-				})
-			}
+			const [incomingResult, outgoingResult] = await Promise.all([
+				incomingQuery.execute(),
+				outgoingQuery.execute(),
+			])
 
 			const balances = new Map<string, bigint>()
 
@@ -95,22 +76,38 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 				balances.set(token, (balances.get(token) ?? 0n) - sent)
 			}
 
-			const nonZeroBalances = [...balances.entries()]
+			const nonZeroTokens = [...balances.entries()]
 				.filter(([_, balance]) => balance !== 0n)
-				.map(([token, balance]) => ({
-					token: token as Address.Address,
-					balance,
-					metadata: tokenMetadata.get(token),
-				}))
+				.map(([token]) => token as Address.Address)
 
-			if (nonZeroBalances.length === 0) return []
+			if (nonZeroTokens.length === 0) return []
 
 			const MAX_TOKENS = 50
+			const tokensToFetch = nonZeroTokens.slice(0, MAX_TOKENS)
 
-			const tokensMissingMetadata = nonZeroBalances
-				.slice(0, MAX_TOKENS)
-				.filter((t) => !t.metadata)
-				.map((t) => t.token)
+			// Only query metadata for tokens user actually holds
+			const tokenCreatedResult = await QB.withSignatures([TOKEN_CREATED_EVENT])
+				.selectFrom('tokencreated')
+				.select(['token', 'name', 'symbol', 'currency'])
+				.where('chain', '=', chainId as never)
+				.where('token', 'in', tokensToFetch as never)
+				.execute()
+
+			const tokenMetadata = new Map<
+				string,
+				{ name: string; symbol: string; currency: string }
+			>()
+			for (const row of tokenCreatedResult) {
+				tokenMetadata.set(String(row.token).toLowerCase(), {
+					name: String(row.name),
+					symbol: String(row.symbol),
+					currency: String(row.currency),
+				})
+			}
+
+			const tokensMissingMetadata = tokensToFetch.filter(
+				(t) => !tokenMetadata.has(t.toLowerCase()),
+			)
 
 			if (tokensMissingMetadata.length > 0) {
 				const rpcMetadataResults = await Promise.all(
@@ -138,17 +135,17 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 				}
 			}
 
-			const assets: AssetData[] = nonZeroBalances
-				.slice(0, MAX_TOKENS)
-				.map((row) => {
-					const metadata = tokenMetadata.get(row.token)
+			const assets: AssetData[] = tokensToFetch
+				.map((token) => {
+					const balance = balances.get(token.toLowerCase()) ?? 0n
+					const metadata = tokenMetadata.get(token.toLowerCase())
 					const isUsd = metadata?.currency === 'USD'
 					const valueUsd = isUsd
-						? Number(row.balance) / 10 ** TIP20_DECIMALS
+						? Number(balance) / 10 ** TIP20_DECIMALS
 						: undefined
 
 					return {
-						address: row.token,
+						address: token,
 						metadata: metadata
 							? {
 									name: metadata.name,
@@ -156,7 +153,7 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 									decimals: TIP20_DECIMALS,
 								}
 							: undefined,
-						balance: row.balance.toString(),
+						balance: balance.toString(),
 						valueUsd,
 					}
 				})

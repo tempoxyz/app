@@ -31,13 +31,13 @@ export const Route = createRootRouteWithContext<{
 			{
 				rel: 'icon',
 				type: 'image/svg+xml',
-				href: '/favicon-light.svg',
+				href: 'https://app.porto.workers.dev/favicon-light.svg',
 				media: '(prefers-color-scheme: light)',
 			},
 			{
 				rel: 'icon',
 				type: 'image/svg+xml',
-				href: '/favicon-dark.svg',
+				href: 'https://app.porto.workers.dev/favicon-dark.svg',
 				media: '(prefers-color-scheme: dark)',
 			},
 		],

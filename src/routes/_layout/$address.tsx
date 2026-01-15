@@ -1,6 +1,6 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 import { waapi, spring } from 'animejs'
-import type { Address } from 'ox'
+import { Address } from 'ox'
 import * as React from 'react'
 import { encode } from 'uqr'
 import { formatUnits } from 'viem'
@@ -89,28 +89,34 @@ async function fetchTransactions(
 export const Route = createFileRoute('/_layout/$address')({
 	component: AddressView,
 	shouldReload: true,
+	beforeLoad: ({ params }) => {
+		if (!Address.validate(params.address)) {
+			throw notFound()
+		}
+	},
 	loader: async ({ params }) => {
-		const assets = await fetchAssets({ data: { address: params.address } })
+		const { address } = params
+
+		const assets = await fetchAssets({ data: { address } })
 
 		const tokenMetadataMap = new Map<
 			Address.Address,
 			{ decimals: number; symbol: string }
 		>()
-		if (assets) {
-			for (const asset of assets) {
-				if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
-					tokenMetadataMap.set(asset.address, {
-						decimals: asset.metadata.decimals,
-						symbol: asset.metadata.symbol,
-					})
-				}
+		for (const asset of assets ?? []) {
+			if (asset.metadata?.decimals != null && asset.metadata?.symbol) {
+				tokenMetadataMap.set(asset.address, {
+					decimals: asset.metadata.decimals,
+					symbol: asset.metadata.symbol,
+				})
 			}
 		}
 
 		const activity = await fetchTransactions(
-			params.address as Address.Address,
+			address as Address.Address,
 			tokenMetadataMap,
 		)
+
 		return { assets, activity }
 	},
 })
@@ -168,7 +174,7 @@ function AddressView() {
 							</a>
 						</div>
 					</div>
-					<div className="flex-shrink-0">
+					<div className="shrink-0">
 						<QRCode value={address} />
 					</div>
 				</div>
@@ -588,11 +594,8 @@ function ActivityList({
 	return (
 		<div className="text-[13px] -mx-2">
 			{activity.map((item, index) => (
-				<a
+				<div
 					key={item.hash}
-					href={`https://explore.tempo.xyz/tx/${item.hash}`}
-					target="_blank"
-					rel="noopener noreferrer"
 					className={cx(
 						'flex items-center gap-2 px-2 py-1.5 hover:bg-base-alt transition-colors',
 						index < activity.length - 1 &&
@@ -606,8 +609,15 @@ function ActivityList({
 						limitFilter={preferredEventsFilter}
 						emptyContent="Transaction"
 					/>
-					<ExternalLinkIcon className="size-1.5 text-tertiary shrink-0" />
-				</a>
+					<a
+						href={`https://explore.tempo.xyz/tx/${item.hash}`}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="shrink-0"
+					>
+						<ExternalLinkIcon className="size-1.5 text-tertiary" />
+					</a>
+				</div>
 			))}
 			<a
 				href={`https://explore.tempo.xyz/address/${address}`}
