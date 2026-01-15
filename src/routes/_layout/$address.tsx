@@ -17,7 +17,6 @@ import {
 	parseKnownEvents,
 	preferredEventsFilter,
 	getPerspectiveEvent,
-	expandSelfSends,
 	type KnownEvent,
 	type GetTokenMetadataFn,
 } from '#comps/activity'
@@ -46,12 +45,14 @@ import EyeOffIcon from '~icons/lucide/eye-off'
 
 import ReceiptIcon from '~icons/lucide/receipt'
 import XIcon from '~icons/lucide/x'
+import XCircleIcon from '~icons/lucide/x-circle'
 import SearchIcon from '~icons/lucide/search'
 import LogOutIcon from '~icons/lucide/log-out'
 import LogInIcon from '~icons/lucide/log-in'
 import DropletIcon from '~icons/lucide/droplet'
 import { useTranslation } from 'react-i18next'
 import i18n, { isRtl } from '#lib/i18n'
+import { useAnnounce, LiveRegion, useFocusTrap, useEscapeKey } from '#lib/a11y'
 
 // Tokens that can be funded via the faucet
 const FAUCET_TOKEN_ADDRESSES = new Set([
@@ -190,6 +191,106 @@ const fetchTransactionReceipts = createServerFn({ method: 'POST' })
 		return { receipts }
 	})
 
+const fetchBlockData = createServerFn({ method: 'GET' })
+	.inputValidator((data: { fromBlock: string; count: number }) => data)
+	.handler(async ({ data }) => {
+		const { fromBlock, count } = data
+		const rpcUrl =
+			TEMPO_ENV === 'presto'
+				? 'https://rpc.presto.tempo.xyz'
+				: 'https://rpc.tempo.xyz'
+
+		const { env } = await import('cloudflare:workers')
+		const auth = env.PRESTO_RPC_AUTH as string | undefined
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+		}
+		if (auth && TEMPO_ENV === 'presto') {
+			headers.Authorization = `Basic ${btoa(auth)}`
+		}
+
+		const startBlock = BigInt(fromBlock)
+		const requests = []
+		for (let i = 0; i < count; i++) {
+			const blockNum = startBlock - BigInt(i)
+			if (blockNum > 0n) {
+				requests.push({
+					jsonrpc: '2.0',
+					id: i + 1,
+					method: 'eth_getBlockByNumber',
+					params: [`0x${blockNum.toString(16)}`, false],
+				})
+			}
+		}
+
+		try {
+			const response = await fetch(rpcUrl, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify(requests),
+			})
+			if (response.ok) {
+				const results = (await response.json()) as Array<{
+					id: number
+					result?: { number: string; transactions: string[] }
+				}>
+				const blocks: Array<{ blockNumber: string; txCount: number }> = []
+				for (const r of results) {
+					if (r.result) {
+						blocks.push({
+							blockNumber: r.result.number,
+							txCount: r.result.transactions?.length ?? 0,
+						})
+					}
+				}
+				return { blocks }
+			}
+			return { blocks: [] }
+		} catch {
+			return { blocks: [] }
+		}
+	})
+
+const fetchCurrentBlockNumber = createServerFn({ method: 'GET' }).handler(
+	async () => {
+		const rpcUrl =
+			TEMPO_ENV === 'presto'
+				? 'https://rpc.presto.tempo.xyz'
+				: 'https://rpc.tempo.xyz'
+
+		const { env } = await import('cloudflare:workers')
+		const auth = env.PRESTO_RPC_AUTH as string | undefined
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+		}
+		if (auth && TEMPO_ENV === 'presto') {
+			headers.Authorization = `Basic ${btoa(auth)}`
+		}
+
+		try {
+			const response = await fetch(rpcUrl, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify({
+					jsonrpc: '2.0',
+					id: 1,
+					method: 'eth_blockNumber',
+					params: [],
+				}),
+			})
+			if (response.ok) {
+				const json = (await response.json()) as { result?: string }
+				if (json.result) {
+					return { blockNumber: json.result }
+				}
+			}
+			return { blockNumber: null }
+		} catch {
+			return { blockNumber: null }
+		}
+	},
+)
+
 const fetchTransactionsFromExplorer = createServerFn({ method: 'GET' })
 	.inputValidator((data: { address: string }) => data)
 	.handler(async ({ data }) => {
@@ -234,6 +335,7 @@ type ActivityItem = {
 	hash: string
 	events: KnownEvent[]
 	timestamp?: number
+	blockNumber?: bigint
 }
 
 function convertRpcReceiptToViemReceipt(
@@ -318,7 +420,8 @@ async function fetchTransactions(
 				const timestamp = txInfo?.timestamp
 					? new Date(txInfo.timestamp).getTime()
 					: Date.now()
-				items.push({ hash, events, timestamp })
+				const blockNumber = BigInt(rpcReceipt.blockNumber)
+				items.push({ hash, events, timestamp, blockNumber })
 			} catch (e) {
 				console.log('[Activity] Failed to parse receipt:', hash, e)
 			}
@@ -381,9 +484,16 @@ function eventTypeToActivityType(eventType: string): ActivityType {
 	return 'unknown'
 }
 
+async function refetchBalances(
+	accountAddress: string,
+): Promise<AssetData[] | null> {
+	return fetchAssets({ data: { address: accountAddress } })
+}
+
 function AddressView() {
 	const { address } = Route.useParams()
-	const { assets: initialAssets, activity } = Route.useLoaderData()
+	const { assets: initialAssets, activity: initialActivity } =
+		Route.useLoaderData()
 	const { copy, notifying } = useCopy()
 	const [showZeroBalances, setShowZeroBalances] = React.useState(false)
 	const { setSummary } = useActivitySummary()
@@ -394,21 +504,76 @@ function AddressView() {
 	const account = useAccount()
 	const { sendTo, token: initialToken } = Route.useSearch()
 	const { t } = useTranslation()
+	const { announce } = useAnnounce()
 
 	// Assets state - starts from loader, can be refetched without page refresh
 	const [assetsData, setAssetsData] = React.useState(initialAssets)
+	// Activity state - starts from loader, can be refetched
+	const [activity, setActivity] = React.useState(initialActivity)
+
+	// Block timeline state
+	const [currentBlock, setCurrentBlock] = React.useState<bigint | null>(null)
+	const [selectedBlockFilter, setSelectedBlockFilter] = React.useState<
+		bigint | undefined
+	>(undefined)
+
+	// Poll for current block number
+	React.useEffect(() => {
+		let mounted = true
+
+		const pollBlock = async () => {
+			try {
+				const result = await fetchCurrentBlockNumber()
+				if (mounted && result.blockNumber) {
+					setCurrentBlock(BigInt(result.blockNumber))
+				}
+			} catch {
+				// Ignore errors
+			}
+		}
+
+		pollBlock()
+		const interval = setInterval(pollBlock, 1500)
+
+		return () => {
+			mounted = false
+			clearInterval(interval)
+		}
+	}, [])
 
 	// Sync with loader data when address changes
 	React.useEffect(() => {
 		setAssetsData(initialAssets)
-	}, [initialAssets])
+		setActivity(initialActivity)
+	}, [initialAssets, initialActivity])
 
-	// Refetch balances without full page refresh using server function
+	// Refetch balances without full page refresh
 	const refetchAssetsBalances = React.useCallback(async () => {
-		const newAssets = await fetchAssets({ data: { address } })
+		const newAssets = await refetchBalances(address)
 		if (!newAssets || newAssets.length === 0) return
 		setAssetsData(newAssets)
 	}, [address])
+
+	// Refetch activity without full page refresh
+	const refetchActivity = React.useCallback(async () => {
+		const tokenMetadataMap = new Map<
+			Address.Address,
+			{ decimals: number; symbol: string }
+		>()
+		for (const asset of assetsData) {
+			if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
+				tokenMetadataMap.set(asset.address, {
+					decimals: asset.metadata.decimals,
+					symbol: asset.metadata.symbol,
+				})
+			}
+		}
+		const newActivity = await fetchTransactions(
+			address as Address.Address,
+			tokenMetadataMap,
+		)
+		setActivity(newActivity)
+	}, [address, assetsData])
 
 	// Optimistic balance adjustments: Map<tokenAddress, amountToSubtract>
 	const [optimisticAdjustments, setOptimisticAdjustments] = React.useState<
@@ -438,14 +603,21 @@ function AddressView() {
 	}, [])
 
 	const handleFaucetSuccess = React.useCallback(() => {
-		// Refetch balances without page refresh
+		// Refetch balances and activity without page refresh
 		refetchAssetsBalances()
-	}, [refetchAssetsBalances])
+		// Delay activity refetch slightly to allow transaction to be indexed
+		setTimeout(() => {
+			refetchActivity()
+		}, 1500)
+	}, [refetchAssetsBalances, refetchActivity])
 
 	const handleSendSuccess = React.useCallback(() => {
 		// For sends, we rely on optimistic updates and delayed refresh
-		setTimeout(() => refetchAssetsBalances(), 2000)
-	}, [refetchAssetsBalances])
+		setTimeout(() => {
+			refetchAssetsBalances()
+			refetchActivity()
+		}, 2000)
+	}, [refetchAssetsBalances, refetchActivity])
 
 	React.useEffect(() => {
 		if (activity.length > 0) {
@@ -578,8 +750,8 @@ function AddressView() {
 								disconnect()
 								navigate({ to: '/' })
 							}}
-							className="flex items-center justify-center size-[36px] rounded-full bg-base-alt hover:bg-base-alt/80 active:bg-base-alt/60 transition-colors cursor-pointer"
-							title={t('common.logOut')}
+							className="flex items-center justify-center size-[36px] rounded-full bg-base-alt hover:bg-base-alt/80 active:bg-base-alt/60 transition-colors cursor-pointer focus-ring"
+							aria-label={t('common.logOut')}
 						>
 							<LogOutIcon className="size-[14px] text-secondary" />
 						</button>
@@ -587,8 +759,8 @@ function AddressView() {
 						<button
 							type="button"
 							onClick={() => navigate({ to: '/' })}
-							className="flex items-center justify-center size-[36px] rounded-full bg-accent hover:bg-accent/90 active:bg-accent/80 transition-colors cursor-pointer"
-							title={t('common.signIn')}
+							className="flex items-center justify-center size-[36px] rounded-full bg-accent hover:bg-accent/90 active:bg-accent/80 transition-colors cursor-pointer focus-ring"
+							aria-label={t('common.signIn')}
 						>
 							<LogInIcon className="size-[14px] text-white" />
 						</button>
@@ -611,9 +783,12 @@ function AddressView() {
 							</code>
 							<button
 								type="button"
-								onClick={() => copy(address)}
-								className="flex items-center justify-center size-[28px] rounded-md bg-base-alt hover:bg-base-alt/70 cursor-pointer press-down transition-colors shrink-0"
-								title={t('common.copyAddress')}
+								onClick={() => {
+									copy(address)
+									announce(t('a11y.addressCopied'))
+								}}
+								className="flex items-center justify-center size-[28px] rounded-md bg-base-alt hover:bg-base-alt/70 cursor-pointer press-down transition-colors shrink-0 focus-ring"
+								aria-label={t('common.copyAddress')}
 							>
 								{notifying ? (
 									<CheckIcon className="size-[14px] text-positive" />
@@ -625,8 +800,8 @@ function AddressView() {
 								href={`https://explore.mainnet.tempo.xyz/address/${address}`}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="flex items-center justify-center size-[28px] rounded-md bg-base-alt hover:bg-base-alt/70 press-down transition-colors shrink-0"
-								title={t('common.viewOnExplorer')}
+								className="flex items-center justify-center size-[28px] rounded-md bg-base-alt hover:bg-base-alt/70 press-down transition-colors shrink-0 focus-ring"
+								aria-label={t('common.viewOnExplorer')}
 							>
 								<ExternalLinkIcon className="size-[14px] text-tertiary" />
 							</a>
@@ -644,16 +819,18 @@ function AddressView() {
 					<Section
 						title={t('portfolio.assets')}
 						subtitle={`${assetsWithBalance.length} ${t('portfolio.assetCount', { count: assetsWithBalance.length })}`}
+						defaultOpen
 						headerRight={
 							<button
 								type="button"
 								onClick={() => setShowZeroBalances(!showZeroBalances)}
-								className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors cursor-pointer"
-								title={
+								className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors cursor-pointer focus-ring"
+								aria-label={
 									showZeroBalances
 										? t('portfolio.hideZeroBalances')
 										: t('portfolio.showZeroBalances')
 								}
+								aria-pressed={showZeroBalances}
 							>
 								{showZeroBalances ? (
 									<EyeOffIcon className="size-[14px] text-tertiary" />
@@ -674,6 +851,7 @@ function AddressView() {
 							connectedAddress={account.address}
 							initialSendTo={sendTo}
 							initialToken={initialToken}
+							announce={announce}
 						/>
 					</Section>
 
@@ -682,8 +860,19 @@ function AddressView() {
 						externalLink={`https://explore.mainnet.tempo.xyz/address/${address}`}
 						defaultOpen
 					>
+						<BlockTimeline
+							activity={activity}
+							currentBlock={currentBlock}
+							selectedBlock={selectedBlockFilter}
+							onSelectBlock={setSelectedBlockFilter}
+						/>
+						<div className="border-b border-border-tertiary -mx-4 mt-2 mb-1" />
 						<ActivityHeatmap activity={activity} />
-						<ActivityList activity={activity} address={address} />
+						<ActivityList
+							activity={activity}
+							address={address}
+							filterBlockNumber={selectedBlockFilter}
+						/>
 					</Section>
 
 					<SettingsSection assets={assetsData} />
@@ -791,6 +980,7 @@ function Section(props: {
 				<button
 					type="button"
 					onClick={handleClick}
+					aria-expanded={open}
 					className={cx(
 						'flex flex-1 items-center justify-between cursor-pointer select-none press-down transition-colors',
 						'text-[14px] font-medium text-primary hover:text-accent',
@@ -832,8 +1022,9 @@ function Section(props: {
 							href={externalLink}
 							target="_blank"
 							rel="noopener noreferrer"
-							className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors"
+							className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors focus-ring"
 							onClick={(e) => e.stopPropagation()}
+							aria-label="View on external site"
 						>
 							<GlobeIcon className="size-[14px] text-tertiary" />
 						</a>
@@ -841,7 +1032,9 @@ function Section(props: {
 					<button
 						type="button"
 						onClick={handleClick}
-						className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors cursor-pointer"
+						aria-expanded={open}
+						aria-label={open ? 'Collapse section' : 'Expand section'}
+						className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors cursor-pointer focus-ring"
 					>
 						{open ? (
 							<MinusIcon className="size-[14px] text-tertiary" />
@@ -927,16 +1120,16 @@ function QRCode({
 		>
 			<title>QR Code</title>
 			{cells.map(({ x, y }) => {
-				let opacity = 1
+				let opacity = 0.6
 				if (mousePos && !notifying) {
 					const cellCenterX = x * cellSize + cellSize / 2
 					const cellCenterY = y * cellSize + cellSize / 2
 					const distance = Math.sqrt(
 						(cellCenterX - mousePos.x) ** 2 + (cellCenterY - mousePos.y) ** 2,
 					)
-					const maxFadeRadius = 25
-					opacity = Math.min(1, distance / maxFadeRadius)
-					opacity = 0.15 + opacity * 0.85
+					const maxBrightRadius = 40
+					const brightness = 1 - Math.min(1, distance / maxBrightRadius)
+					opacity = 0.5 + brightness * 0.5
 				}
 				return (
 					<rect
@@ -946,10 +1139,14 @@ function QRCode({
 						width={cellSize}
 						height={cellSize}
 						fill={notifying ? '#22c55e' : 'currentColor'}
-						className="text-secondary"
+						className="text-primary"
 						style={{
-							opacity: opacity * 0.85,
-							transition: 'fill 0.2s ease-out, opacity 0.1s ease-out',
+							opacity,
+							transition: 'fill 0.2s ease-out, opacity 0.15s ease-out',
+							filter:
+								mousePos && !notifying
+									? `blur(${Math.max(0, (1 - opacity) * 0.3)}px)`
+									: undefined,
 						}}
 					/>
 				)
@@ -1121,10 +1318,12 @@ function ActivityHeatmap({ activity }: { activity: ActivityItem[] }) {
 		<div className="relative">
 			<div className="flex gap-[3px] w-full py-2">
 				{grid.map((week, wi) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: grid is static and doesn't reorder
 					<div key={`w-${wi}`} className="flex flex-col gap-[3px] flex-1">
 						{week.map((cell, di) => (
+							// biome-ignore lint/a11y/noStaticElementInteractions: hover tooltip only
 							<div
-								key={`d-${wi}-${di}`}
+								key={cell.date || `d-${wi}-${di}`}
 								className={cx(
 									'w-full aspect-square rounded-[2px] cursor-default transition-transform hover:scale-125 hover:z-10',
 									getColor(cell.level),
@@ -1162,6 +1361,191 @@ function ActivityHeatmap({ activity }: { activity: ActivityItem[] }) {
 	)
 }
 
+function BlockTimeline({
+	activity,
+	currentBlock,
+	selectedBlock,
+	onSelectBlock,
+}: {
+	activity: ActivityItem[]
+	currentBlock: bigint | null
+	selectedBlock: bigint | undefined
+	onSelectBlock: (block: bigint | undefined) => void
+}) {
+	const [blockTxCounts, setBlockTxCounts] = React.useState<Map<string, number>>(
+		new Map(),
+	)
+	const [displayBlock, setDisplayBlock] = React.useState<bigint | null>(null)
+	const lastFetchedBlockRef = React.useRef<bigint | null>(null)
+
+	const userBlockNumbers = React.useMemo(() => {
+		const blocks = new Set<bigint>()
+		for (const item of activity) {
+			if (item.blockNumber !== undefined) {
+				blocks.add(item.blockNumber)
+			}
+		}
+		return blocks
+	}, [activity])
+
+	const visibleBlocks = 40
+
+	React.useEffect(() => {
+		if (!currentBlock) return
+
+		const fetchNewBlocks = async () => {
+			const lastFetched = lastFetchedBlockRef.current
+			if (lastFetched && currentBlock <= lastFetched) {
+				setDisplayBlock(currentBlock)
+				return
+			}
+
+			const blocksToFetch = lastFetched
+				? Math.min(Number(currentBlock - lastFetched), 10)
+				: visibleBlocks
+
+			try {
+				const result = await fetchBlockData({
+					data: {
+						fromBlock: `0x${currentBlock.toString(16)}`,
+						count: blocksToFetch,
+					},
+				})
+				if (result.blocks.length > 0) {
+					setBlockTxCounts((prev) => {
+						const next = new Map(prev)
+						for (const b of result.blocks) {
+							next.set(BigInt(b.blockNumber).toString(), b.txCount)
+						}
+						return next
+					})
+					lastFetchedBlockRef.current = currentBlock
+				}
+			} catch {
+				// Ignore errors
+			}
+			setDisplayBlock(currentBlock)
+		}
+
+		fetchNewBlocks()
+	}, [currentBlock])
+
+	const maxTxCount = React.useMemo(() => {
+		let max = 1
+		for (const count of blockTxCounts.values()) {
+			if (count > max) max = count
+		}
+		return max
+	}, [blockTxCounts])
+
+	const blocks = React.useMemo(() => {
+		const blockToShow = displayBlock ?? currentBlock
+		if (!blockToShow) return []
+		const result: {
+			blockNumber: bigint
+			hasUserActivity: boolean
+			txCount: number
+		}[] = []
+
+		for (let i = visibleBlocks - 1; i >= 0; i--) {
+			const blockNum = blockToShow - BigInt(i)
+			if (blockNum > 0n) {
+				result.push({
+					blockNumber: blockNum,
+					hasUserActivity: userBlockNumbers.has(blockNum),
+					txCount: blockTxCounts.get(blockNum.toString()) ?? 0,
+				})
+			}
+		}
+
+		return result
+	}, [displayBlock, currentBlock, userBlockNumbers, blockTxCounts])
+
+	const handleBlockClick = (blockNumber: bigint) => {
+		if (selectedBlock === blockNumber) {
+			onSelectBlock(undefined)
+		} else {
+			onSelectBlock(blockNumber)
+		}
+	}
+
+	const getBlockStyle = (
+		txCount: number,
+		isSelected: boolean,
+		isCurrent: boolean,
+		hasUserActivity: boolean,
+	) => {
+		if (isSelected) return 'bg-accent'
+		if (isCurrent) return 'bg-white'
+		if (hasUserActivity) return 'bg-green-500'
+		if (txCount === 0) return 'bg-base-alt/40'
+		const intensity = Math.min(txCount / Math.max(maxTxCount, 5), 1)
+		if (intensity < 0.25) return 'bg-base-alt/50'
+		if (intensity < 0.5) return 'bg-base-alt/60'
+		if (intensity < 0.75) return 'bg-base-alt/70'
+		return 'bg-base-alt/80'
+	}
+
+	if (!currentBlock) {
+		return (
+			<div className="h-[40px] flex items-center justify-end mt-2 mb-3">
+				<div className="text-[10px] text-tertiary">Loading...</div>
+			</div>
+		)
+	}
+
+	const shownBlock = displayBlock ?? currentBlock
+
+	return (
+		<div className="flex flex-col gap-1.5 mt-2 mb-3 pr-4">
+			<div className="flex items-center gap-[3px] w-full">
+				{blocks.map((block) => {
+					const isSelected = selectedBlock === block.blockNumber
+					const isCurrent = block.blockNumber === shownBlock
+					return (
+						<button
+							key={block.blockNumber.toString()}
+							type="button"
+							onClick={() => handleBlockClick(block.blockNumber)}
+							className={cx(
+								'h-[10px] flex-1 min-w-[6px] max-w-[12px] rounded-[2px] transition-colors duration-300',
+								getBlockStyle(
+									block.txCount,
+									isSelected,
+									isCurrent,
+									block.hasUserActivity,
+								),
+								isSelected && 'ring-1 ring-accent',
+								block.hasUserActivity &&
+									!isSelected &&
+									!isCurrent &&
+									'ring-1 ring-green-500/60',
+								'hover:opacity-80 cursor-pointer',
+							)}
+							title={`Block ${block.blockNumber.toString()}${block.txCount > 0 ? ` • ${block.txCount} tx${block.txCount > 1 ? 's' : ''}` : ''}`}
+						/>
+					)
+				})}
+			</div>
+			<div className="flex items-center justify-end gap-2">
+				<span className="text-[10px] text-tertiary font-mono tabular-nums">
+					{shownBlock?.toString() ?? '...'}
+				</span>
+				{selectedBlock !== undefined && (
+					<button
+						type="button"
+						onClick={() => onSelectBlock(undefined)}
+						aria-label="Clear selection"
+						className="flex items-center justify-center size-5 text-tertiary hover:text-primary cursor-pointer transition-colors focus-ring rounded-full"
+					>
+						<XCircleIcon className="size-4" />
+					</button>
+				)}
+			</div>
+		</div>
+	)
+}
+
 function HoldingsTable({
 	assets,
 	address,
@@ -1173,6 +1557,7 @@ function HoldingsTable({
 	connectedAddress,
 	initialSendTo,
 	initialToken,
+	announce,
 }: {
 	assets: AssetData[]
 	address: string
@@ -1184,6 +1569,7 @@ function HoldingsTable({
 	connectedAddress?: string
 	initialSendTo?: string
 	initialToken?: string
+	announce: (message: string) => void
 }) {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
@@ -1266,9 +1652,10 @@ function HoldingsTable({
 						}}
 						onSendComplete={(symbol) => {
 							setToastMessage(`Sent ${symbol} successfully`)
-							setSendingToken(null)
 							onOptimisticClear?.(asset.address)
 							onSendSuccess?.()
+							// Delay collapsing form to show success state
+							setTimeout(() => setSendingToken(null), 1500)
 						}}
 						onSendError={() => {
 							onOptimisticClear?.(asset.address)
@@ -1279,20 +1666,23 @@ function HoldingsTable({
 						initialRecipient={
 							asset.address === initialToken ? initialSendTo : undefined
 						}
+						announce={announce}
 					/>
 				))}
 			</div>
 			{toastMessage &&
 				createPortal(
-					<div className="fixed bottom-4 right-4 z-50 bg-surface rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.12)] overflow-hidden flex">
-						<div className="w-1 bg-positive shrink-0" />
-						<div className="flex items-center gap-1.5 px-3 py-2">
-							<CheckIcon className="size-[14px] text-positive" />
-							<span className="text-[13px] text-primary font-medium">
-								{toastMessage}
-							</span>
+					<LiveRegion>
+						<div className="fixed bottom-4 right-4 z-50 bg-surface rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.12)] overflow-hidden flex">
+							<div className="w-1 bg-positive shrink-0" />
+							<div className="flex items-center gap-1.5 px-3 py-2">
+								<CheckIcon className="size-[14px] text-positive" />
+								<span className="text-[13px] text-primary font-medium">
+									{toastMessage}
+								</span>
+							</div>
 						</div>
-					</div>,
+					</LiveRegion>,
 					document.body,
 				)}
 		</>
@@ -1310,6 +1700,7 @@ function BouncingDots() {
 }
 
 function FillingDroplet() {
+	const id = React.useId()
 	return (
 		<svg
 			width="14"
@@ -1318,9 +1709,11 @@ function FillingDroplet() {
 			fill="none"
 			xmlns="http://www.w3.org/2000/svg"
 			className="text-accent"
+			aria-hidden="true"
 		>
+			<title>Loading</title>
 			<defs>
-				<clipPath id="droplet-clip">
+				<clipPath id={`droplet-clip-${id}`}>
 					<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
 				</clipPath>
 			</defs>
@@ -1332,7 +1725,7 @@ function FillingDroplet() {
 				strokeLinejoin="round"
 				fill="none"
 			/>
-			<g clipPath="url(#droplet-clip)">
+			<g clipPath={`url(#droplet-clip-${id})`}>
 				<rect
 					x="0"
 					y="24"
@@ -1359,6 +1752,7 @@ function AssetRow({
 	onFaucetSuccess,
 	isOwnProfile,
 	initialRecipient,
+	announce,
 }: {
 	asset: AssetData
 	address: string
@@ -1371,7 +1765,9 @@ function AssetRow({
 	onFaucetSuccess?: () => void
 	isOwnProfile: boolean
 	initialRecipient?: string
+	announce: (message: string) => void
 }) {
+	const { t } = useTranslation()
 	const [recipient, setRecipient] = React.useState(initialRecipient ?? '')
 	const [amount, setAmount] = React.useState('')
 	const [sendState, setSendState] = React.useState<
@@ -1414,15 +1810,15 @@ function AssetRow({
 		if (isConfirmed) {
 			setSendState('sent')
 			setPendingSendAmount(null)
-			// Trigger balance refresh immediately
+			announce(t('a11y.transactionSent'))
+			// Trigger balance refresh and close form immediately via onSendComplete
 			onSendComplete(asset.metadata?.symbol || shortenAddress(asset.address, 3))
-			// Reset UI state and collapse form after animation
+			// Reset UI state after animation (form already closed by onSendComplete)
 			setTimeout(() => {
 				setSendState('idle')
 				setRecipient('')
 				setAmount('')
 				resetWrite()
-				onToggleSend()
 			}, 1500)
 		}
 	}, [
@@ -1431,7 +1827,8 @@ function AssetRow({
 		asset.address,
 		onSendComplete,
 		resetWrite,
-		onToggleSend,
+		announce,
+		t,
 	])
 
 	// Handle write errors
@@ -1467,9 +1864,10 @@ function AssetRow({
 		if (asset.balance !== faucetInitialBalance) {
 			setFaucetState('done')
 			setFaucetInitialBalance(null)
+			announce(t('a11y.faucetSuccess'))
 			setTimeout(() => setFaucetState('idle'), 1500)
 		}
-	}, [asset.balance, faucetState, faucetInitialBalance])
+	}, [asset.balance, faucetState, faucetInitialBalance, announce, t])
 
 	// Poll for balance updates while faucet is loading (but not during send)
 	React.useEffect(() => {
@@ -1581,10 +1979,10 @@ function AssetRow({
 						value={recipient}
 						onChange={(e) => setRecipient(e.target.value)}
 						placeholder="0x..."
-						className="flex-1 min-w-0 h-[32px] pl-1 pr-2 rounded-lg border border-card-border bg-base text-[12px] text-primary font-mono text-left placeholder:text-tertiary focus:outline-none focus:border-accent"
+						className="flex-1 min-w-0 h-[32px] px-2 rounded-lg border border-card-border bg-base text-[12px] text-primary font-mono text-left placeholder:text-tertiary focus:outline-none focus:border-accent"
 					/>
 				</div>
-				<div className="flex items-center gap-1 pl-7 sm:pl-0">
+				<div className="flex items-center gap-1">
 					<input
 						ref={amountInputRef}
 						type="text"
@@ -1592,8 +1990,7 @@ function AssetRow({
 						value={amount}
 						onChange={(e) => setAmount(e.target.value)}
 						placeholder="0.00"
-						style={{ width: `${Math.max(6, (amount || '0.00').length) + 1}ch` }}
-						className="min-w-[7ch] max-w-[14ch] h-[32px] pl-1 pr-1 rounded-lg border border-card-border bg-base text-[12px] text-primary font-mono text-left placeholder:text-tertiary focus:outline-none focus:border-accent"
+						className="w-[7ch] h-[32px] px-2 rounded-lg border border-card-border bg-base text-[12px] text-primary font-mono text-right placeholder:text-tertiary focus:outline-none focus:border-accent"
 					/>
 					<button
 						type="button"
@@ -1604,8 +2001,10 @@ function AssetRow({
 					</button>
 					<button
 						type="submit"
+						aria-label={t('common.send')}
+						aria-busy={sendState === 'sending'}
 						className={cx(
-							'size-[32px] rounded-lg press-down transition-colors flex items-center justify-center shrink-0',
+							'size-[32px] rounded-lg press-down transition-colors flex items-center justify-center shrink-0 focus-ring',
 							sendState === 'sent'
 								? 'bg-positive text-white cursor-default'
 								: sendState === 'error'
@@ -1629,8 +2028,8 @@ function AssetRow({
 					<button
 						type="button"
 						onClick={handleToggle}
-						className="size-[32px] flex items-center justify-center cursor-pointer text-tertiary hover:text-primary hover:bg-base-alt rounded-lg transition-colors shrink-0"
-						title="Cancel"
+						aria-label={t('common.cancel')}
+						className="size-[32px] flex items-center justify-center cursor-pointer text-tertiary hover:text-primary hover:bg-base-alt rounded-lg transition-colors shrink-0 focus-ring"
 					>
 						<XIcon className="size-[14px]" />
 					</button>
@@ -1723,12 +2122,12 @@ function AssetRow({
 						}}
 						disabled={faucetState !== 'idle' || !isFaucetToken}
 						className={cx(
-							'flex items-center justify-center size-[24px] rounded-md transition-colors',
+							'flex items-center justify-center size-[24px] rounded-md transition-colors focus-ring',
 							isFaucetToken
 								? 'hover:bg-accent/10 cursor-pointer'
 								: 'opacity-0 pointer-events-none',
 						)}
-						title={isFaucetToken ? 'Request tokens' : undefined}
+						aria-label={isFaucetToken ? t('common.requestTokens') : undefined}
 						aria-hidden={!isFaucetToken}
 					>
 						{faucetState === 'done' ? (
@@ -1746,8 +2145,8 @@ function AssetRow({
 						e.stopPropagation()
 						handleToggle()
 					}}
-					className="flex items-center justify-center size-[28px] rounded-md hover:bg-accent/10 cursor-pointer transition-all opacity-60 group-hover:opacity-100"
-					title="Send"
+					className="flex items-center justify-center size-[28px] rounded-md hover:bg-accent/10 cursor-pointer transition-all opacity-60 group-hover:opacity-100 focus-ring"
+					aria-label={t('common.send')}
 				>
 					<SendIcon className="size-[14px] text-tertiary hover:text-accent transition-colors" />
 				</button>
@@ -1761,29 +2160,42 @@ const ACTIVITY_PAGE_SIZE = 10
 function ActivityList({
 	activity,
 	address,
+	filterBlockNumber,
 }: {
 	activity: ActivityItem[]
 	address: string
+	filterBlockNumber?: bigint
 }) {
 	const viewer = address as Address.Address
 	const { t } = useTranslation()
 	const [page, setPage] = React.useState(0)
 
-	if (activity.length === 0) {
+	const filteredActivity = React.useMemo(() => {
+		if (filterBlockNumber === undefined) return activity
+		return activity.filter((item) => item.blockNumber === filterBlockNumber)
+	}, [activity, filterBlockNumber])
+
+	React.useEffect(() => {
+		setPage(0)
+	}, [])
+
+	if (filteredActivity.length === 0) {
 		return (
 			<div className="flex flex-col items-center justify-center py-6 gap-2">
 				<div className="size-10 rounded-full bg-base-alt flex items-center justify-center">
 					<ReceiptIcon className="size-5 text-tertiary" />
 				</div>
 				<p className="text-[13px] text-secondary">
-					{t('portfolio.noActivityYet')}
+					{filterBlockNumber !== undefined
+						? t('portfolio.noActivityInBlock')
+						: t('portfolio.noActivityYet')}
 				</p>
 			</div>
 		)
 	}
 
-	const totalPages = Math.ceil(activity.length / ACTIVITY_PAGE_SIZE)
-	const paginatedActivity = activity.slice(
+	const totalPages = Math.ceil(filteredActivity.length / ACTIVITY_PAGE_SIZE)
+	const paginatedActivity = filteredActivity.slice(
 		page * ACTIVITY_PAGE_SIZE,
 		(page + 1) * ACTIVITY_PAGE_SIZE,
 	)
@@ -1805,7 +2217,7 @@ function ActivityList({
 				<div className="flex items-center justify-center gap-1 pt-3 pb-1">
 					{Array.from({ length: totalPages }, (_, i) => (
 						<button
-							key={i}
+							key={`activity-page-${i}`}
 							type="button"
 							onClick={() => setPage(i)}
 							className={cx(
@@ -1836,17 +2248,11 @@ function ActivityRow({
 	const { t } = useTranslation()
 	const [showModal, setShowModal] = React.useState(false)
 
-	// Expand self-sends to show both Send and Received
-	const expandedEvents = React.useMemo(
-		() => expandSelfSends(item.events, viewer),
-		[item.events, viewer],
-	)
-
 	return (
 		<>
 			<div className="group flex items-center gap-2 px-3 h-[48px] rounded-xl hover:glass-thin transition-all">
 				<TxDescription.ExpandGroup
-					events={expandedEvents}
+					events={item.events}
 					seenAs={viewer}
 					transformEvent={transformEvent}
 					limitFilter={preferredEventsFilter}
@@ -1856,16 +2262,16 @@ function ActivityRow({
 					href={`https://explore.mainnet.tempo.xyz/tx/${item.hash}`}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="flex items-center justify-center size-[24px] rounded-md hover:bg-base-alt shrink-0 transition-all opacity-60 group-hover:opacity-100"
-					title={t('common.viewOnExplorer')}
+					className="flex items-center justify-center size-[24px] rounded-md hover:bg-base-alt shrink-0 transition-all opacity-60 group-hover:opacity-100 focus-ring"
+					aria-label={t('common.viewOnExplorer')}
 				>
 					<ExternalLinkIcon className="size-[14px] text-tertiary hover:text-accent transition-colors" />
 				</a>
 				<button
 					type="button"
 					onClick={() => setShowModal(true)}
-					className="flex items-center justify-center size-[24px] rounded-md hover:bg-base-alt shrink-0 cursor-pointer transition-all opacity-60 group-hover:opacity-100"
-					title={t('common.viewReceipt')}
+					className="flex items-center justify-center size-[24px] rounded-md hover:bg-base-alt shrink-0 cursor-pointer transition-all opacity-60 group-hover:opacity-100 focus-ring"
+					aria-label={t('common.viewReceipt')}
 				>
 					<ReceiptIcon className="size-[14px] text-tertiary hover:text-accent transition-colors" />
 				</button>
@@ -1927,24 +2333,18 @@ function TransactionModal({
 	const { t } = useTranslation()
 	const [isVisible, setIsVisible] = React.useState(false)
 	const overlayRef = React.useRef<HTMLDivElement>(null)
-	const contentRef = React.useRef<HTMLDivElement>(null)
+	const focusTrapRef = useFocusTrap(isVisible)
 
 	const handleClose = React.useCallback(() => {
 		setIsVisible(false)
 		setTimeout(onClose, 200)
 	}, [onClose])
 
+	useEscapeKey(handleClose)
+
 	React.useEffect(() => {
 		requestAnimationFrame(() => setIsVisible(true))
 	}, [])
-
-	React.useEffect(() => {
-		const handleEscape = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') handleClose()
-		}
-		document.addEventListener('keydown', handleEscape)
-		return () => document.removeEventListener('keydown', handleEscape)
-	}, [handleClose])
 
 	const blockNumber = React.useMemo(
 		() => Math.floor(Math.random() * 1000000 + 5000000),
@@ -1970,16 +2370,22 @@ function TransactionModal({
 	)
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop overlay
 		<div
 			ref={overlayRef}
+			role="presentation"
 			className={cx(
-				'fixed inset-0 left-[calc(45vw+8px)] max-lg:left-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-md transition-opacity duration-200',
+				'fixed inset-0 left-[calc(45vw+16px)] max-lg:left-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-200',
 				isVisible ? 'opacity-100' : 'opacity-0',
 			)}
 			onClick={handleClose}
 		>
+			{/* biome-ignore lint/a11y/useKeyWithClickEvents: dialog handles keyboard via focus trap */}
 			<div
-				ref={contentRef}
+				ref={focusTrapRef}
+				role="dialog"
+				aria-modal="true"
+				aria-label={t('common.transactionReceipt')}
 				className={cx(
 					'flex flex-col items-center transition-all duration-200',
 					isVisible
