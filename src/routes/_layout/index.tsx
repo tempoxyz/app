@@ -34,10 +34,10 @@ function truncateAddress(address: string) {
 }
 
 export const Route = createFileRoute('/_layout/')({
-	component: Landing,
+	component: RouteComponent,
 })
 
-function Landing() {
+function RouteComponent() {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const [address, setAddress] = React.useState('')
