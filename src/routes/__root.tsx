@@ -38,12 +38,12 @@ export const Route = createRootRouteWithContext<{
 			{
 				name: 'description',
 				content:
-					'View your balances, send tokens, and track activity on Tempo – the fastest Ethereum L2.',
+					'View your balances, send tokens, and track activity on Tempo – the fastest payment chain.',
 			},
 			{
 				property: 'og:description',
 				content:
-					'View your balances, send tokens, and track activity on Tempo – the fastest Ethereum L2.',
+					'View your balances, send tokens, and track activity on Tempo – the fastest payment chain.',
 			},
 			{
 				property: 'og:image',
