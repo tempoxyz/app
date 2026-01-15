@@ -12,7 +12,7 @@ const AMBIENT_DRIFT_SPEED_Y = 0.004
 const AMBIENT_BASE_POS_X = 30
 const AMBIENT_BASE_POS_Y = 70
 const AMBIENT_PULSE_BASE_DARK = 0.18
-const AMBIENT_PULSE_BASE_LIGHT = 0.07
+const AMBIENT_PULSE_BASE_LIGHT = 0.18
 const AMBIENT_PULSE_AMPLITUDE = 0.08
 const AMBIENT_PULSE_SPEED = 0.02
 
@@ -667,7 +667,7 @@ export function ShaderCard({
 				gl.getUniformLocation(gradientProgram, 'u_pulseSpeed'),
 				AMBIENT_PULSE_SPEED,
 			)
-			const baseColor = isDark ? [0.098, 0.098, 0.098] : [0.988, 0.988, 0.988] // #191919 / #fcfcfc
+			const baseColor = isDark ? [0.098, 0.098, 0.098] : [0.82, 0.82, 0.82] // #191919 / #d1d1d1
 			gl.uniform3f(
 				gl.getUniformLocation(gradientProgram, 'u_baseColor'),
 				baseColor[0],
@@ -901,7 +901,7 @@ export function ShaderCard({
 	return (
 		<canvas
 			ref={canvasRef}
-			className={`${className} dark:drop-shadow-[0_12px_40px_rgba(0,0,0,0.4)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.2)]`}
+			className={`${className} dark:drop-shadow-[0_12px_40px_rgba(0,0,0,0.25)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.1)]`}
 			style={{
 				position: 'absolute',
 				inset: -LIQUIDGLASS_CANVAS_EXTEND,

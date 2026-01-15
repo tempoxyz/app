@@ -1186,10 +1186,6 @@ function AddressView() {
 				</div>
 
 				<div className="flex flex-col gap-2.5">
-					<Section title="Add Funds">
-						<AddFunds address={address} />
-					</Section>
-
 					<Section
 						title={t('portfolio.assets')}
 						subtitle={`${assetsWithBalance.length} ${t('portfolio.assetCount', { count: assetsWithBalance.length })}`}
@@ -1265,6 +1261,10 @@ function AddressView() {
 							onSendingTokenChange={setSendingToken}
 							announce={announce}
 						/>
+					</Section>
+
+					<Section title="Add Funds">
+						<AddFunds address={address} />
 					</Section>
 
 					<ActivitySection

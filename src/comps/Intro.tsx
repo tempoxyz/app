@@ -106,7 +106,7 @@ export function Intro() {
 			/>
 			<div className="relative flex flex-col items-start gap-y-2 z-10 max-md:gap-y-1.5">
 				<TempoWordmark />
-				<p className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] text-secondary max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none">
+				<p className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] text-[#505050] dark:text-secondary max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none">
 					{t('intro.tagline')}
 				</p>
 				<div className="flex gap-1.5 flex-wrap isolate">
