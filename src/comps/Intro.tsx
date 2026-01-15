@@ -11,7 +11,7 @@ export function Intro() {
 					on the <span className="font-medium text-primary">Tempo</span>{' '}
 					network.
 				</p>
-				<ul className="flex gap-x-1 text-tertiary [&>li:not(:first-child)]:before:content-['⋅'] [&>li:not(:first-child)]:before:mr-1 mt-1">
+				<ul className="flex gap-x-1 text-secondary [&>li:not(:first-child)]:before:content-['⋅'] [&>li:not(:first-child)]:before:mr-1 mt-1">
 					<li>
 						<a
 							className="font-[500] text-[13px] hover:text-primary transition-colors"
@@ -19,7 +19,7 @@ export function Intro() {
 							rel="noreferrer"
 							target="_blank"
 						>
-							Tempo
+							Website
 						</a>
 					</li>
 					<li>
