@@ -94,10 +94,11 @@ export function AccessKeysProvider({
 	)
 
 	// Stabilize tokenAddresses to prevent infinite re-renders
+	const tokenAddressesKey = tokenAddresses.join(',')
+	// biome-ignore lint/correctness/useExhaustiveDependencies: _
 	const stableTokenAddresses = React.useMemo(
 		() => tokenAddresses,
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[tokenAddresses],
+		[tokenAddressesKey],
 	)
 
 	const fetchKeys = React.useCallback(async () => {
