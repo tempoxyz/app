@@ -4,6 +4,7 @@ const LAYOUT_PADDING = 20 // px, desktop spacing all around
 
 export function Layout(props: PropsWithChildren) {
 	return (
+		// biome-ignore lint/correctness/useUniqueElementIds: _
 		<main
 			id="main-content"
 			className="mx-auto flex min-h-dvh max-md:flex-col"

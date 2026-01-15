@@ -33,7 +33,7 @@ function serializeCredential(credential: PublicKeyCredential) {
 		id: credential.id,
 		rawId: arrayBufferToBase64(credential.rawId),
 		type: credential.type,
-		authenticatorAttachment: (credential as any).authenticatorAttachment,
+		authenticatorAttachment: credential.authenticatorAttachment,
 		response: {
 			attestationObject: arrayBufferToBase64(response.attestationObject),
 			clientDataJSON: arrayBufferToBase64(response.clientDataJSON),

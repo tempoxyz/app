@@ -17,14 +17,6 @@ import { AnnouncerProvider, SkipLink } from '#lib/a11y'
 import i18n, { isRtl } from '#lib/i18n'
 import css from './styles.css?url'
 
-const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
-const OG_IMAGE_URL =
-	TEMPO_ENV === 'moderato'
-		? 'https://app.tempo.xyz/og-image.png'
-		: TEMPO_ENV === 'devnet'
-			? 'https://app.devnet.tempo.xyz/og-image.png'
-			: 'https://app.mainnet.tempo.xyz/og-image.png'
-
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient
 }>()({
@@ -47,14 +39,14 @@ export const Route = createRootRouteWithContext<{
 			},
 			{
 				property: 'og:image',
-				content: OG_IMAGE_URL,
+				content: 'https://app.tempo.xyz/og-image.png',
 			},
 			{ property: 'og:image:width', content: '1200' },
 			{ property: 'og:image:height', content: '630' },
 			{ name: 'twitter:card', content: 'summary_large_image' },
 			{
 				name: 'twitter:image',
-				content: OG_IMAGE_URL,
+				content: 'https://app.tempo.xyz/og-image.png',
 			},
 		],
 		links: [

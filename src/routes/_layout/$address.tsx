@@ -1,6 +1,11 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import {
+	Link,
+	createFileRoute,
+	notFound,
+	useNavigate,
+} from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import type { Address } from 'ox'
+import { Address } from 'ox'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { encode } from 'uqr'
@@ -75,6 +80,7 @@ import RefreshCwIcon from '~icons/lucide/refresh-cw'
 import { useTranslation } from 'react-i18next'
 import i18n, { isRtl } from '#lib/i18n'
 import { useAnnounce, LiveRegion, useFocusTrap, useEscapeKey } from '#lib/a11y'
+import * as z from 'zod/mini'
 
 // Tokens that can be funded via the faucet
 const FAUCET_TOKEN_ADDRESSES = new Set([
@@ -732,19 +738,16 @@ async function fetchTransactions(
 	}
 }
 
-type AddressSearchParams = {
-	test?: boolean
-	sendTo?: string
-	token?: string
-}
-
 export const Route = createFileRoute('/_layout/$address')({
 	component: AddressView,
-	validateSearch: (search: Record<string, unknown>): AddressSearchParams => ({
-		test: 'test' in search ? true : undefined,
-		sendTo: typeof search.sendTo === 'string' ? search.sendTo : undefined,
-		token: typeof search.token === 'string' ? search.token : undefined,
+	validateSearch: z.object({
+		test: z.optional(z.boolean()),
+		sendTo: z.optional(z.string()),
+		token: z.optional(z.string()),
 	}),
+	beforeLoad: ({ params }) => {
+		if (!Address.validate(params.address)) throw notFound()
+	},
 	loader: async ({ params }) => {
 		const assets = await fetchAssets({ data: { address: params.address } })
 
@@ -1576,18 +1579,16 @@ function ActivityHeatmap({
 				className={cx('flex w-full py-2', isMobile ? 'gap-[4px]' : 'gap-[3px]')}
 			>
 				{grid.map((column, hi) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: grid is static and doesn't reorder
 					<div
-						key={`h-${hi}`}
+						key={`h-${hi.toString()}`}
 						className={cx(
 							'flex flex-col flex-1',
 							isMobile ? 'gap-[4px]' : 'gap-[3px]',
 						)}
 					>
 						{column.map((cell, di) => (
-							// biome-ignore lint/a11y/noStaticElementInteractions: hover tooltip only
 							<div
-								key={`${hi}-${di}`}
+								key={`${hi}-${di.toString()}`}
 								className={cx(
 									'w-full aspect-square cursor-default',
 									isMobile ? 'rounded-[3px]' : 'rounded-[2px]',
@@ -1949,6 +1950,7 @@ function BlockTimeline({
 			currentBlock,
 			onSelectBlock,
 			prefetchAdjacentBlocks,
+			// biome-ignore lint/correctness/useExhaustiveDependencies: TODO: fix this
 			handleBlockClick,
 		],
 	)
@@ -2041,7 +2043,7 @@ function BlockTimeline({
 				<div className="flex items-center justify-center gap-[2px] w-full p-1">
 					{Array.from({ length: 30 }).map((_, i) => (
 						<div
-							key={i}
+							key={i.toString()}
 							className="shrink-0 size-[8px] rounded-[1px] bg-base-alt/20 animate-pulse"
 						/>
 					))}
@@ -2061,7 +2063,8 @@ function BlockTimeline({
 	const shownBlock = displayBlock ?? currentBlock
 
 	return (
-		<div
+		<section
+			role="region"
 			ref={containerRef}
 			className="flex flex-col gap-1.5 mt-2 mb-3"
 			onMouseUp={handleMouseUp}
@@ -2228,6 +2231,7 @@ function BlockTimeline({
 							<PlayIcon className="size-2 text-accent fill-accent" />
 						) : (
 							<svg className="size-2" viewBox="0 0 24 24" fill="currentColor">
+								<title>Play icon</title>
 								<rect x="6" y="4" width="4" height="16" rx="1" />
 								<rect x="14" y="4" width="4" height="16" rx="1" />
 							</svg>
@@ -2241,7 +2245,7 @@ function BlockTimeline({
 					</span>
 				</div>
 			</div>
-		</div>
+		</section>
 	)
 }
 
@@ -3352,8 +3356,8 @@ function ActivitySection({
 
 	const tabButtons = (
 		<div className="flex items-center gap-3">
-			<span
-				role="button"
+			<button
+				type="button"
 				tabIndex={0}
 				onClick={(e) => {
 					e.stopPropagation()
@@ -3373,9 +3377,9 @@ function ActivitySection({
 				)}
 			>
 				{t('portfolio.mine')}
-			</span>
-			<span
-				role="button"
+			</button>
+			<button
+				type="button"
 				tabIndex={0}
 				onClick={(e) => {
 					e.stopPropagation()
@@ -3395,7 +3399,7 @@ function ActivitySection({
 				)}
 			>
 				{t('portfolio.everyone')}
-			</span>
+			</button>
 		</div>
 	)
 
@@ -3516,7 +3520,7 @@ function BlockActivityList({
 				<div className="flex items-center justify-center gap-1 pt-3 pb-1">
 					{Array.from({ length: totalPages }, (_, i) => (
 						<button
-							key={`block-activity-page-${i}`}
+							key={`block-activity-page-${i.toString()}`}
 							type="button"
 							onClick={() => setPage(i)}
 							className={cx(
@@ -3608,7 +3612,7 @@ function ActivityList({
 				<div className="flex items-center justify-center gap-1 pt-3 pb-1">
 					{Array.from({ length: totalPages }, (_, i) => (
 						<button
-							key={`activity-page-${i}`}
+							key={`activity-page-${i.toString()}`}
 							type="button"
 							onClick={() => setPage(i)}
 							className={cx(
@@ -3807,7 +3811,6 @@ function TransactionModal({
 	)
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop overlay
 		<div
 			ref={overlayRef}
 			role="presentation"
@@ -3817,7 +3820,6 @@ function TransactionModal({
 			)}
 			onClick={handleClose}
 		>
-			{/* biome-ignore lint/a11y/useKeyWithClickEvents: dialog handles keyboard via focus trap */}
 			<div
 				ref={focusTrapRef}
 				role="dialog"

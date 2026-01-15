@@ -46,8 +46,7 @@
 		"tailwindcss": "^4.1.18",
 		"uqr": "^0.1.2",
 		"viem": "^2.44.2",
-		"wagmi": "^3.3.2",
-		"zod": "^4.3.5"
+		"wagmi": "^3.3.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.11",
@@ -73,6 +72,7 @@
 		"typed-query-selector": "^2.12.0",
 		"unplugin-icons": "^22.5.0",
 		"vite": "npm:rolldown-vite@latest",
-		"wrangler": "^4.59.1"
+		"wrangler": "^4.59.1",
+		"zod": "^4.3.5"
 	}
 }
