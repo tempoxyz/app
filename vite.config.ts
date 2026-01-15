@@ -5,6 +5,7 @@ import { tanstackStart as tanstack } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { readFileSync } from 'node:fs'
 import { parse } from 'jsonc-parser'
+import { visualizer } from 'rollup-plugin-visualizer'
 import Icons from 'unplugin-icons/vite'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 
@@ -55,7 +56,14 @@ export default defineConfig((config) => {
 				client: { entry: './src/index.client.tsx' },
 			}),
 			react(),
-		],
+			process.env.ANALYZE_JSON === 'true' &&
+				visualizer({
+					filename: 'stats.json',
+					template: 'raw-data',
+					gzipSize: true,
+					brotliSize: true,
+				}),
+		].filter(Boolean),
 
 		server: {
 			port,
