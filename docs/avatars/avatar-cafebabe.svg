@@ -1,0 +1,19 @@
+<svg width="200" height="200" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
+	<rect width="90" height="90" rx="45" fill="#F8B500" />
+	<g transform="rotate(11 45 45)">
+		<ellipse cx="45" cy="45" rx="25" ry="22" fill="white" />
+		<ellipse cx="45" cy="48" rx="23" ry="18" fill="#00B894" opacity="0.1" />
+		<path d="M 31 42 Q 35 38 39 42" stroke="#00B894" stroke-width="2.5" fill="none" stroke-linecap="round" />
+		<path d="M 51 42 Q 55 38 59 42" stroke="#00B894" stroke-width="2.5" fill="none" stroke-linecap="round" />
+		<path d="M 38 54 Q 45 58 52 54" stroke="#00B894" stroke-width="2" fill="none" stroke-linecap="round" />
+	</g>
+	<g>
+		<ellipse cx="45" cy="22" rx="22" ry="10" fill="#00B894" />
+		<rect x="23" y="18" width="44" height="8" fill="#00B894" />
+		<circle cx="45" cy="14" r="5" fill="white" opacity="0.8" />
+	</g>
+	<g transform="translate(65, 65)">
+		<circle cx="8" cy="8" r="10" fill="#00B894" />
+		<text x="8" y="12" text-anchor="middle" font-size="11" font-weight="bold" fill="white" font-family="system-ui, sans-serif">T</text>
+	</g>
+</svg>

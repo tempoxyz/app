@@ -48,6 +48,7 @@ import { useCopy } from '#lib/hooks'
 import { fetchAssets, type AssetData } from '#lib/server/assets.server'
 import { useActivitySummary, type ActivityType } from '#lib/activity-context'
 import { LottoNumber } from '#comps/LottoNumber'
+import { Avatar } from '#comps/Avatar'
 import {
 	Settings,
 	SETTINGS_VIEW_TITLES,
@@ -1125,7 +1126,9 @@ function AddressView() {
 				</div>
 				<div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4 mb-5">
 					<div className="flex-1 min-w-0 flex flex-col gap-2 order-2 sm:order-1">
-						<div className="flex items-baseline gap-2">
+						<div className="flex items-center gap-3">
+							<Avatar address={address} size={56} className="shrink-0 hidden sm:block" />
+							<Avatar address={address} size={48} className="shrink-0 sm:hidden" />
 							<LottoNumber
 								value={formatUsd(totalValue)}
 								duration={1200}

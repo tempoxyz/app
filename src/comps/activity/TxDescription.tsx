@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { isAddressEqual } from 'viem'
 import { cx } from '#lib/css'
 import { TokenIcon } from '#comps/TokenIcon'
+import { Avatar } from '#comps/Avatar'
 import type { KnownEvent, KnownEventPart } from './known-events'
 import {
 	DateFormatter,
@@ -218,9 +219,10 @@ export namespace TxDescription {
 						<Link
 							to="/$address"
 							params={{ address: part.value }}
-							className="text-accent press-down whitespace-nowrap font-mono"
+							className="inline-flex items-center gap-1.5 text-accent press-down whitespace-nowrap"
 						>
-							{shortenAddress(part.value)}
+							<Avatar address={part.value} size={18} className="shrink-0" />
+							<span className="font-mono">{shortenAddress(part.value)}</span>
 						</Link>
 						{isSelf && (
 							<span className="text-tertiary">({t('activity.self')})</span>
