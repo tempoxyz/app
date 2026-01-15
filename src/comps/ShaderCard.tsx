@@ -36,8 +36,6 @@ const WORDMARK_FLOW_DIRECTION = -1
 // GENERAL SETTINGS
 // =============================================================================
 
-const FADE_IN_DURATION = 150
-
 const DEFAULT_AMBIENT_COLORS: Array<[number, number, number]> = [
 	[0.231, 0.51, 0.965], // blue (#3b82f6)
 	[0.133, 0.773, 0.369], // green (#22c55e)
@@ -596,21 +594,14 @@ export function ShaderCard({
 		}
 
 		let animationId: number
-		let frameCount = 0
-		let fadeStartTime: number | null = null
 
 		const render = (timestamp: number) => {
 			if (!startTimeRef.current) startTimeRef.current = timestamp
-			frameCount++
-
-			if (frameCount === 3) fadeStartTime = timestamp
 
 			const elapsed = timestamp - startTimeRef.current
 			const time = elapsed / 16.67
 			const wordmarkTime =
 				(elapsed % WORDMARK_ANIMATION_DURATION) / WORDMARK_ANIMATION_DURATION
-			const fadeElapsed = fadeStartTime ? timestamp - fadeStartTime : 0
-			const fadeIn = Math.min(1, fadeElapsed / FADE_IN_DURATION)
 
 			if (!fb1 || !fb2) {
 				animationId = requestAnimationFrame(render)
@@ -785,7 +776,7 @@ export function ShaderCard({
 				currentWidth,
 				currentHeight,
 			)
-			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_fadeIn'), fadeIn)
+			gl.uniform1f(gl.getUniformLocation(compositeProgram, 'u_fadeIn'), 1)
 			gl.uniform1f(
 				gl.getUniformLocation(compositeProgram, 'u_rowHeight'),
 				WORDMARK_ROW_HEIGHT,
@@ -910,7 +901,7 @@ export function ShaderCard({
 	return (
 		<canvas
 			ref={canvasRef}
-			className={`${className} dark:drop-shadow-[0_12px_40px_rgba(0,0,0,0.25)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.1)]`}
+			className={`${className ?? ''} dark:drop-shadow-[0_12px_40px_rgba(0,0,0,0.25)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.1)]`}
 			style={{
 				position: 'absolute',
 				inset: -LIQUIDGLASS_CANVAS_EXTEND,
