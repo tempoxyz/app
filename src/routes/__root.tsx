@@ -14,6 +14,7 @@ import { deserialize, type State, WagmiProvider } from 'wagmi'
 import { getWagmiConfig, getWagmiStateSSR } from '#wagmi.config'
 import { CommandMenuProvider } from '#comps/CommandMenu'
 import { AnnouncerProvider, SkipLink } from '#lib/a11y'
+import { config } from '#lib/config'
 import i18n, { isRtl } from '#lib/i18n'
 import css from './styles.css?url'
 
@@ -137,22 +138,21 @@ function RootDocument({
 								<Outlet />
 							</CommandMenuProvider>
 						</AnnouncerProvider>
-						{import.meta.env.MODE === 'development' &&
-							import.meta.env.VITE_ENABLE_DEVTOOLS === 'true' && (
-								<TanStackDevtools
-									config={{ position: 'bottom-right' }}
-									plugins={[
-										{
-											name: 'Tanstack Query',
-											render: <ReactQueryDevtools />,
-										},
-										{
-											name: 'Tanstack Router',
-											render: <TanStackRouterDevtoolsPanel />,
-										},
-									]}
-								/>
-							)}
+						{config.devtools.enabled && (
+							<TanStackDevtools
+								config={{ position: 'bottom-right' }}
+								plugins={[
+									{
+										name: 'Tanstack Query',
+										render: <ReactQueryDevtools />,
+									},
+									{
+										name: 'Tanstack Router',
+										render: <TanStackRouterDevtoolsPanel />,
+									},
+								]}
+							/>
+						)}
 					</QueryClientProvider>
 				</WagmiProvider>
 				<Scripts />

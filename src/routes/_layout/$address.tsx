@@ -50,6 +50,7 @@ import {
 } from '#lib/access-keys-context'
 import { cx } from '#lib/css'
 import { useCopy } from '#lib/hooks'
+import { config } from '#lib/config'
 import { fetchAssets, type AssetData } from '#lib/server/assets.server'
 import { useActivitySummary, type ActivityType } from '#lib/activity-context'
 import { LottoNumber } from '#comps/LottoNumber'
@@ -1255,9 +1256,11 @@ function RouteComponent() {
 						/>
 					</Section>
 
-					<Section title="Add Funds">
-						<AddFunds address={address} />
-					</Section>
+					{config.onramp.enabled && (
+						<Section title="Add Funds">
+							<AddFunds address={address} />
+						</Section>
+					)}
 
 					<ActivitySection
 						activity={activity}
