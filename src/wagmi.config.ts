@@ -206,7 +206,7 @@ export function getWagmiConfig() {
 		connectors: [
 			webAuthn({
 				keyManager: getKeyManager(),
-				rpId: 'tempo.xyz',
+				rpId: globalThis.location?.hostname.split('.').slice(-2).join('.'),
 			}),
 		],
 		multiInjectedProviderDiscovery: false,
