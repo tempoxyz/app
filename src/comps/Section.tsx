@@ -182,7 +182,10 @@ export function Section(props: {
 				style={{ height: open ? 'auto' : 0 }}
 				inert={!open ? true : undefined}
 			>
-				<div ref={wrapperRef} className="bg-card border-t border-card-border px-2">
+				<div
+					ref={wrapperRef}
+					className="bg-card border-t border-card-border px-2"
+				>
 					<div ref={innerRef} className="origin-top">
 						{children}
 					</div>

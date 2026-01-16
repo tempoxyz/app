@@ -37,7 +37,11 @@ export namespace Layout {
 		React.useEffect(() => {
 			const el = ref.current
 			if (!el) return
-			waapi.animate(el, { opacity: [0, 1], scale: [0.98, 1], ease: contentSpring })
+			waapi.animate(el, {
+				opacity: [0, 1],
+				scale: [0.98, 1],
+				ease: contentSpring,
+			})
 		}, [])
 
 		return (

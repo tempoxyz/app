@@ -67,5 +67,3 @@ export const createOnrampOrderFn = createServerFn({ method: 'POST' })
 
 		return result
 	})
-
-
