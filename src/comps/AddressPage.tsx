@@ -1,10 +1,17 @@
+'use client'
+
+import { Link, useRouter } from 'waku/router/client'
 import {
-	Link,
-	createFileRoute,
-	notFound,
-	useNavigate,
-} from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+	faucetFundAddress,
+	fetchTransactionReceipts,
+	fetchBlockTimestamps,
+	fetchCurrentBlockNumber,
+	fetchTransactionsFromExplorer,
+	fetchTokenMetadata,
+	type RpcLog,
+	type RpcTransactionReceipt,
+} from '#lib/server/transactions.server'
+
 import { Address } from 'ox'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
@@ -104,571 +111,7 @@ const FAUCET_TOKEN_DEFAULTS: AssetData[] = [
 	},
 ]
 
-export const Route = createFileRoute('/_layout/$address')({
-	component: RouteComponent,
-	validateSearch: z.object({
-		test: z.optional(z.boolean()),
-		sendTo: z.optional(z.string()),
-		token: z.optional(z.string()),
-	}),
-	beforeLoad: ({ params }) => {
-		if (!Address.validate(params.address)) throw notFound()
-	},
-	loader: async ({ params }) => {
-		const address = params.address as Address.Address
 
-		// Start assets fetch
-		const assetsPromise = fetchAssets({ data: { address: params.address } })
-
-		// Derive token metadata promise from assets
-		const tokenMetadataPromise = assetsPromise.then((assets) => {
-			const map = new Map<
-				Address.Address,
-				{ decimals: number; symbol: string }
-			>()
-			for (const asset of assets ?? []) {
-				if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
-					map.set(asset.address, {
-						decimals: asset.metadata.decimals,
-						symbol: asset.metadata.symbol,
-					})
-				}
-			}
-			return map
-		})
-
-		// Start activity fetch in parallel - it will await metadata only when parsing
-		const activityPromise = fetchTransactions(address, tokenMetadataPromise)
-
-		// Wait for both
-		const [assets, activity] = await Promise.all([
-			assetsPromise,
-			activityPromise,
-		])
-
-		return { assets: assets ?? [], activity }
-	},
-})
-
-const faucetFundAddress = createServerFn({ method: 'POST' })
-	.inputValidator((data: { address: string }) => data)
-	.handler(async ({ data }) => {
-		const { address } = data
-		// Use cloudflare:workers env for Cloudflare Workers runtime
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		if (!auth) {
-			return { success: false as const, error: 'Auth not configured' }
-		}
-
-		try {
-			const res = await fetch('https://rpc.presto.tempo.xyz', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Basic ${btoa(auth)}`,
-				},
-				body: JSON.stringify({
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'tempo_fundAddress',
-					params: [address],
-				}),
-			})
-
-			if (!res.ok) {
-				return { success: false as const, error: `HTTP ${res.status}` }
-			}
-
-			const result = (await res.json()) as {
-				result?: unknown
-				error?: { message: string }
-			}
-			if (result.error) {
-				return { success: false as const, error: result.error.message }
-			}
-			return { success: true as const }
-		} catch (e) {
-			return { success: false as const, error: String(e) }
-		}
-	})
-
-type ApiTransaction = {
-	hash: string
-	from: string
-	to: string | null
-	value: string
-	blockNumber: string
-	timestamp?: string
-}
-
-// Client-side env (for non-server code)
-const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
-
-// Helper to get tempo env from Cloudflare Workers env (for server functions)
-async function getTempoEnv(): Promise<string | undefined> {
-	try {
-		const { env } = await import('cloudflare:workers')
-		return env.VITE_TEMPO_ENV as string | undefined
-	} catch {
-		return TEMPO_ENV
-	}
-}
-
-function getRpcUrl(tempoEnv: string | undefined): string {
-	// Default to mainnet (presto) RPC, only use moderato RPC for explicit moderato env
-	return tempoEnv === 'moderato'
-		? 'https://rpc.tempo.xyz'
-		: 'https://rpc.presto.tempo.xyz'
-}
-
-function shouldUseAuth(tempoEnv: string | undefined): boolean {
-	// Use auth for mainnet (presto) and devnet, not for moderato
-	return tempoEnv !== 'moderato'
-}
-
-type RpcLog = {
-	address: `0x${string}`
-	topics: `0x${string}`[]
-	data: `0x${string}`
-	blockNumber: string
-	transactionHash: string
-	transactionIndex: string
-	blockHash: string
-	logIndex: string
-	removed: boolean
-}
-
-type RpcTransactionReceipt = {
-	transactionHash: string
-	from: `0x${string}`
-	to: `0x${string}` | null
-	logs: RpcLog[]
-	status: string
-	blockNumber: string
-	blockHash: string
-	gasUsed: string
-	effectiveGasPrice: string
-	cumulativeGasUsed: string
-	type: string
-	contractAddress: `0x${string}` | null
-}
-
-const fetchTransactionReceipts = createServerFn({ method: 'POST' })
-	.inputValidator((data: { hashes: string[] }) => data)
-	.handler(async ({ data }) => {
-		const { hashes } = data
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		// Batch all receipt requests in a single RPC call
-		const batchRequest = hashes.map((hash, i) => ({
-			jsonrpc: '2.0',
-			id: i + 1,
-			method: 'eth_getTransactionReceipt',
-			params: [hash],
-		}))
-
-		try {
-			const response = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(batchRequest),
-			})
-			if (!response.ok) {
-				return { receipts: hashes.map((hash) => ({ hash, receipt: null })) }
-			}
-			const results = (await response.json()) as Array<{
-				id: number
-				result?: RpcTransactionReceipt
-			}>
-
-			// Map results back to hashes by id
-			const receipts = hashes.map((hash, i) => {
-				const result = results.find((r) => r.id === i + 1)
-				return { hash, receipt: result?.result ?? null }
-			})
-			return { receipts }
-		} catch {
-			return { receipts: hashes.map((hash) => ({ hash, receipt: null })) }
-		}
-	})
-
-const fetchBlockTimestamps = createServerFn({ method: 'POST' })
-	.inputValidator((data: { blockNumbers: string[] }) => data)
-	.handler(async ({ data }) => {
-		const { blockNumbers } = data
-		if (blockNumbers.length === 0) return { timestamps: {} }
-
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		try {
-			const batchRequest = blockNumbers.map((blockNum, i) => ({
-				jsonrpc: '2.0',
-				id: i + 1,
-				method: 'eth_getBlockByNumber',
-				params: [blockNum, false],
-			}))
-
-			const response = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(batchRequest),
-			})
-
-			if (!response.ok) return { timestamps: {} }
-
-			const results = (await response.json()) as Array<{
-				id: number
-				result?: { timestamp?: string }
-			}>
-
-			const timestamps: Record<string, number> = {}
-			for (let i = 0; i < blockNumbers.length; i++) {
-				const result = results.find((r) => r.id === i + 1)
-				if (result?.result?.timestamp) {
-					timestamps[blockNumbers[i]] =
-						Number.parseInt(result.result.timestamp, 16) * 1000
-				}
-			}
-			return { timestamps }
-		} catch {
-			return { timestamps: {} }
-		}
-	})
-
-const fetchBlockData = createServerFn({ method: 'GET' })
-	.inputValidator((data: { fromBlock: string; count: number }) => data)
-	.handler(async ({ data }) => {
-		const { fromBlock, count } = data
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		const startBlock = BigInt(fromBlock)
-		const requests = []
-		for (let i = 0; i < count; i++) {
-			const blockNum = startBlock - BigInt(i)
-			if (blockNum > 0n) {
-				requests.push({
-					jsonrpc: '2.0',
-					id: i + 1,
-					method: 'eth_getBlockByNumber',
-					params: [`0x${blockNum.toString(16)}`, false],
-				})
-			}
-		}
-
-		try {
-			const response = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(requests),
-			})
-			if (response.ok) {
-				const results = (await response.json()) as Array<{
-					id: number
-					result?: { number: string; transactions: string[] }
-				}>
-				const blocks: Array<{ blockNumber: string; txCount: number }> = []
-				for (const r of results) {
-					if (r.result) {
-						blocks.push({
-							blockNumber: r.result.number,
-							txCount: r.result.transactions?.length ?? 0,
-						})
-					}
-				}
-				return { blocks }
-			}
-			return { blocks: [] }
-		} catch {
-			return { blocks: [] }
-		}
-	})
-
-const fetchCurrentBlockNumber = createServerFn({ method: 'GET' }).handler(
-	async () => {
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		try {
-			const response = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify({
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'eth_blockNumber',
-					params: [],
-				}),
-			})
-			if (response.ok) {
-				const json = (await response.json()) as { result?: string }
-				if (json.result) {
-					return { blockNumber: json.result }
-				}
-			}
-			return { blockNumber: null }
-		} catch {
-			return { blockNumber: null }
-		}
-	},
-)
-
-const fetchTransactionsFromExplorer = createServerFn({ method: 'GET' })
-	.inputValidator((data: { address: string }) => data)
-	.handler(async ({ data }) => {
-		const { address } = data
-		const tempoEnv = await getTempoEnv()
-		const explorerUrl =
-			tempoEnv === 'presto'
-				? 'https://explore.presto.tempo.xyz'
-				: 'https://explore.mainnet.tempo.xyz'
-
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		const headers: Record<string, string> = {}
-		if (auth) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		try {
-			const response = await fetch(
-				`${explorerUrl}/api/address/${address}?include=all&limit=50`,
-				{ headers },
-			)
-			if (!response.ok) {
-				return {
-					transactions: [] as ApiTransaction[],
-					error: `HTTP ${response.status}`,
-				}
-			}
-			const json = (await response.json()) as {
-				transactions?: ApiTransaction[]
-				error?: string | null
-			}
-			return {
-				transactions: json.transactions ?? [],
-				error: json.error ?? null,
-			}
-		} catch (e) {
-			return { transactions: [] as ApiTransaction[], error: String(e) }
-		}
-	})
-
-const fetchBlockWithReceipts = createServerFn({ method: 'GET' })
-	.inputValidator((data: { blockNumber: string }) => data)
-	.handler(async ({ data }) => {
-		const { blockNumber } = data
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		let auth: string | undefined
-		try {
-			const { env } = await import('cloudflare:workers')
-			auth = env.PRESTO_RPC_AUTH as string | undefined
-		} catch {
-			// Not in Cloudflare Workers environment
-		}
-
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		try {
-			const blockHex = `0x${BigInt(blockNumber).toString(16)}`
-
-			// First get block to get tx hashes
-			const blockRes = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify({
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'eth_getBlockByNumber',
-					params: [blockHex, true],
-				}),
-			})
-			if (!blockRes.ok) {
-				return {
-					receipts: [] as RpcTransactionReceipt[],
-					timestamp: undefined,
-					error: `HTTP ${blockRes.status}`,
-				}
-			}
-			const blockJson = (await blockRes.json()) as {
-				result?: {
-					transactions?: Array<{ hash: string }>
-					timestamp?: string
-				}
-			}
-			const txHashes =
-				blockJson.result?.transactions?.map((tx) => tx.hash) ?? []
-			const timestamp = blockJson.result?.timestamp
-				? Number.parseInt(blockJson.result.timestamp, 16) * 1000
-				: undefined
-
-			if (txHashes.length === 0) {
-				return { receipts: [], timestamp, error: null }
-			}
-
-			// Batch fetch all receipts in single request
-			const batchRequest = txHashes.map((hash, i) => ({
-				jsonrpc: '2.0',
-				id: i + 1,
-				method: 'eth_getTransactionReceipt',
-				params: [hash],
-			}))
-
-			const receiptsRes = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(batchRequest),
-			})
-			if (!receiptsRes.ok) {
-				return { receipts: [], timestamp, error: `HTTP ${receiptsRes.status}` }
-			}
-			const receiptsJson = (await receiptsRes.json()) as Array<{
-				id: number
-				result?: RpcTransactionReceipt
-			}>
-
-			const receipts = txHashes
-				.map((_, i) => receiptsJson.find((r) => r.id === i + 1)?.result)
-				.filter((r): r is RpcTransactionReceipt => r !== undefined)
-
-			return { receipts, timestamp, error: null }
-		} catch (e) {
-			return {
-				receipts: [] as RpcTransactionReceipt[],
-				timestamp: undefined,
-				error: String(e),
-			}
-		}
-	})
-
-const fetchTokenMetadata = createServerFn({ method: 'POST' })
-	.inputValidator((data: { addresses: string[] }) => data)
-	.handler(async ({ data }) => {
-		const { addresses } = data
-		if (addresses.length === 0) return { tokens: {} }
-
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		let auth: string | undefined
-		try {
-			const { env } = await import('cloudflare:workers')
-			auth = env.PRESTO_RPC_AUTH as string | undefined
-		} catch {
-			// Not in Cloudflare Workers environment
-		}
-
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		try {
-			// Batch call for name() and symbol() for each token
-			const batchRequest = addresses.flatMap((addr, i) => [
-				{
-					jsonrpc: '2.0',
-					id: i * 2 + 1,
-					method: 'eth_call',
-					params: [{ to: addr, data: '0x06fdde03' }, 'latest'], // name()
-				},
-				{
-					jsonrpc: '2.0',
-					id: i * 2 + 2,
-					method: 'eth_call',
-					params: [{ to: addr, data: '0x95d89b41' }, 'latest'], // symbol()
-				},
-			])
-
-			const res = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(batchRequest),
-			})
-			if (!res.ok) return { tokens: {} }
-
-			const results = (await res.json()) as Array<{
-				id: number
-				result?: `0x${string}`
-			}>
-
-			const decodeString = (hex: `0x${string}` | undefined): string => {
-				if (!hex || hex === '0x') return ''
-				try {
-					const [value] = decodeAbiParameters([{ type: 'string' }], hex)
-					return value
-				} catch {
-					return ''
-				}
-			}
-
-			const tokens: Record<
-				string,
-				{ name: string; symbol: string; decimals: number }
-			> = {}
-			for (let i = 0; i < addresses.length; i++) {
-				const nameResult = results.find((r) => r.id === i * 2 + 1)?.result
-				const symbolResult = results.find((r) => r.id === i * 2 + 2)?.result
-				const name = decodeString(nameResult)
-				const symbol = decodeString(symbolResult)
-				if (symbol) {
-					tokens[addresses[i].toLowerCase()] = { name, symbol, decimals: 6 }
-				}
-			}
-
-			return { tokens }
-		} catch {
-			return { tokens: {} }
-		}
-	})
 
 type ActivityItem = {
 	hash: string
@@ -719,7 +162,7 @@ async function fetchTransactions(
 	>,
 ): Promise<ActivityItem[]> {
 	try {
-		const result = await fetchTransactionsFromExplorer({ data: { address } })
+		const result = await fetchTransactionsFromExplorer(address)
 
 		if (result.error || result.transactions.length === 0) {
 			return []
@@ -731,7 +174,7 @@ async function fetchTransactions(
 		}>
 		const hashes = txData.map((tx) => tx.hash)
 
-		const receiptsResult = await fetchTransactionReceipts({ data: { hashes } })
+		const receiptsResult = await fetchTransactionReceipts(hashes)
 
 		// Collect unique block numbers to fetch timestamps
 		const blockNumbers = new Set<string>()
@@ -743,9 +186,7 @@ async function fetchTransactions(
 		const blockTimestamps = new Map<string, number>()
 		if (blockNumbers.size > 0) {
 			try {
-				const timestampsResult = await fetchBlockTimestamps({
-					data: { blockNumbers: Array.from(blockNumbers) },
-				})
+				const timestampsResult = await fetchBlockTimestamps(Array.from(blockNumbers))
 				for (const [blockNum, ts] of Object.entries(
 					timestampsResult.timestamps,
 				)) {
@@ -789,19 +230,24 @@ async function fetchTransactions(
 	}
 }
 
-function RouteComponent() {
-	const { address } = Route.useParams()
-	const { assets: initialAssets, activity: initialActivity } =
-		Route.useLoaderData()
+export function AddressPage({
+	address,
+	initialAssets: ssrAssets,
+}: {
+	address: Address.Address
+	initialAssets: AssetData[]
+}) {
+	const [initialActivity, setInitialActivity] = React.useState<ActivityItem[]>([])
 	const { copy, notifying } = useCopy()
 	const [showZeroBalances, setShowZeroBalances] = React.useState(false)
 	const { setSummary } = useActivitySummary()
 	const { disconnect } = useDisconnect()
-	const navigate = useNavigate()
+	const router = useRouter()
 	const [searchValue, setSearchValue] = React.useState('')
 	const [searchFocused, setSearchFocused] = React.useState(false)
 	const connection = useConnection()
-	const { sendTo, token: initialToken } = Route.useSearch()
+	const sendTo = undefined
+	const initialToken = undefined
 	const { t } = useTranslation()
 	const { announce } = useAnnounce()
 	const [sendingToken, setSendingToken] = React.useState<string | null>(
@@ -809,18 +255,48 @@ function RouteComponent() {
 	)
 	const [tokenAddressCopied, setTokenAddressCopied] = React.useState(false)
 
+
+	// Fetch activity on mount (assets come from SSR)
+	React.useEffect(() => {
+		let mounted = true
+
+		const loadActivity = async () => {
+			// Build token metadata map from SSR assets
+			const tokenMetadataMap = new Map<Address.Address, { decimals: number; symbol: string }>()
+			for (const asset of ssrAssets) {
+				if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
+					tokenMetadataMap.set(asset.address, {
+						decimals: asset.metadata.decimals,
+						symbol: asset.metadata.symbol,
+					})
+				}
+			}
+
+			// Fetch activity
+			const activityResult = await fetchTransactions(address, Promise.resolve(tokenMetadataMap))
+			if (!mounted) return
+			setInitialActivity(activityResult)
+		}
+
+		loadActivity()
+
+		return () => {
+			mounted = false
+		}
+	}, [address, ssrAssets])
+
 	// Assets state - starts from loader, can be refetched without page refresh
-	const [assetsData, setAssetsData] = React.useState(initialAssets)
+	const [assetsData, setAssetsData] = React.useState(ssrAssets)
 	// Activity state - starts from loader, can be refetched
 	const [activity, setActivity] = React.useState(initialActivity)
 
 	// Fetch token metadata client-side (async, non-blocking)
 	React.useEffect(() => {
-		const assetsMissingMetadata = initialAssets.filter((a) => !a.metadata)
+		const assetsMissingMetadata = ssrAssets.filter((a) => !a.metadata)
 		if (assetsMissingMetadata.length === 0) return
 
 		const addresses = assetsMissingMetadata.map((a) => a.address)
-		fetchTokenMetadata({ data: { addresses } }).then((result) => {
+		fetchTokenMetadata(addresses).then((result) => {
 			if (!result.tokens || Object.keys(result.tokens).length === 0) return
 
 			setAssetsData((prev) =>
@@ -835,7 +311,7 @@ function RouteComponent() {
 				}),
 			)
 		})
-	}, [initialAssets])
+	}, [ssrAssets])
 
 	// Block timeline state
 	const [currentBlock, setCurrentBlock] = React.useState<bigint | null>(null)
@@ -869,13 +345,13 @@ function RouteComponent() {
 
 	// Sync with loader data when address changes
 	React.useEffect(() => {
-		setAssetsData(initialAssets)
+		setAssetsData(ssrAssets)
 		setActivity(initialActivity)
-	}, [initialAssets, initialActivity])
+	}, [ssrAssets, initialActivity])
 
 	// Refetch balances without full page refresh
 	const refetchAssetsBalances = React.useCallback(async () => {
-		const newAssets = await fetchAssets({ data: { address } })
+		const newAssets = await fetchAssets(address)
 		if (!newAssets) return
 		setAssetsData((prev) => {
 			// Merge: update existing, add new
@@ -1085,7 +561,7 @@ function RouteComponent() {
 								e.preventDefault()
 								const trimmed = searchValue.trim()
 								if (trimmed.match(/^0x[a-fA-F0-9]{40}$/)) {
-									navigate({ to: '/$address', params: { address: trimmed } })
+									router.push('/' + trimmed)
 									setSearchValue('')
 									setSearchFocused(false)
 								}
@@ -1113,10 +589,7 @@ function RouteComponent() {
 										type="button"
 										onMouseDown={(e) => {
 											e.preventDefault()
-											navigate({
-												to: '/$address',
-												params: { address: searchValue.trim() },
-											})
+											router.push('/' + searchValue.trim() )
 											setSearchValue('')
 											setSearchFocused(false)
 										}}
@@ -1138,7 +611,7 @@ function RouteComponent() {
 							type="button"
 							onClick={() => {
 								disconnect()
-								navigate({ to: '/' })
+								router.push('/')
 							}}
 							className="flex items-center justify-center size-[36px] rounded-full bg-base-alt hover:bg-base-alt/80 active:bg-base-alt/60 transition-colors cursor-pointer focus-ring"
 							aria-label={t('common.logOut')}
@@ -1148,7 +621,7 @@ function RouteComponent() {
 					) : (
 						<button
 							type="button"
-							onClick={() => navigate({ to: '/' })}
+							onClick={() => router.push('/')}
 							className="flex items-center justify-center size-[36px] rounded-full bg-accent hover:bg-accent/90 active:bg-accent/80 transition-colors cursor-pointer focus-ring"
 							aria-label={t('common.signIn')}
 						>
@@ -2320,7 +1793,7 @@ function HoldingsTable({
 	announce: (message: string) => void
 }) {
 	const { t } = useTranslation()
-	const navigate = useNavigate()
+	const router = useRouter()
 	const [toastMessage, setToastMessage] = React.useState<string | null>(null)
 
 	// Use global access keys from context
@@ -2387,16 +1860,13 @@ function HoldingsTable({
 						onToggleSend={() => {
 							if (!isOwnProfile) {
 								if (connectedAddress) {
-									navigate({
-										to: '/$address',
-										params: { address: connectedAddress },
-										search: {
-											sendTo: address,
-											token: asset.address,
-										},
+									const params = new URLSearchParams({
+										sendTo: address,
+										token: asset.address,
 									})
+									router.push(`/${connectedAddress}?${params.toString()}`)
 								} else {
-									navigate({ to: '/' })
+									router.push('/')
 								}
 								return
 							}
@@ -2854,7 +2324,7 @@ function AssetRow({
 		setFaucetInitialBalance(asset.balance ?? null)
 		setFaucetState('loading')
 		try {
-			const result = await faucetFundAddress({ data: { address } })
+			const result = await faucetFundAddress(address)
 			if (!result.success) {
 				console.error('Faucet error:', result.error)
 				setFaucetState('idle')

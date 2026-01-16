@@ -1,4 +1,6 @@
-import { useNavigate, useRouter } from '@tanstack/react-router'
+'use client'
+
+import { useRouter } from 'waku/router/client'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -116,7 +118,6 @@ function CommandMenuPortal({
 	const inputRef = React.useRef<HTMLInputElement>(null)
 	const listRef = React.useRef<HTMLDivElement>(null)
 
-	const navigate = useNavigate()
 	const router = useRouter()
 	const account = useAccount()
 	const { disconnect } = useDisconnect()
@@ -168,7 +169,7 @@ function CommandMenuPortal({
 				iconBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
 				shortcut: 'G H',
 				onSelect: () => {
-					navigate({ to: '/' })
+					router.push('/')
 					close()
 				},
 				keywords: ['home', 'start', 'back'],
@@ -184,7 +185,7 @@ function CommandMenuPortal({
 				iconBg: 'bg-gradient-to-br from-purple-500 to-purple-600',
 				shortcut: 'G A',
 				onSelect: () => {
-					navigate({ to: '/$address', params: { address: addr } })
+					router.push(`/${addr}`)
 					close()
 				},
 				keywords: ['account', 'wallet', 'portfolio', 'balance'],
@@ -212,7 +213,7 @@ function CommandMenuPortal({
 					iconBg: 'bg-gradient-to-br from-green-500 to-green-600',
 					shortcut: 'R',
 					onSelect: () => {
-						router.invalidate()
+						window.location.reload()
 						close()
 					},
 					keywords: ['refresh', 'reload', 'sync'],
@@ -231,7 +232,7 @@ function CommandMenuPortal({
 				iconBg: 'bg-gradient-to-br from-red-500 to-red-600',
 				onSelect: () => {
 					disconnect()
-					navigate({ to: '/' })
+					router.push('/')
 					close()
 				},
 				keywords: ['logout', 'disconnect', 'signout', 'exit'],
@@ -328,7 +329,6 @@ function CommandMenuPortal({
 	}, [
 		t,
 		account.address,
-		navigate,
 		close,
 		router,
 		disconnect,
@@ -589,11 +589,7 @@ function CommandMenuPortal({
 											role="menuitem"
 											onClick={() => {
 												if (!account.address) return
-												navigate({
-													to: '/$address',
-													params: { address: account.address },
-													search: { sendTo: sendAddress },
-												})
+												router.push(`/${account.address}?sendTo=${sendAddress}`)
 												close()
 											}}
 											aria-label={`${t('commandMenu.sendSubmenu.sendTo')} ${sendAddress}`}

@@ -1,3 +1,5 @@
+'use client'
+
 import type { Address } from 'ox'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'

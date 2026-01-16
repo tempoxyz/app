@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { waapi, spring } from 'animejs'
 import ArrowLeftIcon from '~icons/lucide/arrow-left'

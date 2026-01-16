@@ -1,4 +1,6 @@
-import { Link } from '@tanstack/react-router'
+'use client'
+
+import { Link } from 'waku/router/client'
 import { type Address as AddressType, Value } from 'ox'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -216,8 +218,7 @@ export namespace TxDescription {
 				return (
 					<>
 						<Link
-							to="/$address"
-							params={{ address: part.value }}
+							to={`/${part.value}`}
 							className="text-accent press-down whitespace-nowrap font-mono"
 						>
 							{shortenAddress(part.value)}

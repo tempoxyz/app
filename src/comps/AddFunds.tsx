@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { cx } from '#lib/css'
 import { useOnrampOrder, useShowApplePay } from '#lib/onramp'

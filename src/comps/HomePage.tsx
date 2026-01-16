@@ -1,4 +1,6 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+'use client'
+
+import { Link, useRouter } from 'waku/router/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -39,13 +41,9 @@ function truncateAddress(address: string) {
 	return `${address.slice(0, 5)}…${address.slice(-3)}`
 }
 
-export const Route = createFileRoute('/_layout/')({
-	component: RouteComponent,
-})
-
-function RouteComponent() {
+export function HomePage() {
 	const { t } = useTranslation()
-	const navigate = useNavigate()
+	const router = useRouter()
 	const [address, setAddress] = React.useState('')
 	const inputRef = React.useRef<HTMLInputElement>(null)
 
@@ -58,8 +56,7 @@ function RouteComponent() {
 
 	useConnectionEffect({
 		onConnect: (data) => {
-			if (data.address)
-				navigate({ to: '/$address', params: { address: data.address } })
+			if (data.address) router.push(`/${data.address}`)
 		},
 	})
 
@@ -74,7 +71,7 @@ function RouteComponent() {
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
-		if (isValidAddress) navigate({ to: '/$address', params: { address } })
+		if (isValidAddress) router.push(`/${address}`)
 	}
 
 	React.useEffect(() => {
@@ -127,8 +124,7 @@ function RouteComponent() {
 						{getExampleAccounts().map((addr) => (
 							<Link
 								key={addr}
-								to="/$address"
-								params={{ address: addr }}
+								to={`/${addr}`}
 								className={cx(
 									'flex items-center gap-0.5 text-tertiary hover:text-secondary',
 									'px-2 py-1 sm:px-1.5 sm:py-0.5 rounded press-down focus-visible:outline-none',

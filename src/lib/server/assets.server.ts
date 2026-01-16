@@ -1,14 +1,13 @@
-import { createServerFn } from '@tanstack/react-start'
+'use server'
+
 import * as IDX from 'idxs'
 import type { Address } from 'ox'
 
 const TIP20_DECIMALS = 6
 const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
 
-// TODO: Remove this hardcoded USD assumption once proper price oracle is implemented
-// DONOTUSE is a test faucet token that we treat as USD-denominated for demo purposes
 const HARDCODED_USD_TOKENS = new Set([
-	'0x20c000000000000000000000033abb6ac7d235e5', // DONOTUSE (presto faucet token)
+	'0x20c000000000000000000000033abb6ac7d235e5',
 ])
 
 async function getIndexSupply() {
@@ -35,117 +34,114 @@ export type AssetData = {
 	valueUsd: number | undefined
 }
 
-export const fetchAssets = createServerFn({ method: 'GET' })
-	.inputValidator((input: { address: string }) => input)
-	.handler(async ({ data }): Promise<AssetData[] | null> => {
+export async function fetchAssets(
+	address: string,
+): Promise<AssetData[] | null> {
+	try {
+		let chainId: number
 		try {
-			const address = data.address as Address.Address
-			// Get chain ID from runtime env for server functions
-			let chainId: number
-			try {
-				const { env } = await import('cloudflare:workers')
-				const tempoEnv = env.VITE_TEMPO_ENV as string | undefined
-				chainId =
-					tempoEnv === 'moderato' ? 42431 : tempoEnv === 'devnet' ? 42430 : 4217
-			} catch {
-				// Local dev fallback - default to mainnet (presto)
-				chainId =
-					TEMPO_ENV === 'moderato'
-						? 42431
-						: TEMPO_ENV === 'devnet'
-							? 42430
-							: 4217
-			}
-
-			const { QB } = await getIndexSupply()
-			const qb = QB.withSignatures([TRANSFER_SIGNATURE])
-
-			// Single query: fetch all transfers involving this address
-			const transfersQuery = qb
-				.selectFrom('transfer')
-				.select(['address', 'from', 'to', 'amount'])
-				.where('chain', '=', chainId)
-				.where((eb) =>
-					eb.or([eb('to', '=', address), eb('from', '=', address)]),
-				)
-
-			const transfersResult = await transfersQuery.execute()
-
-			const balances = new Map<string, bigint>()
-			const addrLower = address.toLowerCase()
-
-			for (const row of transfersResult) {
-				const token = String(row.address).toLowerCase()
-				const amount = BigInt(row.amount)
-				const to = String(row.to).toLowerCase()
-				const from = String(row.from).toLowerCase()
-
-				if (to === addrLower) {
-					balances.set(token, (balances.get(token) ?? 0n) + amount)
-				}
-				if (from === addrLower) {
-					balances.set(token, (balances.get(token) ?? 0n) - amount)
-				}
-			}
-
-			// Only include tokens with non-zero balance
-			const tokensArray: Array<{
-				token: Address.Address
-				balance: bigint
-				metadata: undefined
-			}> = []
-			for (const [token, balance] of balances.entries()) {
-				if (balance !== 0n) {
-					tokensArray.push({
-						token: token as Address.Address,
-						balance,
-						metadata: undefined,
-					})
-				}
-			}
-
-			if (tokensArray.length === 0) return []
-
-			const MAX_TOKENS = 50
-
-			const assets: AssetData[] = tokensArray
-				.slice(0, MAX_TOKENS)
-				.map((row) => {
-					const isUsd = HARDCODED_USD_TOKENS.has(row.token.toLowerCase())
-					const valueUsd = isUsd
-						? Number(row.balance) / 10 ** TIP20_DECIMALS
-						: undefined
-
-					return {
-						address: row.token,
-						metadata: undefined,
-						balance: row.balance.toString(),
-						valueUsd,
-					}
-				})
-				.sort((a, b) => {
-					// Sort by balance first (non-zero balances first)
-					const aHasBalance = a.balance && a.balance !== '0'
-					const bHasBalance = b.balance && b.balance !== '0'
-					if (aHasBalance && !bHasBalance) return -1
-					if (!aHasBalance && bHasBalance) return 1
-
-					const aIsUsd = a.valueUsd !== undefined
-					const bIsUsd = b.valueUsd !== undefined
-
-					if (aIsUsd && bIsUsd) {
-						return (b.valueUsd ?? 0) - (a.valueUsd ?? 0)
-					}
-
-					if (aIsUsd) return -1
-					if (bIsUsd) return 1
-
-					return Number(BigInt(b.balance ?? '0') - BigInt(a.balance ?? '0'))
-				})
-
-			return assets
-		} catch (error) {
-			console.error('fetchAssets error:', error)
-			return null
+			const { env } = await import('cloudflare:workers')
+			const tempoEnv = env.VITE_TEMPO_ENV as string | undefined
+			chainId =
+				tempoEnv === 'moderato' ? 42431 : tempoEnv === 'devnet' ? 42430 : 4217
+		} catch {
+			chainId =
+				TEMPO_ENV === 'moderato'
+					? 42431
+					: TEMPO_ENV === 'devnet'
+						? 42430
+						: 4217
 		}
-	})
+
+		const { QB } = await getIndexSupply()
+		const qb = QB.withSignatures([TRANSFER_SIGNATURE])
+
+		const transfersQuery = qb
+			.selectFrom('transfer')
+			.select(['address', 'from', 'to', 'amount'])
+			.where('chain', '=', chainId)
+			.where((eb: { or: Function }) =>
+				eb.or([
+					(eb as { (...args: unknown[]): unknown })('to', '=', address),
+					(eb as { (...args: unknown[]): unknown })('from', '=', address),
+				]),
+			)
+
+		const transfersResult = await transfersQuery.execute()
+
+		const balances = new Map<string, bigint>()
+		const addrLower = address.toLowerCase()
+
+		for (const row of transfersResult) {
+			const token = String(row.address).toLowerCase()
+			const amount = BigInt(row.amount)
+			const to = String(row.to).toLowerCase()
+			const from = String(row.from).toLowerCase()
+
+			if (to === addrLower) {
+				balances.set(token, (balances.get(token) ?? 0n) + amount)
+			}
+			if (from === addrLower) {
+				balances.set(token, (balances.get(token) ?? 0n) - amount)
+			}
+		}
+
+		const tokensArray: Array<{
+			token: Address.Address
+			balance: bigint
+			metadata: undefined
+		}> = []
+		for (const [token, balance] of balances.entries()) {
+			if (balance !== 0n) {
+				tokensArray.push({
+					token: token as Address.Address,
+					balance,
+					metadata: undefined,
+				})
+			}
+		}
+
+		if (tokensArray.length === 0) return []
+
+		const MAX_TOKENS = 50
+
+		const assets: AssetData[] = tokensArray
+			.slice(0, MAX_TOKENS)
+			.map((row) => {
+				const isUsd = HARDCODED_USD_TOKENS.has(row.token.toLowerCase())
+				const valueUsd = isUsd
+					? Number(row.balance) / 10 ** TIP20_DECIMALS
+					: undefined
+
+				return {
+					address: row.token,
+					metadata: undefined,
+					balance: row.balance.toString(),
+					valueUsd,
+				}
+			})
+			.sort((a, b) => {
+				const aHasBalance = a.balance && a.balance !== '0'
+				const bHasBalance = b.balance && b.balance !== '0'
+				if (aHasBalance && !bHasBalance) return -1
+				if (!aHasBalance && bHasBalance) return 1
+
+				const aIsUsd = a.valueUsd !== undefined
+				const bIsUsd = b.valueUsd !== undefined
+
+				if (aIsUsd && bIsUsd) {
+					return (b.valueUsd ?? 0) - (a.valueUsd ?? 0)
+				}
+
+				if (aIsUsd) return -1
+				if (bIsUsd) return 1
+
+				return Number(BigInt(b.balance ?? '0') - BigInt(a.balance ?? '0'))
+			})
+
+		return assets
+	} catch (error) {
+		console.error('fetchAssets error:', error)
+		return null
+	}
+}

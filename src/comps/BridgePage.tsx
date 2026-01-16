@@ -1,3 +1,5 @@
+'use client'
+
 import {
 	type Connector,
 	useConnect,
@@ -8,13 +10,8 @@ import {
 	useDisconnect,
 } from 'wagmi'
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_bridge/bridge')({
-	component: BridgeRoute,
-})
-
-function BridgeRoute() {
+export function BridgePage() {
 	return (
 		<main className="">
 			<ConnectWallet />
@@ -58,7 +55,7 @@ function WalletOption({
 	React.useEffect(() => {
 		;(async () => {
 			const provider = await connector.getProvider()
-			setReady(!!provider)
+			setReady(Boolean(provider))
 		})()
 	}, [connector])
 
