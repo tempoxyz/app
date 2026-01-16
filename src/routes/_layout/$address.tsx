@@ -115,25 +115,37 @@ export const Route = createFileRoute('/_layout/$address')({
 		if (!Address.validate(params.address)) throw notFound()
 	},
 	loader: async ({ params }) => {
-		const assets = await fetchAssets({ data: { address: params.address } })
+		const address = params.address as Address.Address
 
-		const tokenMetadataMap = new Map<
-			Address.Address,
-			{ decimals: number; symbol: string }
-		>()
-		for (const asset of assets ?? []) {
-			if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
-				tokenMetadataMap.set(asset.address, {
-					decimals: asset.metadata.decimals,
-					symbol: asset.metadata.symbol,
-				})
+		// Start assets fetch
+		const assetsPromise = fetchAssets({ data: { address: params.address } })
+
+		// Derive token metadata promise from assets
+		const tokenMetadataPromise = assetsPromise.then((assets) => {
+			const map = new Map<
+				Address.Address,
+				{ decimals: number; symbol: string }
+			>()
+			for (const asset of assets ?? []) {
+				if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
+					map.set(asset.address, {
+						decimals: asset.metadata.decimals,
+						symbol: asset.metadata.symbol,
+					})
+				}
 			}
-		}
+			return map
+		})
 
-		const activity = await fetchTransactions(
-			params.address as Address.Address,
-			tokenMetadataMap,
-		)
+		// Start activity fetch in parallel - it will await metadata only when parsing
+		const activityPromise = fetchTransactions(address, tokenMetadataPromise)
+
+		// Wait for both
+		const [assets, activity] = await Promise.all([
+			assetsPromise,
+			activityPromise,
+		])
+
 		return { assets: assets ?? [], activity }
 	},
 })
@@ -702,7 +714,9 @@ function convertRpcReceiptToViemReceipt(
 
 async function fetchTransactions(
 	address: Address.Address,
-	tokenMetadataMap: Map<Address.Address, { decimals: number; symbol: string }>,
+	tokenMetadataMapPromise: Promise<
+		Map<Address.Address, { decimals: number; symbol: string }>
+	>,
 ): Promise<ActivityItem[]> {
 	try {
 		const result = await fetchTransactionsFromExplorer({ data: { address } })
@@ -718,10 +732,6 @@ async function fetchTransactions(
 		const hashes = txData.map((tx) => tx.hash)
 
 		const receiptsResult = await fetchTransactionReceipts({ data: { hashes } })
-
-		const getTokenMetadata: GetTokenMetadataFn = (tokenAddress) => {
-			return tokenMetadataMap.get(tokenAddress)
-		}
 
 		// Collect unique block numbers to fetch timestamps
 		const blockNumbers = new Set<string>()
@@ -744,6 +754,12 @@ async function fetchTransactions(
 			} catch {
 				// Continue without timestamps if fetch fails
 			}
+		}
+
+		// Await token metadata only when ready to parse
+		const tokenMetadataMap = await tokenMetadataMapPromise
+		const getTokenMetadata: GetTokenMetadataFn = (tokenAddress) => {
+			return tokenMetadataMap.get(tokenAddress)
 		}
 
 		const items: ActivityItem[] = []
@@ -866,7 +882,7 @@ function RouteComponent() {
 	const refetchActivity = React.useCallback(async () => {
 		const newActivity = await fetchTransactions(
 			address as Address.Address,
-			tokenMetadataMap,
+			Promise.resolve(tokenMetadataMap),
 		)
 		setActivity(newActivity)
 	}, [address, tokenMetadataMap])

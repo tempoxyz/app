@@ -2,7 +2,6 @@ import { createServerFn } from '@tanstack/react-start'
 import * as IDX from 'idxs'
 import type { Address } from 'ox'
 import { decodeAbiParameters } from 'viem'
-import { TOKEN_CREATED_EVENT } from '#lib/abis'
 
 const TIP20_DECIMALS = 6
 const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
@@ -133,8 +132,6 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 			const { QB } = await getIndexSupply()
 			const qb = QB.withSignatures([TRANSFER_SIGNATURE])
 
-			console.log('[fetchAssets] chainId:', chainId, 'address:', address)
-
 			const incomingQuery = qb
 				.selectFrom('transfer')
 				.select((eb) => [
@@ -155,38 +152,10 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 				.where('from', '=', address)
 				.groupBy('address')
 
-			const tokenCreatedQuery = QB.withSignatures([TOKEN_CREATED_EVENT])
-				.selectFrom('tokencreated')
-				.select(['token', 'name', 'symbol', 'currency'])
-				.where('chain', '=', chainId as never)
-
-			const [incomingResult, outgoingResult, tokenCreatedResult] =
-				await Promise.all([
-					incomingQuery.execute(),
-					outgoingQuery.execute(),
-					tokenCreatedQuery.execute(),
-				])
-
-			console.log(
-				'[fetchAssets] incoming:',
-				incomingResult.length,
-				'outgoing:',
-				outgoingResult.length,
-				'tokens:',
-				tokenCreatedResult.length,
-			)
-
-			const tokenMetadata = new Map<
-				string,
-				{ name: string; symbol: string; currency: string }
-			>()
-			for (const row of tokenCreatedResult) {
-				tokenMetadata.set(String(row.token).toLowerCase(), {
-					name: String(row.name),
-					symbol: String(row.symbol),
-					currency: String(row.currency),
-				})
-			}
+			const [incomingResult, outgoingResult] = await Promise.all([
+				incomingQuery.execute(),
+				outgoingQuery.execute(),
+			])
 
 			const balances = new Map<string, bigint>()
 
@@ -202,39 +171,21 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 				balances.set(token, (balances.get(token) ?? 0n) - sent)
 			}
 
-			// Include all tokens from user's balance, plus all created tokens (with 0 balance if not held)
-			const allTokens = new Map<
-				string,
-				{
-					token: Address.Address
-					balance: bigint
-					metadata: ReturnType<typeof tokenMetadata.get>
-				}
-			>()
-
-			// Add user's balances
+			// Only include tokens with non-zero balance
+			const tokensArray: Array<{
+				token: Address.Address
+				balance: bigint
+				metadata: undefined
+			}> = []
 			for (const [token, balance] of balances.entries()) {
 				if (balance !== 0n) {
-					allTokens.set(token, {
+					tokensArray.push({
 						token: token as Address.Address,
 						balance,
-						metadata: tokenMetadata.get(token),
+						metadata: undefined,
 					})
 				}
 			}
-
-			// Add all created tokens with 0 balance if not already in user's assets
-			for (const [token, metadata] of tokenMetadata.entries()) {
-				if (!allTokens.has(token)) {
-					allTokens.set(token, {
-						token: token as Address.Address,
-						balance: 0n,
-						metadata,
-					})
-				}
-			}
-
-			const tokensArray = [...allTokens.values()]
 
 			if (tokensArray.length === 0) return []
 
@@ -244,6 +195,11 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 				.slice(0, MAX_TOKENS)
 				.filter((t) => !t.metadata)
 				.map((t) => t.token)
+
+			const tokenMetadata = new Map<
+				string,
+				{ name: string; symbol: string; currency: string }
+			>()
 
 			if (tokensMissingMetadata.length > 0) {
 				const rpcMetadataResults = await Promise.all(
@@ -267,7 +223,7 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 			const assets: AssetData[] = tokensArray
 				.slice(0, MAX_TOKENS)
 				.map((row) => {
-					const metadata = row.metadata ?? tokenMetadata.get(row.token)
+					const metadata = tokenMetadata.get(row.token.toLowerCase())
 					// TODO: Replace hardcoded USD check with proper price oracle
 					const isUsd =
 						metadata?.currency === 'USD' ||
