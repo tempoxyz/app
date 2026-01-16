@@ -23,6 +23,8 @@ export function Section(props: {
 	titleRight?: React.ReactNode
 	externalLink?: string
 	defaultOpen?: boolean
+	open?: boolean
+	onOpenChange?: (open: boolean) => void
 	headerRight?: React.ReactNode
 	children: React.ReactNode
 	backButton?: {
@@ -37,11 +39,13 @@ export function Section(props: {
 		titleRight,
 		externalLink,
 		defaultOpen = false,
+		open: controlledOpen,
+		onOpenChange,
 		headerRight,
 		children,
 		backButton,
 	} = props
-	const [open, setOpen] = React.useState(defaultOpen)
+	const [open, setOpenState] = React.useState(defaultOpen)
 	const contentRef = React.useRef<HTMLDivElement>(null)
 	const wrapperRef = React.useRef<HTMLDivElement>(null)
 	const innerRef = React.useRef<HTMLDivElement>(null)
@@ -49,20 +53,18 @@ export function Section(props: {
 		null,
 	)
 
-	const handleClick = () => {
+	const setOpenWithAnimation = React.useCallback((nextOpen: boolean) => {
 		const content = contentRef.current
 		const wrapper = wrapperRef.current
 		const inner = innerRef.current
 		if (!content || !wrapper || !inner) return
 
-		// Cancel any running animation
 		if (animationRef.current) {
 			animationRef.current.cancel()
 			animationRef.current = null
 		}
 
-		const nextOpen = !open
-		setOpen(nextOpen)
+		setOpenState(nextOpen)
 
 		if (nextOpen) {
 			const targetHeight = wrapper.getBoundingClientRect().height
@@ -98,6 +100,19 @@ export function Section(props: {
 				animationRef.current = null
 			})
 		}
+	}, [])
+
+	const prevControlledOpen = React.useRef(controlledOpen)
+	React.useEffect(() => {
+		if (controlledOpen !== undefined && controlledOpen !== prevControlledOpen.current) {
+			setOpenWithAnimation(controlledOpen)
+		}
+		prevControlledOpen.current = controlledOpen
+	}, [controlledOpen, setOpenWithAnimation])
+
+	const handleClick = () => {
+		onOpenChange?.(!open)
+		setOpenWithAnimation(!open)
 	}
 
 	return (

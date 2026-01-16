@@ -24,6 +24,7 @@ import ExternalLinkIcon from '~icons/lucide/external-link'
 import ReceiptIcon from '~icons/lucide/receipt'
 import BoxIcon from '~icons/lucide/box'
 import RefreshCwIcon from '~icons/lucide/refresh-cw'
+import LoaderIcon from '~icons/lucide/loader-2'
 
 const ACTIVITY_PAGE_SIZE = 10
 
@@ -435,14 +436,17 @@ export function ActivitySection({
 	address,
 	currentBlock,
 	tokenMetadataMap,
+	loading = false,
 }: {
 	activity: ActivityItem[]
 	address: string
 	currentBlock: bigint | null
 	tokenMetadataMap: Map<Address.Address, { decimals: number; symbol: string }>
+	loading?: boolean
 }) {
 	const { t } = useTranslation()
 	const [activeTab, setActiveTab] = React.useState<ActivityTab>('mine')
+	const [sectionOpen, setSectionOpen] = React.useState(false)
 	const [selectedBlock, setSelectedBlock] = React.useState<bigint | undefined>()
 	const [blockActivity, setBlockActivity] = React.useState<ActivityItem[]>([])
 
@@ -580,14 +584,16 @@ export function ActivitySection({
 			<button
 				type="button"
 				tabIndex={0}
-				onClick={(e) => {
+				onMouseDown={(e) => {
 					e.stopPropagation()
 					setActiveTab('mine')
+					setSectionOpen(true)
 				}}
 				onKeyDown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.stopPropagation()
 						setActiveTab('mine')
+						setSectionOpen(true)
 					}
 				}}
 				className={cx(
@@ -602,14 +608,16 @@ export function ActivitySection({
 			<button
 				type="button"
 				tabIndex={0}
-				onClick={(e) => {
+				onMouseDown={(e) => {
 					e.stopPropagation()
 					setActiveTab('everyone')
+					setSectionOpen(true)
 				}}
 				onKeyDown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.stopPropagation()
 						setActiveTab('everyone')
+						setSectionOpen(true)
 					}
 				}}
 				className={cx(
@@ -628,10 +636,15 @@ export function ActivitySection({
 		<Section
 			title={t('portfolio.activity')}
 			externalLink={`https://explore.mainnet.tempo.xyz/address/${address}`}
-			defaultOpen
+			open={sectionOpen}
+			onOpenChange={setSectionOpen}
 			titleRight={tabButtons}
 		>
-			{activeTab === 'mine' ? (
+			{loading ? (
+				<div className="flex items-center justify-center py-4">
+					<LoaderIcon className="size-4 animate-spin text-tertiary" />
+				</div>
+			) : activeTab === 'mine' ? (
 				<>
 					<ActivityHeatmap activity={activity} currentBlock={currentBlock} />
 					<ActivityList

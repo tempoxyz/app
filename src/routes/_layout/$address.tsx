@@ -81,45 +81,15 @@ export const Route = createFileRoute('/_layout/$address')({
 		if (!Address.validate(params.address)) throw notFound()
 	},
 	loader: async ({ params }) => {
-		const address = params.address as Address.Address
-
-		// Start assets fetch
-		const assetsPromise = fetchAssets({ data: { address: params.address } })
-
-		// Derive token metadata promise from assets
-		const tokenMetadataPromise = assetsPromise.then((assets) => {
-			const map = new Map<
-				Address.Address,
-				{ decimals: number; symbol: string }
-			>()
-			for (const asset of assets ?? []) {
-				if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
-					map.set(asset.address, {
-						decimals: asset.metadata.decimals,
-						symbol: asset.metadata.symbol,
-					})
-				}
-			}
-			return map
-		})
-
-		// Start activity fetch in parallel - it will await metadata only when parsing
-		const activityPromise = fetchTransactions(address, tokenMetadataPromise)
-
-		// Wait for both
-		const [assets, activity] = await Promise.all([
-			assetsPromise,
-			activityPromise,
-		])
-
-		return { assets: assets ?? [], activity }
+		// Only fetch assets SSR - activity loads client-side for faster initial render
+		const assets = await fetchAssets({ data: { address: params.address } })
+		return { assets: assets ?? [] }
 	},
 })
 
 function RouteComponent() {
 	const { address } = Route.useParams()
-	const { assets: initialAssets, activity: initialActivity } =
-		Route.useLoaderData()
+	const { assets: initialAssets } = Route.useLoaderData()
 	const { copy, notifying } = useCopy()
 	const [showZeroBalances, setShowZeroBalances] = React.useState(false)
 	const { setSummary } = useActivitySummary()
@@ -138,8 +108,11 @@ function RouteComponent() {
 
 	// Assets state - starts from loader, can be refetched without page refresh
 	const [assetsData, setAssetsData] = React.useState(initialAssets)
-	// Activity state - starts from loader, can be refetched
-	const [activity, setActivity] = React.useState(initialActivity)
+	// Activity state - fetched client-side for faster initial render
+	const [activity, setActivity] = React.useState<
+		Awaited<ReturnType<typeof fetchTransactions>>
+	>([])
+	const [activityLoading, setActivityLoading] = React.useState(true)
 
 	// Fetch token metadata client-side (async, non-blocking)
 	React.useEffect(() => {
@@ -191,11 +164,45 @@ function RouteComponent() {
 		}
 	}, [])
 
-	// Sync with loader data when address changes
+	// Sync assets with loader data when address changes
 	React.useEffect(() => {
 		setAssetsData(initialAssets)
-		setActivity(initialActivity)
-	}, [initialAssets, initialActivity])
+	}, [initialAssets])
+
+	// Fetch activity client-side (not SSR for faster initial render)
+	React.useEffect(() => {
+		let cancelled = false
+		setActivityLoading(true)
+		setActivity([])
+
+		const tokenMetadataMapForActivity = new Map<
+			Address.Address,
+			{ decimals: number; symbol: string }
+		>()
+		for (const asset of initialAssets) {
+			if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
+				tokenMetadataMapForActivity.set(asset.address, {
+					decimals: asset.metadata.decimals,
+					symbol: asset.metadata.symbol,
+				})
+			}
+		}
+
+		fetchTransactions(address as Address.Address, Promise.resolve(tokenMetadataMapForActivity))
+			.then((result) => {
+				if (!cancelled) {
+					setActivity(result)
+					setActivityLoading(false)
+				}
+			})
+			.catch(() => {
+				if (!cancelled) setActivityLoading(false)
+			})
+
+		return () => {
+			cancelled = true
+		}
+	}, [address, initialAssets])
 
 	// Refetch balances without full page refresh
 	const refetchAssetsBalances = React.useCallback(async () => {
@@ -579,6 +586,7 @@ function RouteComponent() {
 						address={address}
 						currentBlock={currentBlock}
 						tokenMetadataMap={tokenMetadataMap}
+						loading={activityLoading}
 					/>
 
 					<AccessKeysSection assets={assetsData} accountAddress={address} />

@@ -153,13 +153,18 @@ export const fetchTransactionReceipts = createServerFn({ method: 'POST' })
 			if (!response.ok) {
 				return { receipts: hashes.map((hash) => ({ hash, receipt: null })) }
 			}
+			const textStart = performance.now()
+			const text = await response.text()
+			console.log(
+				`[perf]     fetchTransactionReceipts text(): ${(performance.now() - textStart).toFixed(0)}ms (${(text.length / 1024).toFixed(0)}KB)`,
+			)
 			const parseStart = performance.now()
-			const results = (await response.json()) as Array<{
+			const results = JSON.parse(text) as Array<{
 				id: number
 				result?: RpcTransactionReceipt
 			}>
 			console.log(
-				`[perf]     fetchTransactionReceipts json parse: ${(performance.now() - parseStart).toFixed(0)}ms`,
+				`[perf]     fetchTransactionReceipts JSON.parse: ${(performance.now() - parseStart).toFixed(0)}ms`,
 			)
 
 			const receipts = hashes.map((hash, i) => {
@@ -214,13 +219,18 @@ export const fetchBlockTimestamps = createServerFn({ method: 'POST' })
 
 			if (!response.ok) return { timestamps: {} }
 
+			const textStart = performance.now()
+			const text = await response.text()
+			console.log(
+				`[perf]     fetchBlockTimestamps text(): ${(performance.now() - textStart).toFixed(0)}ms (${(text.length / 1024).toFixed(0)}KB)`,
+			)
 			const parseStart = performance.now()
-			const results = (await response.json()) as Array<{
+			const results = JSON.parse(text) as Array<{
 				id: number
 				result?: { timestamp?: string }
 			}>
 			console.log(
-				`[perf]     fetchBlockTimestamps json parse: ${(performance.now() - parseStart).toFixed(0)}ms`,
+				`[perf]     fetchBlockTimestamps JSON.parse: ${(performance.now() - parseStart).toFixed(0)}ms`,
 			)
 
 			const timestamps: Record<string, number> = {}
@@ -611,30 +621,34 @@ export async function fetchTransactions(
 		const txData = result.transactions.slice(0, 50) as Array<{
 			hash: string
 			timestamp?: string
+			blockNumber?: string
 		}>
 		const hashes = txData.map((tx) => tx.hash)
 
-		const receiptsResult = await fetchTransactionReceipts({ data: { hashes } })
+		const txsWithTimestamp = txData.filter((tx) => tx.timestamp).length
+		console.log(`[perf]   explorer timestamps: ${txsWithTimestamp}/${txData.length} txs have timestamps`)
 
-		const blockNumbers = new Set<string>()
-		for (const { receipt } of receiptsResult.receipts) {
-			if (receipt) blockNumbers.add(receipt.blockNumber)
+		// Get unique block numbers from explorer response for parallel fetch
+		const blockNumbersFromExplorer = new Set<string>()
+		for (const tx of txData) {
+			if (tx.blockNumber) blockNumbersFromExplorer.add(tx.blockNumber)
 		}
 
+		// Fetch receipts and timestamps in parallel
+		const parallelStart = performance.now()
+		const [receiptsResult, timestampsResult] = await Promise.all([
+			fetchTransactionReceipts({ data: { hashes } }),
+			txsWithTimestamp < txData.length && blockNumbersFromExplorer.size > 0
+				? fetchBlockTimestamps({
+						data: { blockNumbers: Array.from(blockNumbersFromExplorer) },
+					})
+				: Promise.resolve({ timestamps: {} }),
+		])
+		console.log(`[perf]   parallel receipts+timestamps: ${(performance.now() - parallelStart).toFixed(0)}ms`)
+
 		const blockTimestamps = new Map<string, number>()
-		if (blockNumbers.size > 0) {
-			try {
-				const timestampsResult = await fetchBlockTimestamps({
-					data: { blockNumbers: Array.from(blockNumbers) },
-				})
-				for (const [blockNum, ts] of Object.entries(
-					timestampsResult.timestamps,
-				)) {
-					blockTimestamps.set(blockNum, ts)
-				}
-			} catch {
-				// Continue without timestamps if fetch fails
-			}
+		for (const [blockNum, ts] of Object.entries(timestampsResult.timestamps)) {
+			blockTimestamps.set(blockNum, ts)
 		}
 
 		const tokenMetadataMap = await tokenMetadataMapPromise
