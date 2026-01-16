@@ -590,7 +590,7 @@ function createNoiseTexture(gl: WebGL2RenderingContext): WebGLTexture | null {
 	const data = new Uint8Array(size * size * 4)
 
 	// Generate tileable noise by sampling on a torus (wrapping coordinates)
-	const scale = 4
+	const scale = 1
 	for (let y = 0; y < size; y++) {
 		for (let x = 0; x < size; x++) {
 			const i = (y * size + x) * 4
