@@ -40,6 +40,7 @@ import {
 } from '#comps/activity'
 import { AddFunds } from '#comps/AddFunds'
 import { RewardsPopoverButton } from '#comps/RewardsPopover'
+import { SetupApplePay } from '#comps/SetupApplePay'
 import { Layout } from '#comps/Layout'
 import { TokenIcon } from '#comps/TokenIcon'
 import { Section } from '#comps/Section'
@@ -1181,7 +1182,7 @@ function RouteComponent() {
 									<br />
 									{address.slice(21)}
 								</code>
-								<span className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt shrink-0 group-active:translate-y-px">
+								<span className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors shrink-0 group-active:translate-y-px">
 									{notifying ? (
 										<CheckIcon className="size-[14px] text-positive" />
 									) : (
@@ -1303,7 +1304,7 @@ function RouteComponent() {
 
 					{config.onramp.enabled && (
 						<Section title="Add Funds">
-							<AddFunds address={address} />
+							<SetupApplePay address={address} />
 						</Section>
 					)}
 
