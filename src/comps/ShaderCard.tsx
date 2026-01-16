@@ -505,7 +505,10 @@ export function ShaderCard({
 		const canvas = canvasRef.current
 		if (!canvas) return
 
-		const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false })
+		const gl = canvas.getContext('webgl2', {
+			alpha: true,
+			premultipliedAlpha: false,
+		})
 		if (!gl) {
 			console.error('WebGL2 not supported')
 			return
@@ -907,7 +910,7 @@ export function ShaderCard({
 			window.removeEventListener('resize', resize)
 			cancelAnimationFrame(animationId)
 		}
-	}, [colors, intensity])
+	}, [colors, intensity, onReady])
 
 	return (
 		<canvas

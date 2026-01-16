@@ -42,8 +42,8 @@ importers:
         specifier: ^25.2.1
         version: 25.7.4
       idxs:
-        specifier: ^0.0.5
-        version: 0.0.5
+        specifier: ^0.0.6
+        version: 0.0.6
       jose:
         specifier: ^6.1.0
         version: 6.1.3
