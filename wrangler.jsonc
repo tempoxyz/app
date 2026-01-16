@@ -11,9 +11,7 @@
 	"vars": {
 		"VITE_TEMPO_ENV": "presto",
 		"PRESTO_RPC_AUTH": "",
-		"INDEXER_API_KEY": "",
-		"CB_API_KEY_ID": "",
-		"CB_API_KEY_SECRET": ""
+		"INDEXER_API_KEY": ""
 	},
 	"env": {
 		"devnet": {
