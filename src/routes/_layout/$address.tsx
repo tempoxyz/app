@@ -814,6 +814,29 @@ function RouteComponent() {
 	// Activity state - starts from loader, can be refetched
 	const [activity, setActivity] = React.useState(initialActivity)
 
+	// Fetch token metadata client-side (async, non-blocking)
+	React.useEffect(() => {
+		const assetsMissingMetadata = initialAssets.filter((a) => !a.metadata)
+		if (assetsMissingMetadata.length === 0) return
+
+		const addresses = assetsMissingMetadata.map((a) => a.address)
+		fetchTokenMetadata({ data: { addresses } }).then((result) => {
+			if (!result.tokens || Object.keys(result.tokens).length === 0) return
+
+			setAssetsData((prev) =>
+				prev.map((asset) => {
+					if (asset.metadata) return asset
+					const meta = result.tokens[asset.address.toLowerCase()]
+					if (!meta) return asset
+					return {
+						...asset,
+						metadata: { name: meta.name, symbol: meta.symbol, decimals: 6 },
+					}
+				}),
+			)
+		})
+	}, [initialAssets])
+
 	// Block timeline state
 	const [currentBlock, setCurrentBlock] = React.useState<bigint | null>(null)
 	const [_selectedBlockFilter, _setSelectedBlockFilter] = React.useState<

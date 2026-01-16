@@ -1,7 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import * as IDX from 'idxs'
 import type { Address } from 'ox'
-import { decodeAbiParameters } from 'viem'
 
 const TIP20_DECIMALS = 6
 const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
@@ -11,71 +10,6 @@ const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
 const HARDCODED_USD_TOKENS = new Set([
 	'0x20c000000000000000000000033abb6ac7d235e5', // DONOTUSE (presto faucet token)
 ])
-
-async function fetchTokenMetadataViaRpc(
-	token: string,
-): Promise<{ name: string; symbol: string } | null> {
-	const rpcUrl =
-		TEMPO_ENV === 'moderato'
-			? 'https://rpc.tempo.xyz'
-			: 'https://rpc.presto.tempo.xyz'
-
-	const { env } = await import('cloudflare:workers')
-	const auth = env.PRESTO_RPC_AUTH as string | undefined
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-	if (auth) {
-		headers.Authorization = `Basic ${btoa(auth)}`
-	}
-
-	try {
-		const response = await fetch(rpcUrl, {
-			method: 'POST',
-			headers,
-			body: JSON.stringify([
-				{
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'eth_call',
-					params: [{ to: token, data: '0x06fdde03' }, 'latest'],
-				},
-				{
-					jsonrpc: '2.0',
-					id: 2,
-					method: 'eth_call',
-					params: [{ to: token, data: '0x95d89b41' }, 'latest'],
-				},
-			]),
-		})
-		if (!response.ok) return null
-
-		const results = (await response.json()) as Array<{
-			id: number
-			result?: `0x${string}`
-			error?: unknown
-		}>
-
-		const nameResult = results.find((r) => r.id === 1)?.result
-		const symbolResult = results.find((r) => r.id === 2)?.result
-
-		if (!nameResult || !symbolResult) return null
-
-		const decodeString = (hex: `0x${string}`) => {
-			try {
-				const [value] = decodeAbiParameters([{ type: 'string' }], hex)
-				return value
-			} catch {
-				return ''
-			}
-		}
-
-		return {
-			name: decodeString(nameResult),
-			symbol: decodeString(symbolResult),
-		}
-	} catch {
-		return null
-	}
-}
 
 async function getIndexSupply() {
 	let apiKey: string | undefined
@@ -132,43 +66,32 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 			const { QB } = await getIndexSupply()
 			const qb = QB.withSignatures([TRANSFER_SIGNATURE])
 
-			const incomingQuery = qb
+			// Single query: fetch all transfers involving this address
+			const transfersQuery = qb
 				.selectFrom('transfer')
-				.select((eb) => [
-					eb.ref('address').as('token'),
-					eb.fn.sum('amount').as('received'),
-				])
+				.select(['address', 'from', 'to', 'amount'])
 				.where('chain', '=', chainId)
-				.where('to', '=', address)
-				.groupBy('address')
+				.where((eb) =>
+					eb.or([eb('to', '=', address), eb('from', '=', address)]),
+				)
 
-			const outgoingQuery = qb
-				.selectFrom('transfer')
-				.select((eb) => [
-					eb.ref('address').as('token'),
-					eb.fn.sum('amount').as('sent'),
-				])
-				.where('chain', '=', chainId)
-				.where('from', '=', address)
-				.groupBy('address')
-
-			const [incomingResult, outgoingResult] = await Promise.all([
-				incomingQuery.execute(),
-				outgoingQuery.execute(),
-			])
+			const transfersResult = await transfersQuery.execute()
 
 			const balances = new Map<string, bigint>()
+			const addrLower = address.toLowerCase()
 
-			for (const row of incomingResult) {
-				const token = String(row.token).toLowerCase()
-				const received = BigInt(row.received)
-				balances.set(token, (balances.get(token) ?? 0n) + received)
-			}
+			for (const row of transfersResult) {
+				const token = String(row.address).toLowerCase()
+				const amount = BigInt(row.amount)
+				const to = String(row.to).toLowerCase()
+				const from = String(row.from).toLowerCase()
 
-			for (const row of outgoingResult) {
-				const token = String(row.token).toLowerCase()
-				const sent = BigInt(row.sent)
-				balances.set(token, (balances.get(token) ?? 0n) - sent)
+				if (to === addrLower) {
+					balances.set(token, (balances.get(token) ?? 0n) + amount)
+				}
+				if (from === addrLower) {
+					balances.set(token, (balances.get(token) ?? 0n) - amount)
+				}
 			}
 
 			// Only include tokens with non-zero balance
@@ -191,60 +114,19 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 
 			const MAX_TOKENS = 50
 
-			const tokensMissingMetadata = tokensArray
-				.slice(0, MAX_TOKENS)
-				.filter((t) => !t.metadata)
-				.map((t) => t.token)
+			const assets: AssetData[] = tokensArray.slice(0, MAX_TOKENS).map((row) => {
+				const isUsd = HARDCODED_USD_TOKENS.has(row.token.toLowerCase())
+				const valueUsd = isUsd
+					? Number(row.balance) / 10 ** TIP20_DECIMALS
+					: undefined
 
-			const tokenMetadata = new Map<
-				string,
-				{ name: string; symbol: string; currency: string }
-			>()
-
-			if (tokensMissingMetadata.length > 0) {
-				const rpcMetadataResults = await Promise.all(
-					tokensMissingMetadata.map(async (token) => {
-						const metadata = await fetchTokenMetadataViaRpc(token)
-						return { token, metadata }
-					}),
-				)
-
-				for (const { token, metadata } of rpcMetadataResults) {
-					if (metadata) {
-						tokenMetadata.set(token.toLowerCase(), {
-							name: metadata.name,
-							symbol: metadata.symbol,
-							currency: '',
-						})
-					}
+				return {
+					address: row.token,
+					metadata: undefined,
+					balance: row.balance.toString(),
+					valueUsd,
 				}
-			}
-
-			const assets: AssetData[] = tokensArray
-				.slice(0, MAX_TOKENS)
-				.map((row) => {
-					const metadata = tokenMetadata.get(row.token.toLowerCase())
-					// TODO: Replace hardcoded USD check with proper price oracle
-					const isUsd =
-						metadata?.currency === 'USD' ||
-						HARDCODED_USD_TOKENS.has(row.token.toLowerCase())
-					const valueUsd = isUsd
-						? Number(row.balance) / 10 ** TIP20_DECIMALS
-						: undefined
-
-					return {
-						address: row.token,
-						metadata: metadata
-							? {
-									name: metadata.name,
-									symbol: metadata.symbol,
-									decimals: TIP20_DECIMALS,
-								}
-							: undefined,
-						balance: row.balance.toString(),
-						valueUsd,
-					}
-				})
+			})
 				.sort((a, b) => {
 					// Sort by balance first (non-zero balances first)
 					const aHasBalance = a.balance && a.balance !== '0'
