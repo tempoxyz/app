@@ -19,12 +19,6 @@ async function getIndexSupply() {
 	} catch {
 		apiKey = process.env.INDEXER_API_KEY ?? import.meta.env.INDEXER_API_KEY
 	}
-	console.log(
-		'[getIndexSupply] apiKey present:',
-		!!apiKey,
-		'length:',
-		apiKey?.length,
-	)
 	const IS = IDX.IndexSupply.create({ apiKey })
 	return { IS, QB: IDX.QueryBuilder.from(IS) }
 }
