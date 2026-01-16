@@ -177,42 +177,13 @@ export function AddFunds(props: AddFunds.Props) {
 				)}
 			</div>
 
-			{/* Always reserve space for the button - same height as Apple Pay button */}
-				<div className="relative h-[44px]">
-					{isModalOpen && (
-						<div className={cx('absolute inset-0', !isIframeLoaded && 'opacity-0')}>
-							<ApplePayIframe
-								url={iframeUrl}
-								onLoad={() => setIsIframeLoaded(true)}
-								onCancel={reset}
-								inline
-							/>
-						</div>
-					)}
-					{/* Loading/placeholder button styled like Apple Pay */}
-					{(!isModalOpen || !isIframeLoaded) && (
-						<button
-							type="button"
-							onClick={handleSubmit}
-							disabled={!isValidAmount || isLoading || isModalOpen}
-							className={cx(
-								'absolute inset-0 flex items-center justify-center gap-1.5 w-full h-full text-[16px] font-medium rounded-[22px] cursor-pointer press-down transition-colors',
-								isValidAmount && !isLoading && !isModalOpen
-									? 'bg-white text-black hover:bg-white/95'
-									: 'bg-white/80 text-black/40 cursor-not-allowed',
-							)}
-						>
-							{isLoading || isModalOpen ? (
-								<LoaderIcon className="size-4 animate-spin text-black/50" />
-							) : (
-								<>
-									<span>Buy with</span>
-									<ApplePayLogo className="h-[20px]" />
-								</>
-							)}
-						</button>
-					)}
-				</div>
+			{isModalOpen && (
+				<ApplePayIframe
+					url={iframeUrl}
+					onLoad={() => setIsIframeLoaded(true)}
+					onCancel={reset}
+				/>
+			)}
 
 			{createOrder.error && (
 				<p className="text-[12px] text-negative">{createOrder.error.message}</p>
