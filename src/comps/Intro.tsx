@@ -94,7 +94,6 @@ function useAmbientColors() {
 	return { colors, intensity }
 }
 
-const INTRO_APPEAR_DELAY = 50
 const cardSpring = spring({ mass: 1, stiffness: 800, damping: 60 })
 
 export function Intro() {
@@ -107,7 +106,7 @@ export function Intro() {
 		if (!el) return
 		const timer = setTimeout(() => {
 			waapi.animate(el, { opacity: [0, 1], scale: [0.98, 1], ease: cardSpring })
-		}, INTRO_APPEAR_DELAY)
+		}, 20)
 		return () => clearTimeout(timer)
 	}, [])
 

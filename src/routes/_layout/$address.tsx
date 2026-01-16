@@ -1031,7 +1031,7 @@ function RouteComponent() {
 								fill="none"
 								aria-hidden="true"
 							>
-								<title>Tempo logo</title>
+								<title>Tempo</title>
 								<path
 									d="M123.273 190.794H93.445L121.09 105.318H85.7334L93.445 80.2642H191.95L184.238 105.318H150.773L123.273 190.794Z"
 									style={{ fill: 'light-dark(#f5f5f5, #0a0a0a)' }}
@@ -1126,37 +1126,37 @@ function RouteComponent() {
 							/>
 						</div>
 						<div className="flex items-center gap-2 max-w-full">
-							<code className="text-[11px] sm:text-[13px] font-mono text-secondary leading-tight min-w-0">
-								{address.slice(0, 21)}
-								<br />
-								{address.slice(21)}
-							</code>
-							<div className="flex items-center gap-1.5">
-								<button
-									type="button"
-									onClick={() => {
-										copy(address)
-										announce(t('a11y.addressCopied'))
-									}}
-									className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt hover:bg-base-alt/70 cursor-pointer press-down transition-colors shrink-0 focus-ring"
-									aria-label={t('common.copyAddress')}
-								>
+							<button
+								type="button"
+								onClick={() => {
+									copy(address)
+									announce(t('a11y.addressCopied'))
+								}}
+								className="group flex items-center gap-2 cursor-pointer rounded-md focus-ring"
+								aria-label={t('common.copyAddress')}
+							>
+								<code className="text-[11px] sm:text-[13px] font-mono text-secondary leading-tight min-w-0 text-left group-active:translate-y-px">
+									{address.slice(0, 21)}
+									<br />
+									{address.slice(21)}
+								</code>
+								<span className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt shrink-0 group-active:translate-y-px">
 									{notifying ? (
 										<CheckIcon className="size-[14px] text-positive" />
 									) : (
 										<CopyIcon className="size-[14px] text-tertiary" />
 									)}
-								</button>
-								<a
-									href={`https://explore.mainnet.tempo.xyz/address/${address}`}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt hover:bg-base-alt/70 press-down transition-colors shrink-0 focus-ring"
-									aria-label={t('common.viewOnExplorer')}
-								>
-									<ExternalLinkIcon className="size-[14px] text-tertiary" />
-								</a>
-							</div>
+								</span>
+							</button>
+							<a
+								href={`https://explore.mainnet.tempo.xyz/address/${address}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt hover:bg-base-alt/70 press-down transition-colors shrink-0 focus-ring"
+								aria-label={t('common.viewOnExplorer')}
+							>
+								<ExternalLinkIcon className="size-[14px] text-tertiary" />
+							</a>
 						</div>
 					</div>
 					<div className="order-1 sm:order-2 self-center sm:self-start w-full sm:w-auto px-8 sm:px-0">

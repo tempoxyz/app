@@ -130,7 +130,6 @@ function RootDocument({
 				<HeadContent />
 			</head>
 			<body className="antialiased">
-				<SkipLink />
 				<WagmiProvider config={wagmiConfig} initialState={wagmiState}>
 					<QueryClientProvider client={queryClient}>
 						<AnnouncerProvider>
