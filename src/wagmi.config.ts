@@ -204,11 +204,9 @@ export function getWagmiConfig() {
 		batch: { multicall: false },
 		chains: [chain, tempoLocalnet],
 		connectors: [
-			// rpId is determined dynamically: the key-manager's challenge response
-			// may include an rp.id which takes precedence, otherwise the browser
-			// uses the current origin's effective domain
 			webAuthn({
 				keyManager: getKeyManager(),
+				rpId: 'tempo.xyz',
 			}),
 		],
 		multiInjectedProviderDiscovery: false,
