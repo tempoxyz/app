@@ -1,4 +1,14 @@
 /** biome-ignore-all lint/correctness/useHookAtTopLevel: _ */
+/**
+ * ShaderCard
+ *
+ * Render pipeline:
+ * 1. Gradient      - Animated color gradient based on activity
+ * 2. Blur          - Gaussian blur (horizontal + vertical, repeated)
+ * 3. Composite     - Stretched wordmark rows overlaid on blurred gradient
+ * 4. Wave          - Noise-based water distortion applied to entire surface
+ * 5. LiquidGlass   - Edge refraction with superellipse shape
+ */
 import * as React from 'react'
 
 // =============================================================================
@@ -32,6 +42,9 @@ const WORDMARK_OPACITY_LIGHT = 0.1
 const WORDMARK_STROKE_WIDTH = 0.6
 const WORDMARK_TEXTURE_SCALE = 4
 const WORDMARK_FLOW_DIRECTION = -1
+const WORDMARK_WAVE_AMPLITUDE = 40.0
+const WORDMARK_WAVE_FREQUENCY = 0.0003
+const WORDMARK_WAVE_SPEED = 0.002
 
 // =============================================================================
 // GENERAL SETTINGS
@@ -79,6 +92,7 @@ const TEMPO_HEIGHT = 18.25
 // SHADERS
 // =============================================================================
 
+// Shared vertex shader (used by all passes)
 const VERTEX_SHADER = `#version 300 es
 in vec2 a_position;
 out vec2 v_uv;
@@ -89,7 +103,7 @@ void main() {
 }
 `
 
-// Generate gradient shader with colors embedded as constants
+// [Pass 1] Gradient shader - generates animated color gradient
 function createGradientShaderSource(
 	colors: Array<[number, number, number]>,
 ): string {
@@ -167,7 +181,7 @@ void main() {
 `
 }
 
-// Blur shader - Gaussian weighted blur with 21 samples
+// [Pass 2] Blur shader - Gaussian weighted blur with 21 samples
 const BLUR_SHADER = `#version 300 es
 precision highp float;
 
@@ -214,7 +228,7 @@ void main() {
 }
 `
 
-// Composite shader - combines blurred gradient with sharp wordmark
+// [Pass 3] Composite shader - combines blurred gradient with stretched wordmark rows
 const COMPOSITE_SHADER = `#version 300 es
 precision highp float;
 
@@ -248,6 +262,7 @@ vec4 sampleWordmark(vec2 pixelCoord) {
 		return vec4(0.0);
 	}
 
+	// Stretching based on row index
 	float patternOffset = u_time * u_patternLength * u_flowDirection;
 	float effectiveIndex = mod(rowIndex + patternOffset, u_patternLength);
 
@@ -279,7 +294,7 @@ void main() {
 	// Layer 1: Blurred gradient
 	vec4 gradient = texture(u_gradientTexture, v_uv);
 
-	// Layer 2: Sharp wordmark
+	// Layer 2: Sharp wordmark with water wave effect
 	vec4 wordmark = sampleWordmark(pixelCoord);
 
 	// Composite with alpha blending
@@ -290,7 +305,64 @@ void main() {
 }
 `
 
-// LiquidGlass effect shader - edge refraction and animated glow
+// [Pass 4] Wave shader - noise-based water distortion effect
+const WAVE_SHADER = `#version 300 es
+precision highp float;
+
+in vec2 v_uv;
+out vec4 fragColor;
+
+uniform sampler2D u_texture;
+uniform vec2 u_resolution;
+uniform float u_waveAmplitude;
+uniform float u_waveFrequency;
+uniform float u_waveSpeed;
+uniform float u_waveTime;
+
+// Simplex-style noise
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
+
+float snoise(vec2 v) {
+	const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+	vec2 i = floor(v + dot(v, C.yy));
+	vec2 x0 = v - i + dot(i, C.xx);
+	vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+	vec4 x12 = x0.xyxy + C.xxzz;
+	x12.xy -= i1;
+	i = mod289(i);
+	vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+	vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+	m = m * m;
+	m = m * m;
+	vec3 x = 2.0 * fract(p * C.www) - 1.0;
+	vec3 h = abs(x) - 0.5;
+	vec3 ox = floor(x + 0.5);
+	vec3 a0 = x - ox;
+	m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
+	vec3 g;
+	g.x = a0.x * x0.x + h.x * x0.y;
+	g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+	return 130.0 * dot(m, g);
+}
+
+void main() {
+	vec2 pixelCoord = v_uv * u_resolution;
+	vec2 noiseCoord = pixelCoord * u_waveFrequency;
+	float t = u_waveTime * u_waveSpeed;
+
+	float waveX = snoise(noiseCoord + vec2(t, 0.0)) * u_waveAmplitude;
+	float waveY = snoise(noiseCoord + vec2(100.0, t * 0.7)) * u_waveAmplitude;
+
+	vec2 distortedUV = v_uv + vec2(waveX, waveY) / u_resolution;
+	distortedUV = clamp(distortedUV, 0.0, 1.0);
+
+	fragColor = texture(u_texture, distortedUV);
+}
+`
+
+// [Pass 5] LiquidGlass shader - edge refraction with rounded rectangle shape
 const LIQUIDGLASS_SHADER = `#version 300 es
 precision highp float;
 
@@ -375,6 +447,10 @@ void main() {
 	fragColor = vec4(color.rgb, color.a * alpha);
 }
 `
+
+// =============================================================================
+// WEBGL HELPERS
+// =============================================================================
 
 function createShader(
 	gl: WebGL2RenderingContext,
@@ -479,6 +555,10 @@ function createWordmarkTexture(
 	return texture
 }
 
+// =============================================================================
+// COMPONENT
+// =============================================================================
+
 export interface ShaderCardProps {
 	className?: string
 	ambientColors?: Array<[number, number, number]>
@@ -541,6 +621,7 @@ export function ShaderCard({
 		)
 		const blurProgram = createProgram(gl, vertexShader, BLUR_SHADER)
 		const compositeProgram = createProgram(gl, vertexShader, COMPOSITE_SHADER)
+		const waveProgram = createProgram(gl, vertexShader, WAVE_SHADER)
 		const liquidglassProgram = createProgram(
 			gl,
 			vertexShader,
@@ -550,6 +631,7 @@ export function ShaderCard({
 			!gradientProgram ||
 			!blurProgram ||
 			!compositeProgram ||
+			!waveProgram ||
 			!liquidglassProgram
 		)
 			return
@@ -808,6 +890,14 @@ export function ShaderCard({
 				gl.getUniformLocation(compositeProgram, 'u_opacity'),
 				isDark ? WORDMARK_OPACITY_DARK : WORDMARK_OPACITY_LIGHT,
 			)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_flowDirection'),
+				WORDMARK_FLOW_DIRECTION,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(compositeProgram, 'u_time'),
+				wordmarkTime,
+			)
 			const wordmarkColor = isDark
 				? [0.961, 0.961, 0.961]
 				: [0.039, 0.039, 0.039] // #f5f5f5 / #0a0a0a (color-primary)
@@ -817,18 +907,47 @@ export function ShaderCard({
 				wordmarkColor[1],
 				wordmarkColor[2],
 			)
-			gl.uniform1f(
-				gl.getUniformLocation(compositeProgram, 'u_flowDirection'),
-				WORDMARK_FLOW_DIRECTION,
+
+			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+
+			// Pass 7: Wave distortion from fb2 to fb1
+			gl.bindFramebuffer(gl.FRAMEBUFFER, fb1.framebuffer)
+			gl.viewport(0, 0, currentWidth, currentHeight)
+			gl.clearColor(0, 0, 0, 0)
+			gl.clear(gl.COLOR_BUFFER_BIT)
+
+			gl.useProgram(waveProgram)
+			setupPositionAttrib(waveProgram)
+
+			gl.activeTexture(gl.TEXTURE0)
+			gl.bindTexture(gl.TEXTURE_2D, fb2.texture)
+			gl.uniform1i(gl.getUniformLocation(waveProgram, 'u_texture'), 0)
+
+			gl.uniform2f(
+				gl.getUniformLocation(waveProgram, 'u_resolution'),
+				currentWidth,
+				currentHeight,
 			)
 			gl.uniform1f(
-				gl.getUniformLocation(compositeProgram, 'u_time'),
-				wordmarkTime,
+				gl.getUniformLocation(waveProgram, 'u_waveAmplitude'),
+				WORDMARK_WAVE_AMPLITUDE,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(waveProgram, 'u_waveFrequency'),
+				WORDMARK_WAVE_FREQUENCY,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(waveProgram, 'u_waveSpeed'),
+				WORDMARK_WAVE_SPEED,
+			)
+			gl.uniform1f(
+				gl.getUniformLocation(waveProgram, 'u_waveTime'),
+				time,
 			)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
-			// Pass 7: LiquidGlass effect to screen
+			// Pass 8: LiquidGlass effect to screen
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 			gl.viewport(0, 0, canvas.width, canvas.height)
 			gl.clearColor(0, 0, 0, 0)
@@ -841,7 +960,7 @@ export function ShaderCard({
 			setupPositionAttrib(liquidglassProgram)
 
 			gl.activeTexture(gl.TEXTURE0)
-			gl.bindTexture(gl.TEXTURE_2D, fb2.texture)
+			gl.bindTexture(gl.TEXTURE_2D, fb1.texture)
 			gl.uniform1i(gl.getUniformLocation(liquidglassProgram, 'u_texture'), 0)
 
 			gl.uniform2f(
