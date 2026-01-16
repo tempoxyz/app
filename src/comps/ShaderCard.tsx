@@ -336,14 +336,14 @@ void main() {
 	float waveX = (noise.r - 0.5) * 2.0 * u_waveAmplitude;
 	float waveY = (noise.g - 0.5) * 2.0 * u_waveAmplitude;
 
-	vec2 distortedUV = v_uv + vec2(waveX, waveY) / u_resolution;
+	// Fade out wave near edges to prevent cropping and stretching
+	float edgeMargin = u_waveAmplitude / min(u_resolution.x, u_resolution.y);
+	float fadeX = smoothstep(0.0, edgeMargin, v_uv.x) * smoothstep(0.0, edgeMargin, 1.0 - v_uv.x);
+	float fadeY = smoothstep(0.0, edgeMargin, v_uv.y) * smoothstep(0.0, edgeMargin, 1.0 - v_uv.y);
+	float edgeFade = fadeX * fadeY;
 
-	// Return transparent if out of bounds (prevents edge stretching)
-	if (distortedUV.x < 0.0 || distortedUV.x > 1.0 || distortedUV.y < 0.0 || distortedUV.y > 1.0) {
-		fragColor = vec4(0.0);
-	} else {
-		fragColor = texture(u_texture, distortedUV);
-	}
+	vec2 distortedUV = v_uv + vec2(waveX, waveY) * edgeFade / u_resolution;
+	fragColor = texture(u_texture, distortedUV);
 }
 `
 
