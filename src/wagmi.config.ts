@@ -1,6 +1,6 @@
 import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
 import { getRequestHeader } from '@tanstack/react-start/server'
-import { tempoDevnet, tempoLocalnet, tempoModerato } from 'wagmi/chains'
+import { tempoDevnet, tempoLocalnet, tempoModerato } from 'viem/chains'
 import { tempoPresto } from './lib/chains'
 import {
 	cookieStorage,
@@ -165,74 +165,33 @@ export const getTempoChain = createIsomorphicFn()
 				: tempoPresto,
 	)
 
-const RPC_PROXY_HOSTNAME = 'proxy.tempo.xyz'
-
-const getRpcProxyUrl = createIsomorphicFn()
-	.client(() => {
-		const chain = getTempoChain()
-		return {
-			http: `https://${RPC_PROXY_HOSTNAME}/rpc/${chain.id}`,
-			webSocket: `wss://${RPC_PROXY_HOSTNAME}/rpc/${chain.id}`,
-		}
-	})
-	.server(() => {
-		const chain = getTempoChain()
-		const key = process.env.TEMPO_RPC_KEY
-		const keyParam = key ? `?key=${key}` : ''
-		return {
-			http: `https://${RPC_PROXY_HOSTNAME}/rpc/${chain.id}${keyParam}`,
-			webSocket: `wss://${RPC_PROXY_HOSTNAME}/rpc/${chain.id}${keyParam}`,
-		}
-	})
-
-// const getRpcUrls = createIsomorphicFn()
-// 	.client(() => {
-// 		const chain = getTempoChain()
-// 		return chain.rpcUrls.default
-// 	})
-// 	.server(() => {
-// 		const chain = getTempoChain()
-// 		// Moderato uses path-based key, mainnet (presto) uses HTTP Basic Auth
-
-// 		const isModerato = TEMPO_ENV === 'moderato'
-// 		if (!isModerato) return chain.rpcUrls.default
-
-// 		return {
-// 			webSocket: chain.rpcUrls.default.webSocket.map(
-// 				(url: string) => `${url}/${process.env.TEMPO_RPC_KEY}`,
-// 			),
-// 			http: chain.rpcUrls.default.http.map(
-// 				(url: string) => `${url}/${process.env.TEMPO_RPC_KEY}`,
-// 			),
-// 		}
-// 	})
-
-const getFallbackUrls = createIsomorphicFn()
+const getRpcUrls = createIsomorphicFn()
 	.client(() => {
 		const chain = getTempoChain()
 		return chain.rpcUrls.default
 	})
 	.server(() => {
 		const chain = getTempoChain()
-		const key = process.env.TEMPO_RPC_KEY
-		return {
-			webSocket: chain.rpcUrls.default.webSocket.map((url) =>
-				key ? `${url}/${key}` : url,
-			),
-			http: chain.rpcUrls.default.http.map((url) =>
-				key ? `${url}/${key}` : url,
-			),
+		const isModerato = TEMPO_ENV === 'moderato'
+		// Moderato uses path-based key, mainnet (presto) uses HTTP Basic Auth
+		if (isModerato) {
+			return {
+				webSocket: chain.rpcUrls.default.webSocket.map(
+					(url: string) => `${url}/${process.env.TEMPO_RPC_KEY}`,
+				),
+				http: chain.rpcUrls.default.http.map(
+					(url: string) => `${url}/${process.env.TEMPO_RPC_KEY}`,
+				),
+			}
 		}
+		return chain.rpcUrls.default
 	})
 
 function getTempoTransport() {
-	const proxy = getRpcProxyUrl()
-	const fallbackUrls = getFallbackUrls()
+	const rpcUrls = getRpcUrls()
 	return fallback([
-		webSocket(proxy.webSocket),
-		http(proxy.http),
-		...fallbackUrls.webSocket.map(webSocket),
-		...fallbackUrls.http.map(http),
+		...rpcUrls.http.map((url: string) => http(url, { batch: true })),
+		...rpcUrls.webSocket.map(webSocket),
 	])
 }
 
