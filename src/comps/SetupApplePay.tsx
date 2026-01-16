@@ -241,6 +241,9 @@ function OtpStep(props: {
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const value = e.target.value.replace(/\D/g, '').slice(0, 6)
 		props.onChange(value)
+		if (value.length === 6 && !props.isLoading && !isExpired) {
+			props.onSubmit()
+		}
 	}
 
 	const isValid = /^\d{6}$/.test(props.otp)
