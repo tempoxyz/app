@@ -27,6 +27,7 @@
 		"preview": "vite preview --mode='preview'"
 	},
 	"dependencies": {
+		"@coinbase/wallet-sdk": "^4.3.7",
 		"@emoji-mart/data": "^1.2.1",
 		"@emoji-mart/react": "^1.1.1",
 		"@tanstack/react-query": "^5.90.17",
