@@ -94,42 +94,80 @@ function useAmbientColors() {
 	return { colors, intensity }
 }
 
-const introSpring = spring({
-	mass: 2,
-	stiffness: 1000,
-	damping: 80,
-})
-
 export function Intro() {
 	const { t } = useTranslation()
 	const { colors, intensity } = useAmbientColors()
 	const canvasRef = React.useRef<HTMLDivElement>(null)
+	const centeredWordmarkRef = React.useRef<HTMLDivElement>(null)
 	const wordmarkRef = React.useRef<HTMLDivElement>(null)
 	const taglineRef = React.useRef<HTMLParagraphElement>(null)
-	const buttonsRef = React.useRef<HTMLDivElement>(null)
+	const button1Ref = React.useRef<HTMLAnchorElement>(null)
+	const button2Ref = React.useRef<HTMLAnchorElement>(null)
 	const [isReady, setIsReady] = React.useState(false)
 
 	const handleReady = React.useCallback(() => {
 		setIsReady(true)
 		const canvas = canvasRef.current
+		const centeredWordmark = centeredWordmarkRef.current
 		const wordmark = wordmarkRef.current
 		const tagline = taglineRef.current
-		const buttons = buttonsRef.current
-		if (!canvas || !wordmark || !tagline || !buttons) return
+		const button1 = button1Ref.current
+		const button2 = button2Ref.current
+		if (
+			!canvas ||
+			!centeredWordmark ||
+			!wordmark ||
+			!tagline ||
+			!button1 ||
+			!button2
+		)
+			return
+
+		// 0. Centered wordmark disappears
+		waapi.animate(centeredWordmark, {
+			opacity: [1, 0],
+			scale: [1, 0.95],
+			ease: spring({
+				mass: 1,
+				stiffness: 8000,
+				damping: 400,
+			}),
+		})
 
 		// 1. Card appears
 		waapi.animate(canvas, {
 			opacity: [0, 1],
 			scale: [0.92, 1],
-			ease: introSpring,
+			ease: spring({
+				mass: 1,
+				stiffness: 1000,
+				damping: 80,
+			}),
+			delay: 80,
 		})
 
-		// 2. Content appears staggered
-		waapi.animate([wordmark, tagline, buttons], {
+		// 2. Wordmark and tagline appear staggered
+		waapi.animate([wordmark, tagline], {
 			opacity: [0, 1],
-			translateX: [-14, 0],
-			ease: introSpring,
-			delay: stagger(80, { start: 100 }),
+			scale: [0.97, 1],
+			ease: spring({
+				mass: 1,
+				stiffness: 4000,
+				damping: 200,
+			}),
+			delay: stagger(80, { start: 120 }),
+		})
+
+		// 3. Buttons appear staggered with translateX
+		waapi.animate([button1, button2], {
+			opacity: [0, 1],
+			scale: [0.97, 1],
+			ease: spring({
+				mass: 1,
+				stiffness: 2000,
+				damping: 200,
+			}),
+			delay: stagger(60, { start: 300 }),
 		})
 	}, [])
 
@@ -146,13 +184,21 @@ export function Intro() {
 					onReady={handleReady}
 				/>
 			</div>
-			{!isReady && (
-				<div className="z-10 place-self-center row-start-1 row-end-3 col-start-1">
-					<TempoWordmark />
-				</div>
-			)}
+			<div
+				ref={centeredWordmarkRef}
+				className="z-10 place-self-center row-start-1 row-end-3 col-start-1"
+				style={{ pointerEvents: isReady ? 'none' : undefined }}
+			>
+				<TempoWordmark />
+			</div>
 			<div className="relative flex flex-col items-start gap-y-2 z-10 max-md:gap-y-1.5 row-start-2 col-start-1">
-				<div ref={wordmarkRef} style={{ opacity: isReady ? undefined : 0 }}>
+				<div
+					ref={wordmarkRef}
+					style={{
+						opacity: isReady ? undefined : 0,
+						transformOrigin: 'left center',
+					}}
+				>
 					<TempoWordmark />
 				</div>
 				<p
@@ -161,18 +207,20 @@ export function Intro() {
 					style={{
 						opacity: isReady ? undefined : 0,
 						color: 'light-dark(#505050, rgba(255,255,255,0.7))',
+						transformOrigin: 'left center',
 					}}
 				>
 					{t('intro.tagline')}
 				</p>
-				<div
-					ref={buttonsRef}
-					className="flex gap-1.5 flex-wrap isolate"
-					style={{ opacity: isReady ? undefined : 0 }}
-				>
+				<div className="flex gap-1.5 flex-wrap isolate">
 					<a
+						ref={button1Ref}
 						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
-						style={{ color: 'light-dark(#505050, white)' }}
+						style={{
+							color: 'light-dark(#505050, white)',
+							opacity: isReady ? undefined : 0,
+							transformOrigin: 'center',
+						}}
 						href="https://tempo.xyz"
 						rel="noreferrer"
 						target="_blank"
@@ -181,8 +229,13 @@ export function Intro() {
 						{t('intro.website')}
 					</a>
 					<a
+						ref={button2Ref}
 						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
-						style={{ color: 'light-dark(#505050, white)' }}
+						style={{
+							color: 'light-dark(#505050, white)',
+							opacity: isReady ? undefined : 0,
+							transformOrigin: 'center',
+						}}
 						href="https://docs.tempo.xyz"
 						rel="noreferrer"
 						target="_blank"
