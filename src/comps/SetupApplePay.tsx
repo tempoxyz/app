@@ -141,9 +141,15 @@ function ContactStep(props: {
 	isLoading: boolean
 	error?: string
 }) {
+	const [showPhone, setShowPhone] = React.useState(false)
 	const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(props.email)
 	const isPhoneValid = props.phone.replace(/\D/g, '').length >= 10
-	const isValid = isEmailValid && isPhoneValid
+
+	const handleEmailContinue = () => {
+		if (isEmailValid) {
+			setShowPhone(true)
+		}
+	}
 
 	return (
 		<div className="flex flex-col gap-3">
@@ -154,25 +160,28 @@ function ContactStep(props: {
 					placeholder="email@example.com"
 					value={props.email}
 					onChange={(e) => props.onEmailChange(e.target.value)}
-					disabled={props.isLoading}
+					onKeyDown={(e) => e.key === 'Enter' && handleEmailContinue()}
+					disabled={props.isLoading || showPhone}
 					className={cx(
 						'w-full px-3 py-2 text-[13px] rounded-md border transition-colors',
 						'bg-base placeholder:text-tertiary',
 						'border-card-border text-primary hover:border-accent/50 focus:border-accent',
-						props.isLoading && 'opacity-50 cursor-not-allowed',
+						(props.isLoading || showPhone) && 'opacity-50 cursor-not-allowed',
 					)}
 				/>
 			</label>
 
-			<div className="flex flex-col gap-1.5">
-				<span className="text-[12px] text-secondary">Phone</span>
-				<PhoneInput
-					value={props.phone}
-					onChange={props.onPhoneChange}
-					disabled={props.isLoading}
-					onEnter={() => isValid && props.onSubmit()}
-				/>
-			</div>
+			{showPhone && (
+				<div className="flex flex-col gap-1.5">
+					<span className="text-[12px] text-secondary">Phone</span>
+					<PhoneInput
+						value={props.phone}
+						onChange={props.onPhoneChange}
+						disabled={props.isLoading}
+						onEnter={() => isPhoneValid && props.onSubmit()}
+					/>
+				</div>
+			)}
 
 			{props.error && (
 				<p className="text-[11px] text-negative">{props.error}</p>
@@ -180,11 +189,11 @@ function ContactStep(props: {
 
 			<button
 				type="button"
-				onClick={props.onSubmit}
-				disabled={!isValid || props.isLoading}
+				onClick={showPhone ? props.onSubmit : handleEmailContinue}
+				disabled={showPhone ? !isPhoneValid || props.isLoading : !isEmailValid}
 				className={cx(
 					'flex items-center justify-center gap-2 w-full py-2.5 text-[13px] font-medium rounded-md cursor-pointer press-down transition-colors',
-					isValid && !props.isLoading
+					(showPhone ? isPhoneValid && !props.isLoading : isEmailValid)
 						? 'bg-accent text-white hover:bg-accent/90'
 						: 'bg-base-alt text-tertiary cursor-not-allowed',
 				)}
