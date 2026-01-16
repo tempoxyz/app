@@ -112,7 +112,7 @@
 	"landing": {
 		"getStarted": "Get started",
 		"exploreDescription": "Explore accounts, token balances, and transaction history on Tempo",
-		"enterAddress": "Enter address",
+		"enterAddress": "Enter account address",
 		"orUsePasskey": "or use another passkey",
 		"orSignInWithPasskey": "or sign in with passkey"
 	},
