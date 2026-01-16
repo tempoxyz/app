@@ -45,7 +45,6 @@ const WORDMARK_TEXTURE_SCALE = 4
 const WORDMARK_FLOW_DIRECTION = -1
 const WORDMARK_WAVE_AMPLITUDE = 40.0
 const WORDMARK_WAVE_SCALE = 0.5
-const WORDMARK_WAVE_SPEED = 0.00003
 const WORDMARK_NOISE_SIZE = 256
 
 // =============================================================================
@@ -556,7 +555,17 @@ function createNoiseTexture(gl: WebGL2RenderingContext): WebGLTexture | null {
 
 	const texture = gl.createTexture()
 	gl.bindTexture(gl.TEXTURE_2D, texture)
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data)
+	gl.texImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		size,
+		size,
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		data,
+	)
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -980,10 +989,7 @@ export function ShaderCard({
 				gl.getUniformLocation(waveProgram, 'u_waveScale'),
 				WORDMARK_WAVE_SCALE,
 			)
-			gl.uniform1f(
-				gl.getUniformLocation(waveProgram, 'u_waveTime'),
-				time * WORDMARK_WAVE_SPEED,
-			)
+			gl.uniform1f(gl.getUniformLocation(waveProgram, 'u_waveTime'), time)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
@@ -1000,17 +1006,11 @@ export function ShaderCard({
 
 			gl.activeTexture(gl.TEXTURE0)
 			gl.bindTexture(gl.TEXTURE_2D, fb1.texture)
-			gl.uniform1i(
-				gl.getUniformLocation(blendProgram, 'u_gradientTexture'),
-				0,
-			)
+			gl.uniform1i(gl.getUniformLocation(blendProgram, 'u_gradientTexture'), 0)
 
 			gl.activeTexture(gl.TEXTURE1)
 			gl.bindTexture(gl.TEXTURE_2D, fb3.texture)
-			gl.uniform1i(
-				gl.getUniformLocation(blendProgram, 'u_wordmarksTexture'),
-				1,
-			)
+			gl.uniform1i(gl.getUniformLocation(blendProgram, 'u_wordmarksTexture'), 1)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
