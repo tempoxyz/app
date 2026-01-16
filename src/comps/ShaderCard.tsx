@@ -58,6 +58,66 @@ const DEFAULT_AMBIENT_COLORS: Array<[number, number, number]> = [
 	[0.545, 0.361, 0.965], // purple (#8b5cf6)
 ]
 const DEFAULT_AMBIENT_INTENSITY = 0.7
+const COLOR_TRANSITION_DURATION = 500
+
+// Oklab color space conversion for perceptually uniform color interpolation
+function srgbToLinear(x: number): number {
+	return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)
+}
+
+function linearToSrgb(x: number): number {
+	return x <= 0.0031308 ? x * 12.92 : 1.055 * Math.pow(x, 1 / 2.4) - 0.055
+}
+
+function rgbToOklab(r: number, g: number, b: number): [number, number, number] {
+	const lr = srgbToLinear(r)
+	const lg = srgbToLinear(g)
+	const lb = srgbToLinear(b)
+
+	const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb)
+	const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb)
+	const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb)
+
+	return [
+		0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+		1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+		0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+	]
+}
+
+function oklabToRgb(L: number, a: number, b: number): [number, number, number] {
+	const l = L + 0.3963377774 * a + 0.2158037573 * b
+	const m = L - 0.1055613458 * a - 0.0638541728 * b
+	const s = L - 0.0894841775 * a - 1.291485548 * b
+
+	const l3 = l * l * l
+	const m3 = m * m * m
+	const s3 = s * s * s
+
+	const lr = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3
+	const lg = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3
+	const lb = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3
+
+	return [
+		Math.max(0, Math.min(1, linearToSrgb(lr))),
+		Math.max(0, Math.min(1, linearToSrgb(lg))),
+		Math.max(0, Math.min(1, linearToSrgb(lb))),
+	]
+}
+
+function lerpColorOklab(
+	c1: [number, number, number],
+	c2: [number, number, number],
+	t: number,
+): [number, number, number] {
+	const [L1, a1, b1] = rgbToOklab(c1[0], c1[1], c1[2])
+	const [L2, a2, b2] = rgbToOklab(c2[0], c2[1], c2[2])
+	return oklabToRgb(
+		L1 + (L2 - L1) * t,
+		a1 + (a2 - a1) * t,
+		b1 + (b2 - b1) * t,
+	)
+}
 
 // =============================================================================
 // LIQUIDGLASS SETTINGS
@@ -106,25 +166,10 @@ void main() {
 `
 
 // [Pass 1] Gradient shader - generates animated color gradient
-function createGradientShaderSource(
-	colors: Array<[number, number, number]>,
-): string {
-	const n = colors.length
+// Supports up to 8 colors via uniforms for smooth transitions
+const MAX_GRADIENT_COLORS = 8
 
-	const colorDecls = colors
-		.map(
-			(c, i) =>
-				`vec3 c${i} = vec3(${c[0].toFixed(3)}, ${c[1].toFixed(3)}, ${c[2].toFixed(3)});`,
-		)
-		.join('\n\t')
-
-	let colorSelect = ''
-	for (let i = 0; i < n - 1; i++) {
-		colorSelect += `if (idx == ${i}) return c${i};\n\t`
-	}
-	colorSelect += `return c${n - 1};`
-
-	return `#version 300 es
+const GRADIENT_SHADER = `#version 300 es
 precision highp float;
 
 in vec2 v_uv;
@@ -141,19 +186,20 @@ uniform float u_pulseBase;
 uniform float u_pulseAmplitude;
 uniform float u_pulseSpeed;
 uniform vec3 u_baseColor;
+uniform vec3 u_colors[${MAX_GRADIENT_COLORS}];
+uniform int u_colorCount;
 
 const float PI = 3.14159265359;
 
 vec3 getGradientColor(float angle) {
 	float normalizedAngle = angle / (2.0 * PI);
+	float n = float(u_colorCount);
 
-	${colorDecls}
+	int idx = int(floor(normalizedAngle * n));
+	idx = idx - (idx / u_colorCount) * u_colorCount;
+	if (idx < 0) idx += u_colorCount;
 
-	int idx = int(floor(normalizedAngle * ${n}.0));
-	idx = idx - (idx / ${n}) * ${n};
-	if (idx < 0) idx += ${n};
-
-	${colorSelect}
+	return u_colors[idx];
 }
 
 void main() {
@@ -181,7 +227,6 @@ void main() {
 	fragColor = vec4(finalColor, 1.0);
 }
 `
-}
 
 // [Pass 2] Blur shader - Gaussian weighted blur with 21 samples
 const BLUR_SHADER = `#version 300 es
@@ -656,6 +701,26 @@ export function ShaderCard({
 	const startTimeRef = React.useRef<number | null>(null)
 	const onReadyCalledRef = React.useRef(false)
 
+	const colorsRef = React.useRef(colors)
+	const prevColorsRef = React.useRef(colors)
+	const transitionStartRef = React.useRef<number | null>(null)
+
+	if (colors !== colorsRef.current) {
+		const colorsChanged =
+			colors.length !== colorsRef.current.length ||
+			colors.some(
+				(c, i) =>
+					c[0] !== colorsRef.current[i][0] ||
+					c[1] !== colorsRef.current[i][1] ||
+					c[2] !== colorsRef.current[i][2],
+			)
+		if (colorsChanged) {
+			prevColorsRef.current = colorsRef.current
+			colorsRef.current = colors
+			transitionStartRef.current = null
+		}
+	}
+
 	React.useEffect(() => {
 		const canvas = canvasRef.current
 		if (!canvas) return
@@ -674,26 +739,7 @@ export function ShaderCard({
 		if (!vertexShader) return
 
 		// Create programs
-		// Firefox has a shader compiler bug with identical colors in if-else chains.
-		// Only apply variation if there are duplicate colors.
-		const colorKeys = colors.map((c) => c.join(','))
-		const hasDuplicates = new Set(colorKeys).size < colors.length
-		const variedColors: Array<[number, number, number]> = hasDuplicates
-			? colors.map((c, i) => {
-					const shift = (i - Math.floor(colors.length / 2)) * 0.08
-					return [
-						Math.max(0, Math.min(1, c[0] + shift)),
-						Math.max(0, Math.min(1, c[1] + shift)),
-						Math.max(0, Math.min(1, c[2] + shift)),
-					]
-				})
-			: colors
-		const gradientShaderSource = createGradientShaderSource(variedColors)
-		const gradientProgram = createProgram(
-			gl,
-			vertexShader,
-			gradientShaderSource,
-		)
+		const gradientProgram = createProgram(gl, vertexShader, GRADIENT_SHADER)
 		const blurProgram = createProgram(gl, vertexShader, BLUR_SHADER)
 		const wordmarksProgram = createProgram(gl, vertexShader, WORDMARKS_SHADER)
 		const blendProgram = createProgram(gl, vertexShader, BLEND_SHADER)
@@ -841,6 +887,47 @@ export function ShaderCard({
 				baseColor[0],
 				baseColor[1],
 				baseColor[2],
+			)
+
+			if (transitionStartRef.current === null) {
+				transitionStartRef.current = timestamp
+			}
+			const transitionElapsed = timestamp - transitionStartRef.current
+			const transitionProgress = Math.min(
+				1,
+				transitionElapsed / COLOR_TRANSITION_DURATION,
+			)
+			const smoothProgress =
+				transitionProgress < 0.5
+					? 2 * transitionProgress * transitionProgress
+					: 1 - Math.pow(-2 * transitionProgress + 2, 2) / 2
+
+			const prevColors = prevColorsRef.current
+			const targetColors = colorsRef.current
+			const maxLen = Math.max(prevColors.length, targetColors.length)
+			const interpolatedColors: Array<[number, number, number]> = []
+
+			for (let i = 0; i < maxLen; i++) {
+				const prevIdx = Math.min(i, prevColors.length - 1)
+				const targetIdx = Math.min(i, targetColors.length - 1)
+				interpolatedColors.push(
+					lerpColorOklab(prevColors[prevIdx], targetColors[targetIdx], smoothProgress),
+				)
+			}
+
+			const colorData = new Float32Array(MAX_GRADIENT_COLORS * 3)
+			for (let i = 0; i < interpolatedColors.length && i < MAX_GRADIENT_COLORS; i++) {
+				colorData[i * 3] = interpolatedColors[i][0]
+				colorData[i * 3 + 1] = interpolatedColors[i][1]
+				colorData[i * 3 + 2] = interpolatedColors[i][2]
+			}
+			gl.uniform3fv(
+				gl.getUniformLocation(gradientProgram, 'u_colors'),
+				colorData,
+			)
+			gl.uniform1i(
+				gl.getUniformLocation(gradientProgram, 'u_colorCount'),
+				Math.min(interpolatedColors.length, MAX_GRADIENT_COLORS),
 			)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
@@ -1130,7 +1217,7 @@ export function ShaderCard({
 			window.removeEventListener('resize', resize)
 			cancelAnimationFrame(animationId)
 		}
-	}, [colors, intensity, onReady])
+	}, [intensity, onReady])
 
 	return (
 		<canvas
