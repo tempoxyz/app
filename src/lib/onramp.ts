@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { config } from './config'
+import { createOnrampOrderFn } from './server/onramp.server'
 
 const COINBASE_PAY_ORIGIN = config.onramp.coinbasePayOrigin
-const ONRAMP_API_URL = config.onramp.apiUrl
 
 export type OnrampEventName =
 	| 'onramp_api.load_pending'
@@ -122,30 +122,15 @@ export function useOnrampOrder(props: UseOnrampOrderProps) {
 		mutationFn: async (params: { amount: number }) => {
 			setOrderEvents([])
 
-			const body: Record<string, unknown> = {
-				address,
-				amount: params.amount,
-			}
-			if (email) body.email = email
-			if (phoneNumber) body.phoneNumber = phoneNumber
-			if (phoneNumberVerifiedAt)
-				body.phoneNumberVerifiedAt = phoneNumberVerifiedAt
-
-			const response = await fetch(`${ONRAMP_API_URL}/orders`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
+			const result = await createOnrampOrderFn({
+				data: {
+					address,
+					amount: params.amount,
+					email,
+					phoneNumber,
+					phoneNumberVerifiedAt,
+				},
 			})
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}))
-				throw new Error(
-					(errorData as { error?: string }).error ??
-						`Failed to create order: ${response.status}`,
-				)
-			}
-
-			const result = (await response.json()) as OrderResult
 
 			setIframeUrl(result.url)
 			return result

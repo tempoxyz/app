@@ -10,8 +10,7 @@ export const config = {
 	isMainnet,
 
 	onramp: {
-		enabled: !isMainnet,
-		apiUrl: import.meta.env.VITE_ONRAMP_API_URL ?? 'http://localhost:8788',
+		enabled: isDev,
 		coinbasePayOrigin: 'https://pay.coinbase.com',
 	},
 
