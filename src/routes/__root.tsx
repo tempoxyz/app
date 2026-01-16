@@ -93,14 +93,14 @@ export const Route = createRootRouteWithContext<{
 
 function RootComponent() {
 	const { queryClient } = Route.useRouteContext()
-	const [config] = React.useState(() => getWagmiConfig())
+	const [wagmiConfig] = React.useState(() => getWagmiConfig())
 	const wagmiState = Route.useLoaderData({ select: deserialize<State> })
 
 	return (
 		<I18nextProvider i18n={i18n}>
 			<RootDocument
 				queryClient={queryClient}
-				config={config}
+				wagmiConfig={wagmiConfig}
 				wagmiState={wagmiState}
 			/>
 		</I18nextProvider>
@@ -109,11 +109,11 @@ function RootComponent() {
 
 function RootDocument({
 	queryClient,
-	config,
+	wagmiConfig,
 	wagmiState,
 }: {
 	queryClient: QueryClient
-	config: ReturnType<typeof getWagmiConfig>
+	wagmiConfig: ReturnType<typeof getWagmiConfig>
 	wagmiState: State | undefined
 }) {
 	const { i18n: i18nInstance } = useTranslation()
@@ -131,7 +131,7 @@ function RootDocument({
 			</head>
 			<body className="antialiased">
 				<SkipLink />
-				<WagmiProvider config={config} initialState={wagmiState}>
+				<WagmiProvider config={wagmiConfig} initialState={wagmiState}>
 					<QueryClientProvider client={queryClient}>
 						<AnnouncerProvider>
 							<CommandMenuProvider>
