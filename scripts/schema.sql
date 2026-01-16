@@ -1,5 +1,5 @@
--- Contacts table: stores encrypted email and phone for onramp verification
-CREATE TABLE IF NOT EXISTS contacts (
+-- Onramp users table: stores encrypted email and phone for onramp verification
+CREATE TABLE IF NOT EXISTS onramp_users (
 	address TEXT PRIMARY KEY,
 	email_encrypted TEXT,
 	phone_encrypted TEXT,

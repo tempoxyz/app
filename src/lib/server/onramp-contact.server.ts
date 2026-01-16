@@ -31,7 +31,7 @@ export const getOnrampStatusFn = createServerFn({ method: 'GET' })
 		const env = await getEnv()
 
 		const contact = await env.DB.prepare(
-			'SELECT email_encrypted, phone_encrypted, phone_verified_at FROM contacts WHERE address = ?',
+			'SELECT email_encrypted, phone_encrypted, phone_verified_at FROM onramp_users WHERE address = ?',
 		)
 			.bind(address)
 			.first<{
@@ -81,7 +81,7 @@ export const setEmailFn = createServerFn({ method: 'POST' })
 		const emailEncrypted = await encrypt(data.email, env.ENCRYPTION_KEY)
 
 		await env.DB.prepare(
-			`INSERT INTO contacts (address, email_encrypted, updated_at)
+			`INSERT INTO onramp_users (address, email_encrypted, updated_at)
 			 VALUES (?, ?, datetime('now'))
 			 ON CONFLICT(address) DO UPDATE SET
 			 email_encrypted = excluded.email_encrypted,
@@ -106,7 +106,7 @@ export const setPhoneFn = createServerFn({ method: 'POST' })
 		const phoneEncrypted = await encrypt(data.phone, env.ENCRYPTION_KEY)
 
 		await env.DB.prepare(
-			`INSERT INTO contacts (address, phone_encrypted, updated_at)
+			`INSERT INTO onramp_users (address, phone_encrypted, updated_at)
 			 VALUES (?, ?, datetime('now'))
 			 ON CONFLICT(address) DO UPDATE SET
 			 phone_encrypted = excluded.phone_encrypted,
@@ -128,7 +128,7 @@ export const sendOtpFn = createServerFn({ method: 'POST' })
 		const env = await getEnv()
 
 		const contact = await env.DB.prepare(
-			'SELECT phone_encrypted FROM contacts WHERE address = ?',
+			'SELECT phone_encrypted FROM onramp_users WHERE address = ?',
 		)
 			.bind(address)
 			.first<{ phone_encrypted: string | null }>()
@@ -233,7 +233,7 @@ export const verifyOtpFn = createServerFn({ method: 'POST' })
 
 		const now = new Date().toISOString()
 		await env.DB.prepare(
-			`UPDATE contacts SET phone_verified_at = ?, updated_at = ? WHERE address = ?`,
+			`UPDATE onramp_users SET phone_verified_at = ?, updated_at = ? WHERE address = ?`,
 		)
 			.bind(now, now, address)
 			.run()
@@ -254,7 +254,7 @@ export const getContactInfoFn = createServerFn({ method: 'GET' })
 		const env = await getEnv()
 
 		const contact = await env.DB.prepare(
-			'SELECT email_encrypted, phone_encrypted, phone_verified_at FROM contacts WHERE address = ?',
+			'SELECT email_encrypted, phone_encrypted, phone_verified_at FROM onramp_users WHERE address = ?',
 		)
 			.bind(address)
 			.first<{

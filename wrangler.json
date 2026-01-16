@@ -11,8 +11,8 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "app-db",
-			"database_id": "placeholder-update-after-create"
+			"database_name": "app-db-devnet",
+			"database_id": "acb1c13a-5666-4974-954b-ad308d3ba1b8"
 		}
 	],
 	"vars": {
