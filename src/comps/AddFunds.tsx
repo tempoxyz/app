@@ -6,7 +6,7 @@ import LoaderIcon from '~icons/lucide/loader-2'
 
 const PRESET_AMOUNTS = [25, 50, 100, 250]
 const MIN_AMOUNT = 5
-const MAX_AMOUNT = 10000
+const MAX_AMOUNT = 9999
 
 export function AddFunds(props: AddFunds.Props) {
 	const { address, email, phone, phoneVerifiedAt } = props
@@ -41,7 +41,25 @@ export function AddFunds(props: AddFunds.Props) {
 	}
 
 	const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const value = e.target.value.replace(/[^0-9.]/g, '')
+		let value = e.target.value.replace(/[^0-9.]/g, '')
+
+		// Prevent multiple decimal points
+		const parts = value.split('.')
+		if (parts.length > 2) {
+			value = `${parts[0]}.${parts.slice(1).join('')}`
+		}
+
+		// Limit to 2 decimal places
+		if (parts.length === 2 && parts[1].length > 2) {
+			value = `${parts[0]}.${parts[1].slice(0, 2)}`
+		}
+
+		// Limit to 4 figures (max 9999)
+		const numValue = Number.parseFloat(value)
+		if (numValue > MAX_AMOUNT) {
+			value = String(MAX_AMOUNT)
+		}
+
 		setCustomAmount(value)
 		setIsCustom(true)
 	}
