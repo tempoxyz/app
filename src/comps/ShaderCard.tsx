@@ -843,7 +843,10 @@ export function ShaderCard({
 				transitionStartRef.current = timestamp
 			}
 			const timeSinceChange = timestamp - transitionStartRef.current
-			const transitionElapsed = Math.max(0, timeSinceChange - COLOR_TRANSITION_DELAY)
+			const transitionElapsed = Math.max(
+				0,
+				timeSinceChange - COLOR_TRANSITION_DELAY,
+			)
 			const transitionProgress = Math.min(
 				1,
 				transitionElapsed / COLOR_TRANSITION_DURATION,
@@ -851,7 +854,7 @@ export function ShaderCard({
 			const smoothProgress =
 				transitionProgress < 0.5
 					? 2 * transitionProgress * transitionProgress
-					: 1 - Math.pow(-2 * transitionProgress + 2, 2) / 2
+					: 1 - (-2 * transitionProgress + 2) ** 2 / 2
 
 			const prevColors = prevColorsRef.current
 			const targetColors = colorsRef.current
@@ -871,7 +874,11 @@ export function ShaderCard({
 			}
 
 			const colorData = new Float32Array(MAX_GRADIENT_COLORS * 3)
-			for (let i = 0; i < interpolatedColors.length && i < MAX_GRADIENT_COLORS; i++) {
+			for (
+				let i = 0;
+				i < interpolatedColors.length && i < MAX_GRADIENT_COLORS;
+				i++
+			) {
 				colorData[i * 3] = interpolatedColors[i][0]
 				colorData[i * 3 + 1] = interpolatedColors[i][1]
 				colorData[i * 3 + 2] = interpolatedColors[i][2]

@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "लाइव अपडेट फिर से शुरू करें",
 		"pauseLiveUpdates": "लाइव अपडेट रोकें",
 		"selectBlockToViewTxs": "लेनदेन देखने के लिए ब्लॉक चुनें",
-		"loadingAccessKeys": "एक्सेस कुंजियाँ लोड हो रही हैं...",
-		"noAccessKeysConfigured": "कोई एक्सेस कुंजी कॉन्फ़िगर नहीं की गई।",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "कुंजी बनाएं",
-		"accessKeys": "एक्सेस कीज़"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "शुरू करें",

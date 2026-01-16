@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Obnovit živé aktualizace",
 		"pauseLiveUpdates": "Pozastavit živé aktualizace",
 		"selectBlockToViewTxs": "Vyberte blok pro zobrazení transakcí",
-		"loadingAccessKeys": "Načítání přístupových klíčů...",
-		"noAccessKeysConfigured": "Žádné přístupové klíče nakonfigurovány.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Vytvořit klíč",
-		"accessKeys": "Přístupové klíče"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Začít",

@@ -104,10 +104,10 @@
 		"resumeLiveUpdates": "Resume live updates",
 		"pauseLiveUpdates": "Pause live updates",
 		"selectBlockToViewTxs": "Select a block to view transactions",
-		"loadingAccessKeys": "Loading access keys...",
-		"noAccessKeysConfigured": "No access keys configured.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Create Key",
-		"accessKeys": "Access Keys"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Get started",

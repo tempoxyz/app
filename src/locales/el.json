@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Συνέχιση ζωντανών ενημερώσεων",
 		"pauseLiveUpdates": "Παύση ζωντανών ενημερώσεων",
 		"selectBlockToViewTxs": "Επιλέξτε μπλοκ για προβολή συναλλαγών",
-		"loadingAccessKeys": "Φόρτωση κλειδιών πρόσβασης...",
-		"noAccessKeysConfigured": "Δεν έχουν διαμορφωθεί κλειδιά πρόσβασης.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Δημιουργία κλειδιού",
-		"accessKeys": "Κλειδιά πρόσβασης"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Ξεκινήστε",

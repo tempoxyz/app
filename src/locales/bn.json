@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "লাইভ আপডেট পুনরায় শুরু করুন",
 		"pauseLiveUpdates": "লাইভ আপডেট বিরতি দিন",
 		"selectBlockToViewTxs": "লেনদেন দেখতে একটি ব্লক নির্বাচন করুন",
-		"loadingAccessKeys": "অ্যাক্সেস কী লোড হচ্ছে...",
-		"noAccessKeysConfigured": "কোনো অ্যাক্সেস কী কনফিগার করা হয়নি।",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "কী তৈরি করুন",
-		"accessKeys": "অ্যাক্সেস কী"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "শুরু করুন",

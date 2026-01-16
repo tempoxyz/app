@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Tiếp tục cập nhật trực tiếp",
 		"pauseLiveUpdates": "Tạm dừng cập nhật trực tiếp",
 		"selectBlockToViewTxs": "Chọn khối để xem giao dịch",
-		"loadingAccessKeys": "Đang tải khóa truy cập...",
-		"noAccessKeysConfigured": "Chưa cấu hình khóa truy cập.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Tạo khóa",
-		"accessKeys": "Khóa truy cập"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Bắt đầu",

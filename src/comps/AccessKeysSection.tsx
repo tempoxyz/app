@@ -27,6 +27,7 @@ import { getTempoChain } from '#wagmi.config'
 import { useTranslation } from 'react-i18next'
 
 import { Section } from '#comps/Section'
+import { TokenIcon } from '#comps/TokenIcon'
 import { cx } from '#lib/css'
 import { useCopy } from '#lib/hooks'
 import KeyIcon from '~icons/lucide/key-round'
@@ -34,6 +35,7 @@ import PlusIcon from '~icons/lucide/plus'
 import CopyIcon from '~icons/lucide/copy'
 import CheckIcon from '~icons/lucide/check'
 import XIcon from '~icons/lucide/x'
+import ChevronDownIcon from '~icons/lucide/chevron-down'
 
 const ACCOUNT_KEYCHAIN_ADDRESS =
 	'0xaAAAaaAA00000000000000000000000000000000' as const
@@ -717,7 +719,7 @@ function AccessKeyRow({
 						if (isOwner) setShowEmojiPicker(!showEmojiPicker)
 					}}
 					className={cx(
-						'flex items-center justify-center size-5 rounded-full text-[14px] transition-all',
+						'flex items-center justify-center size-5 rounded-full text-[15px] transition-all',
 						isOwner && 'cursor-pointer hover:scale-110',
 					)}
 					style={{ backgroundColor: getEmojiBackgroundColor(emoji) }}
@@ -735,22 +737,18 @@ function AccessKeyRow({
 				)}
 			</div>
 			<div className="flex flex-1 min-w-0 items-center gap-2">
-				<span className="text-[15px] sm:text-[16px] text-primary font-medium truncate">
+				<span className="text-[16px] sm:text-[17px] text-primary font-medium truncate flex items-center gap-1.5">
 					{displayName}
 					{isPending && (
-						<span className="text-[10px] text-accent ml-1">
-							({t('common.confirming')})
-						</span>
+						<span className="size-3 border-[1.5px] border-accent/30 border-t-accent rounded-full animate-spin" />
 					)}
 					{isRevoking && (
-						<span className="text-[10px] text-accent ml-1">
-							({t('common.revoking')})
-						</span>
+						<span className="size-3 border-[1.5px] border-accent/30 border-t-accent rounded-full animate-spin" />
 					)}
 				</span>
-				<span className="text-[12px] text-secondary flex items-center gap-1.5 shrink-0">
+				<span className="text-[13px] text-secondary flex items-center gap-1.5 shrink-0">
 					{asset?.metadata?.symbol && (
-						<span className="text-[9px] font-medium text-tertiary bg-base-alt px-1 py-0.5 rounded font-mono whitespace-nowrap">
+						<span className="text-[10px] font-medium text-tertiary bg-base-alt px-1 py-0.5 rounded font-mono whitespace-nowrap">
 							{asset.metadata.symbol}
 						</span>
 					)}
@@ -860,9 +858,25 @@ function CreateKeyForm({
 		() => DEFAULT_EMOJIS[Math.floor(Math.random() * DEFAULT_EMOJIS.length)],
 	)
 	const [showEmojiPicker, setShowEmojiPicker] = React.useState(false)
+	const [showTokenDropdown, setShowTokenDropdown] = React.useState(false)
 	const emojiButtonRef = React.useRef<HTMLButtonElement>(null)
+	const tokenDropdownRef = React.useRef<HTMLDivElement>(null)
 
 	const asset = assets.find((a) => a.address === selectedToken)
+
+	React.useEffect(() => {
+		if (!showTokenDropdown) return
+		const handleClickOutside = (e: MouseEvent) => {
+			if (
+				tokenDropdownRef.current &&
+				!tokenDropdownRef.current.contains(e.target as Node)
+			) {
+				setShowTokenDropdown(false)
+			}
+		}
+		document.addEventListener('mousedown', handleClickOutside)
+		return () => document.removeEventListener('mousedown', handleClickOutside)
+	}, [showTokenDropdown])
 
 	const handleLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const raw = e.target.value.replace(/[^0-9.]/g, '')
@@ -880,7 +894,7 @@ function CreateKeyForm({
 					ref={emojiButtonRef}
 					type="button"
 					onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-					className="flex items-center justify-center size-5 rounded-full text-[14px] transition-all cursor-pointer hover:scale-110"
+					className="flex items-center justify-center size-5 rounded-full text-[15px] transition-all cursor-pointer hover:scale-110"
 					style={{ backgroundColor: getEmojiBackgroundColor(selectedEmoji) }}
 					title={t('common.clickToChangeEmoji')}
 				>
@@ -904,46 +918,69 @@ function CreateKeyForm({
 					value={keyName}
 					onChange={(e) => setKeyName(e.target.value)}
 					placeholder={t('common.keyName')}
-					className="flex-1 min-w-0 bg-transparent text-[15px] sm:text-[16px] text-primary font-medium placeholder:text-tertiary focus:outline-none"
+					className="flex-1 min-w-0 bg-transparent text-[16px] sm:text-[17px] text-primary font-medium placeholder:text-tertiary focus:outline-none"
 					autoFocus
 				/>
-				<span className="text-[12px] text-secondary flex items-center gap-1.5 shrink-0">
-					<select
-						value={selectedToken}
-						onChange={(e) =>
-							setSelectedToken(e.target.value as Address.Address)
-						}
-						className="text-secondary hover:text-primary cursor-pointer focus:outline-none appearance-none"
-					>
-						{assets.map((a) => (
-							<option key={a.address} value={a.address}>
-								{a.metadata?.symbol || shortenAddress(a.address, 3)}
-							</option>
-						))}
-					</select>
-					<span className="text-tertiary">·</span>
-					<span className="flex items-center">
-						<span className="text-tertiary">$</span>
+				<span className="text-[13px] text-secondary flex items-center gap-1.5 shrink-0">
+					<div ref={tokenDropdownRef} className="relative">
+						<button
+							type="button"
+							onClick={() => setShowTokenDropdown(!showTokenDropdown)}
+							className="flex items-center gap-1.5 h-[28px] px-2 rounded-full bg-base-alt hover:bg-base-alt/80 text-primary cursor-pointer transition-colors"
+						>
+							<TokenIcon address={selectedToken} className="size-[14px]" />
+							<span className="text-[12px] font-medium">
+								{asset?.metadata?.symbol || shortenAddress(selectedToken, 3)}
+							</span>
+							<ChevronDownIcon className="size-3 text-tertiary" />
+						</button>
+						{showTokenDropdown && (
+							<div className="absolute top-full left-0 mt-1 min-w-[140px] bg-surface border border-card-border rounded-lg shadow-lg z-50 py-1 max-h-[200px] overflow-y-auto">
+								{assets.map((a) => (
+									<button
+										key={a.address}
+										type="button"
+										onClick={() => {
+											setSelectedToken(a.address)
+											setShowTokenDropdown(false)
+										}}
+										className={cx(
+											'w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-base-alt transition-colors cursor-pointer',
+											selectedToken === a.address && 'bg-base-alt/50',
+										)}
+									>
+										<TokenIcon address={a.address} className="size-[16px]" />
+										<span className="text-[12px] text-primary font-medium">
+											{a.metadata?.symbol || shortenAddress(a.address, 3)}
+										</span>
+									</button>
+								))}
+							</div>
+						)}
+					</div>
+					<div className="flex items-center h-[28px] rounded-lg border border-card-border bg-white/5 focus-within:border-accent">
+						<span className="text-tertiary text-[12px] pl-1.5">$</span>
 						<input
 							type="text"
 							inputMode="decimal"
 							value={limitUsd}
 							onChange={handleLimitChange}
 							placeholder="∞"
-							className="bg-transparent w-5 placeholder:text-tertiary focus:outline-none"
+							className="bg-transparent w-12 text-center placeholder:text-tertiary focus:outline-none text-[13px] h-full"
 						/>
-					</span>
-					<span className="text-tertiary">·</span>
-					<span className="flex items-center gap-0.5">
+					</div>
+					<div className="flex items-center h-[28px] rounded-lg border border-card-border bg-white/5 focus-within:border-accent">
 						<input
 							type="number"
 							value={expDays}
 							onChange={(e) => setExpDays(e.target.value)}
 							placeholder="7"
-							className="bg-transparent w-4 text-center placeholder:text-tertiary focus:outline-none"
+							className="bg-transparent w-8 text-center placeholder:text-tertiary focus:outline-none text-[13px] h-full"
 						/>
-						<span>{t('common.days')}</span>
-					</span>
+						<span className="text-[12px] text-tertiary pr-1.5">
+							{t('common.days')}
+						</span>
+					</div>
 				</span>
 			</div>
 			<button
@@ -1262,7 +1299,7 @@ export function AccessKeysSection({
 
 	const headerPill =
 		allKeys.length > 0 ? (
-			<span className="flex items-center gap-1 px-1 h-[24px] bg-base-alt rounded-md text-[11px] text-secondary">
+			<span className="flex items-center gap-1 px-1 h-[24px] bg-base-alt rounded-md text-[12px] text-secondary">
 				<KeyIcon className="size-1.5" />
 				<span className="font-mono font-medium">{allKeys.length}</span>
 			</span>
@@ -1276,13 +1313,13 @@ export function AccessKeysSection({
 		>
 			{isLoadingKeys ? (
 				<div className="flex flex-col items-center py-4 gap-2">
-					<p className="text-[13px] text-secondary">
+					<p className="text-[14px] text-secondary">
 						{t('portfolio.loadingAccessKeys')}
 					</p>
 				</div>
 			) : allKeys.length === 0 && !showCreate ? (
 				<div className="flex items-center justify-center py-4 gap-2">
-					<p className="text-[13px] text-secondary">
+					<p className="text-[14px] text-secondary">
 						{t('portfolio.noAccessKeysConfigured')}
 					</p>
 					{isOwner && (
@@ -1290,7 +1327,7 @@ export function AccessKeysSection({
 							type="button"
 							onClick={() => setShowCreate(true)}
 							disabled={isPending || assetsWithBalance.length === 0}
-							className="text-[11px] font-medium bg-accent/10 text-accent rounded-full px-3 py-1 cursor-pointer press-down hover:bg-accent/20 transition-colors"
+							className="text-[12px] font-medium bg-accent/10 text-accent rounded-full px-3 py-1 cursor-pointer press-down hover:bg-accent/20 transition-colors"
 						>
 							{t('portfolio.createKey')}
 						</button>
@@ -1327,7 +1364,7 @@ export function AccessKeysSection({
 							type="button"
 							onClick={() => setShowCreate(true)}
 							disabled={isPending}
-							className="flex items-center gap-1 px-3 h-[36px] text-[11px] text-secondary hover:text-accent transition-colors cursor-pointer"
+							className="flex items-center gap-1 px-3 h-[36px] text-[12px] text-secondary hover:text-accent transition-colors cursor-pointer"
 						>
 							<PlusIcon className="size-[12px]" />
 							<span>{t('common.addKey')}</span>

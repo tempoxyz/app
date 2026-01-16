@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Daŭrigi vivajn ĝisdatigojn",
 		"pauseLiveUpdates": "Paŭzigi vivajn ĝisdatigojn",
 		"selectBlockToViewTxs": "Elektu blokon por vidi transakciojn",
-		"loadingAccessKeys": "Ŝargante alirŝlosilojn...",
-		"noAccessKeysConfigured": "Neniuj alirŝlosiloj agordataj.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Krei ŝlosilon",
-		"accessKeys": "Alirŝlosiloj"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Komenci",

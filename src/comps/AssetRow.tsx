@@ -37,6 +37,43 @@ function shortenAddress(address: string, chars = 4): string {
 	return `${address.slice(0, chars + 2)}…${address.slice(-chars)}`
 }
 
+function parseTransactionError(error: Error): string {
+	const message = error.message || ''
+
+	if (message.includes('SpendingLimitExceeded')) {
+		return 'Spending limit exceeded for this access key'
+	}
+	if (message.includes('InsufficientBalance')) {
+		return 'Insufficient balance'
+	}
+	if (message.includes('InvalidAccessKey')) {
+		return 'Invalid or expired access key'
+	}
+	if (message.includes('AccessKeyExpired')) {
+		return 'Access key has expired'
+	}
+	if (message.includes('UnauthorizedToken')) {
+		return 'This token is not authorized for this access key'
+	}
+	if (message.includes('User rejected') || message.includes('user rejected')) {
+		return 'Transaction cancelled'
+	}
+	if (message.includes('insufficient funds')) {
+		return 'Insufficient funds for gas'
+	}
+
+	if ('shortMessage' in error && typeof error.shortMessage === 'string') {
+		return error.shortMessage
+	}
+
+	const match = message.match(/reason:\s*([^\n]+)/i)
+	if (match) {
+		return match[1].trim()
+	}
+
+	return 'Transaction failed'
+}
+
 function formatAmount(value: string, decimals: number): string {
 	const formatted = formatUnits(BigInt(value), decimals)
 	const num = Number(formatted)
@@ -419,11 +456,7 @@ export function AssetRow({
 		if (writeError) {
 			setSendState('error')
 			setPendingSendAmount(null)
-			const shortMessage =
-				'shortMessage' in writeError
-					? (writeError.shortMessage as string)
-					: writeError.message
-			setSendError(shortMessage || t('common.transactionFailed'))
+			setSendError(parseTransactionError(writeError))
 			onSendError?.()
 			setTimeout(() => {
 				setSendState('idle')
@@ -431,7 +464,7 @@ export function AssetRow({
 				resetWrite()
 			}, 3000)
 		}
-	}, [writeError, resetWrite, onSendError, t])
+	}, [writeError, resetWrite, onSendError])
 
 	React.useEffect(() => {
 		if (isPending || isConfirming) {

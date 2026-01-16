@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "ازسرگیری به‌روزرسانی زنده",
 		"pauseLiveUpdates": "توقف به‌روزرسانی زنده",
 		"selectBlockToViewTxs": "یک بلوک برای مشاهده تراکنش‌ها انتخاب کنید",
-		"loadingAccessKeys": "در حال بارگذاری کلیدهای دسترسی...",
-		"noAccessKeysConfigured": "هیچ کلید دسترسی پیکربندی نشده است.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "ایجاد کلید",
-		"accessKeys": "کلیدهای دسترسی"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "شروع",

@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Wznów aktualizacje na żywo",
 		"pauseLiveUpdates": "Wstrzymaj aktualizacje na żywo",
 		"selectBlockToViewTxs": "Wybierz blok, aby zobaczyć transakcje",
-		"loadingAccessKeys": "Ładowanie kluczy dostępu...",
-		"noAccessKeysConfigured": "Brak skonfigurowanych kluczy dostępu.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Utwórz klucz",
-		"accessKeys": "Klucze dostępu"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Rozpocznij",

@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "استئناف التحديثات المباشرة",
 		"pauseLiveUpdates": "إيقاف التحديثات المباشرة",
 		"selectBlockToViewTxs": "اختر كتلة لعرض المعاملات",
-		"loadingAccessKeys": "جاري تحميل مفاتيح الوصول...",
-		"noAccessKeysConfigured": "لم يتم تكوين مفاتيح وصول.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "إنشاء مفتاح",
-		"accessKeys": "مفاتيح الوصول"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "ابدأ",

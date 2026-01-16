@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Возобновить обновления в реальном времени",
 		"pauseLiveUpdates": "Приостановить обновления в реальном времени",
 		"selectBlockToViewTxs": "Выберите блок для просмотра транзакций",
-		"loadingAccessKeys": "Загрузка ключей доступа...",
-		"noAccessKeysConfigured": "Ключи доступа не настроены.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Создать ключ",
-		"accessKeys": "Ключи доступа"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Начать",

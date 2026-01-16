@@ -78,59 +78,56 @@ export function AddFunds(props: AddFunds.Props) {
 	}
 
 	return (
-		<>
-			<div className="flex flex-col gap-3 py-2.5">
-				<div className="flex flex-col gap-2">
-					<div className="flex gap-1.5">
-						{PRESET_AMOUNTS.map((value) => (
-							<button
-								key={value}
-								type="button"
-								onClick={() => handlePresetClick(value)}
-								disabled={isModalOpen}
-								className={cx(
-									'flex-1 py-1.5 text-[13px] font-medium rounded-md cursor-pointer press-down transition-colors',
-									!isCustom && amount === value
-										? 'bg-accent text-white'
-										: 'bg-base-alt text-secondary hover:text-primary',
-									isModalOpen && 'opacity-50 cursor-not-allowed',
-								)}
-							>
-								${value}
-							</button>
-						))}
-					</div>
+		<div className="flex flex-col gap-3 py-2.5">
+			<div className="flex flex-col gap-1">
+				<p className="text-[13px] text-tertiary">
+					Add funds to your account using Apple Pay.
+				</p>
+			</div>
 
-					<div className="relative">
-						<span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-tertiary">
-							$
-						</span>
+			<div className="flex flex-col gap-2">
+				<div className="flex gap-1.5">
+					{PRESET_AMOUNTS.map((value) => (
+						<button
+							key={value}
+							type="button"
+							onClick={() => handlePresetClick(value)}
+							disabled={isModalOpen}
+							className={cx(
+								'h-[34px] px-3 text-[13px] font-medium rounded-lg cursor-pointer press-down transition-colors border shrink-0',
+								!isCustom && amount === value
+									? 'bg-accent text-white border-accent'
+									: 'bg-white/5 text-secondary hover:text-primary border-card-border hover:border-accent/50',
+								isModalOpen && 'opacity-50 cursor-not-allowed',
+							)}
+						>
+							${value}
+						</button>
+					))}
+					<div
+						className={cx(
+							'flex items-center flex-1 min-w-[80px] h-[34px] rounded-lg border bg-white/5 transition-colors',
+							isCustom
+								? 'border-accent'
+								: 'border-card-border focus-within:border-accent',
+						)}
+					>
+						<span className="text-[13px] text-tertiary pl-2">$</span>
 						<input
 							type="text"
 							inputMode="decimal"
-							placeholder="Custom amount"
+							placeholder="Other"
 							value={customAmount}
 							onChange={handleCustomChange}
 							onFocus={handleInputFocus}
 							onBlur={handleInputBlur}
 							disabled={isModalOpen}
 							className={cx(
-								'w-full pl-5 pr-3 py-2 text-[13px] rounded-md border transition-colors',
-								'bg-base placeholder:text-tertiary',
-								isCustom
-									? 'border-accent text-primary'
-									: 'border-card-border text-secondary hover:border-accent/50',
+								'flex-1 h-full px-1 bg-transparent text-[13px] text-primary font-mono placeholder:text-tertiary focus:outline-none',
 								isModalOpen && 'opacity-50 cursor-not-allowed',
 							)}
 						/>
 					</div>
-
-					{isCustom && customAmount && !isValidAmount && (
-						<p className="text-[11px] text-negative">
-							Amount must be between ${MIN_AMOUNT} and $
-							{MAX_AMOUNT.toLocaleString()}
-						</p>
-					)}
 				</div>
 
 				<button
@@ -138,9 +135,9 @@ export function AddFunds(props: AddFunds.Props) {
 					onClick={handleSubmit}
 					disabled={!isValidAmount || isLoading || isModalOpen}
 					className={cx(
-						'flex items-center justify-center gap-2 w-full py-2.5 text-[13px] font-medium rounded-md cursor-pointer press-down transition-colors',
+						'flex items-center justify-center gap-2 w-full h-[40px] text-[14px] font-medium rounded-lg cursor-pointer press-down transition-colors',
 						isValidAmount && !isLoading && !isModalOpen
-							? 'bg-[#000] text-white hover:bg-[#1a1a1a]'
+							? 'bg-accent text-white hover:bg-accent/90'
 							: 'bg-base-alt text-tertiary cursor-not-allowed',
 					)}
 				>
@@ -155,20 +152,54 @@ export function AddFunds(props: AddFunds.Props) {
 				</button>
 
 				{createOrder.error && (
-					<p className="text-[11px] text-negative">
-						{createOrder.error.message}
+					<p className="text-[12px] text-negative">
+						Amount must be between ${MIN_AMOUNT} and $
+						{MAX_AMOUNT.toLocaleString()}
 					</p>
 				)}
 			</div>
 
-			{isModalOpen && (
-				<ApplePayIframe
-					url={iframeUrl}
-					onLoad={() => setIsIframeLoaded(true)}
-					onCancel={reset}
-				/>
+			{/* Always reserve space for the button - same height as Apple Pay button */}
+				<div className="relative h-[44px]">
+					{isModalOpen && (
+						<div className={cx('absolute inset-0', !isIframeLoaded && 'opacity-0')}>
+							<ApplePayIframe
+								url={iframeUrl}
+								onLoad={() => setIsIframeLoaded(true)}
+								onCancel={reset}
+								inline
+							/>
+						</div>
+					)}
+					{/* Loading/placeholder button styled like Apple Pay */}
+					{(!isModalOpen || !isIframeLoaded) && (
+						<button
+							type="button"
+							onClick={handleSubmit}
+							disabled={!isValidAmount || isLoading || isModalOpen}
+							className={cx(
+								'absolute inset-0 flex items-center justify-center gap-1.5 w-full h-full text-[16px] font-medium rounded-[22px] cursor-pointer press-down transition-colors',
+								isValidAmount && !isLoading && !isModalOpen
+									? 'bg-white text-black hover:bg-white/95'
+									: 'bg-white/80 text-black/40 cursor-not-allowed',
+							)}
+						>
+							{isLoading || isModalOpen ? (
+								<LoaderIcon className="size-4 animate-spin text-black/50" />
+							) : (
+								<>
+									<span>Buy with</span>
+									<ApplePayLogo className="h-[20px]" />
+								</>
+							)}
+						</button>
+					)}
+				</div>
+
+			{createOrder.error && (
+				<p className="text-[12px] text-negative">{createOrder.error.message}</p>
 			)}
-		</>
+		</div>
 	)
 }
 

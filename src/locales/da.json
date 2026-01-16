@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Genoptag liveopdateringer",
 		"pauseLiveUpdates": "Pause liveopdateringer",
 		"selectBlockToViewTxs": "Vælg en blok for at se transaktioner",
-		"loadingAccessKeys": "Indlæser adgangsnøgler...",
-		"noAccessKeysConfigured": "Ingen adgangsnøgler konfigureret.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Opret nøgle",
-		"accessKeys": "Adgangsnøgler"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Kom i gang",

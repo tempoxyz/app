@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "ライブ更新を再開",
 		"pauseLiveUpdates": "ライブ更新を一時停止",
 		"selectBlockToViewTxs": "ブロックを選択して取引を表示",
-		"loadingAccessKeys": "アクセスキーを読み込み中...",
-		"noAccessKeysConfigured": "アクセスキーが設定されていません。",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "キーを作成",
-		"accessKeys": "アクセスキー"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "始める",

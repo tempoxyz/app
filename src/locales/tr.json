@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Canlı güncellemeleri sürdür",
 		"pauseLiveUpdates": "Canlı güncellemeleri duraklat",
 		"selectBlockToViewTxs": "İşlemleri görüntülemek için bir blok seçin",
-		"loadingAccessKeys": "Erişim anahtarları yükleniyor...",
-		"noAccessKeysConfigured": "Yapılandırılmış erişim anahtarı yok.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Anahtar oluştur",
-		"accessKeys": "Erişim Anahtarları"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Başla",

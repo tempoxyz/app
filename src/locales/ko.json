@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "실시간 업데이트 재개",
 		"pauseLiveUpdates": "실시간 업데이트 일시 중지",
 		"selectBlockToViewTxs": "거래를 보려면 블록 선택",
-		"loadingAccessKeys": "액세스 키 로드 중...",
-		"noAccessKeysConfigured": "구성된 액세스 키가 없습니다.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "키 생성",
-		"accessKeys": "액세스 키"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "시작하기",

@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "ดำเนินการอัปเดตแบบเรียลไทม์ต่อ",
 		"pauseLiveUpdates": "หยุดการอัปเดตแบบเรียลไทม์ชั่วคราว",
 		"selectBlockToViewTxs": "เลือกบล็อกเพื่อดูธุรกรรม",
-		"loadingAccessKeys": "กำลังโหลดคีย์การเข้าถึง...",
-		"noAccessKeysConfigured": "ไม่มีคีย์การเข้าถึงที่กำหนดค่า",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "สร้างคีย์",
-		"accessKeys": "คีย์การเข้าถึง"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "เริ่มต้น",

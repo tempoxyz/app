@@ -113,10 +113,10 @@ export function Settings({
 						className="flex items-center gap-2.5 px-3 h-[48px] rounded-xl hover:glass-thin transition-all cursor-pointer focus-ring"
 					>
 						<span className="flex flex-col flex-1 min-w-0 text-left">
-							<span className="text-[13px] text-primary font-medium">
+							<span className="text-[14px] text-primary font-medium">
 								{t('settings.feeToken')}
 							</span>
-							<span className="text-[11px] text-tertiary">
+							<span className="text-[12px] text-tertiary">
 								{currentFeeAsset?.metadata?.symbol ||
 									(currentFeeToken
 										? shortenAddress(currentFeeToken, 3)
@@ -136,10 +136,10 @@ export function Settings({
 						className="flex items-center gap-2.5 px-3 h-[48px] rounded-xl hover:glass-thin transition-all cursor-pointer focus-ring"
 					>
 						<span className="flex flex-col flex-1 min-w-0 text-left">
-							<span className="text-[13px] text-primary font-medium">
+							<span className="text-[14px] text-primary font-medium">
 								{t('settings.language')}
 							</span>
-							<span className="text-[11px] text-tertiary">
+							<span className="text-[12px] text-tertiary">
 								{currentLangObj?.name ||
 									LANGUAGES.find((l) => l.code === 'en')?.name ||
 									'English'}
@@ -165,11 +165,11 @@ export function Settings({
 				aria-label={t('settings.feeToken')}
 			>
 				<div className="flex flex-col -mx-2">
-					<p className="text-[13px] text-secondary px-3 py-2">
+					<p className="text-[13px] text-tertiary px-3 py-2 text-left">
 						{t('settings.feeTokenDescription')}
 					</p>
 					{assetsWithBalance.length === 0 ? (
-						<div className="text-[13px] text-secondary py-4 text-center">
+						<div className="text-[14px] text-secondary py-4 text-center">
 							<p>{t('common.noTokensForFees')}</p>
 						</div>
 					) : (
@@ -183,16 +183,16 @@ export function Settings({
 								>
 									<TokenIcon address={asset.address} className="size-[28px]" />
 									<span className="flex flex-col flex-1 min-w-0">
-										<span className="text-[13px] text-primary font-medium truncate">
+										<span className="text-[14px] text-primary font-medium truncate">
 											{asset.metadata?.name || shortenAddress(asset.address)}
 										</span>
-										<span className="text-[11px] text-tertiary font-mono">
+										<span className="text-[12px] text-tertiary font-mono">
 											{asset.metadata?.symbol ||
 												shortenAddress(asset.address, 3)}
 										</span>
 									</span>
 									{isCurrent ? (
-										<span className="text-[11px] font-medium bg-positive/10 text-positive rounded px-1.5 py-0.5 text-center">
+										<span className="text-[12px] font-medium bg-positive/10 text-positive rounded px-1.5 py-0.5 text-center">
 											{t('common.active')}
 										</span>
 									) : (
@@ -206,7 +206,7 @@ export function Settings({
 												token:
 													asset.metadata?.name || shortenAddress(asset.address),
 											})}
-											className="text-[11px] font-medium bg-accent/10 text-accent rounded px-1.5 py-0.5 text-center cursor-pointer press-down hover:bg-accent/20 transition-colors focus-ring"
+											className="text-[12px] font-medium bg-accent/10 text-accent rounded px-1.5 py-0.5 text-center cursor-pointer press-down hover:bg-accent/20 transition-colors focus-ring"
 										>
 											{t('common.set')}
 										</button>
@@ -233,7 +233,7 @@ export function Settings({
 				aria-label={t('settings.language')}
 			>
 				<div className="flex flex-col -mx-2">
-					<p className="text-[13px] text-secondary px-3 py-2">
+					<p className="text-[13px] text-tertiary px-3 py-2 text-left">
 						{t('settings.languageDescription')}
 					</p>
 					{LANGUAGES.map((lang, index) => {
@@ -245,12 +245,12 @@ export function Settings({
 								className="flex items-center gap-2.5 px-3 h-[48px] rounded-xl hover:glass-thin transition-all"
 							>
 								<span className="flex flex-col flex-1 min-w-0">
-									<span className="text-[13px] text-primary font-medium">
+									<span className="text-[14px] text-primary font-medium">
 										{lang.name}
 									</span>
 								</span>
 								{isCurrent ? (
-									<span className="text-[11px] font-medium bg-positive/10 text-positive rounded px-1.5 py-0.5 text-center">
+									<span className="text-[12px] font-medium bg-positive/10 text-positive rounded px-1.5 py-0.5 text-center">
 										{lang.active}
 									</span>
 								) : (
@@ -263,7 +263,7 @@ export function Settings({
 										aria-label={t('settings.setLanguage', {
 											language: lang.name,
 										})}
-										className="text-[11px] font-medium bg-accent/10 text-accent rounded px-1.5 py-0.5 text-center cursor-pointer press-down hover:bg-accent/20 transition-colors focus-ring"
+										className="text-[12px] font-medium bg-accent/10 text-accent rounded px-1.5 py-0.5 text-center cursor-pointer press-down hover:bg-accent/20 transition-colors focus-ring"
 									>
 										{lang.set}
 									</button>

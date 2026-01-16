@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Gjenoppta sanntidsoppdateringer",
 		"pauseLiveUpdates": "Pause sanntidsoppdateringer",
 		"selectBlockToViewTxs": "Velg en blokk for å se transaksjoner",
-		"loadingAccessKeys": "Laster tilgangsnøkler...",
-		"noAccessKeysConfigured": "Ingen tilgangsnøkler konfigurert.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Opprett nøkkel",
-		"accessKeys": "Tilgangsnøkler"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Kom i gang",

@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Återuppta liveuppdateringar",
 		"pauseLiveUpdates": "Pausa liveuppdateringar",
 		"selectBlockToViewTxs": "Välj ett block för att visa transaktioner",
-		"loadingAccessKeys": "Laddar åtkomstnycklar...",
-		"noAccessKeysConfigured": "Inga åtkomstnycklar konfigurerade.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Skapa nyckel",
-		"accessKeys": "Åtkomstnycklar"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Kom igång",

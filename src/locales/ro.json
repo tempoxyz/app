@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Reia actualizările în timp real",
 		"pauseLiveUpdates": "Întrerupe actualizările în timp real",
 		"selectBlockToViewTxs": "Selectează un bloc pentru a vedea tranzacțiile",
-		"loadingAccessKeys": "Se încarcă cheile de acces...",
-		"noAccessKeysConfigured": "Nicio cheie de acces configurată.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Creează cheie",
-		"accessKeys": "Chei de acces"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Începe",

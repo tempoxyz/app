@@ -18,6 +18,62 @@ import ClockIcon from '~icons/lucide/clock'
 
 const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
 
+// Parse connection/auth errors into user-friendly messages
+function parseConnectionError(error: Error): string {
+	const message = error.message
+
+	// User cancelled/aborted
+	if (
+		message.includes('User rejected') ||
+		message.includes('user rejected') ||
+		message.includes('User cancelled') ||
+		message.includes('user cancelled') ||
+		message.includes('AbortError') ||
+		message.includes('aborted')
+	) {
+		return 'Sign-in cancelled'
+	}
+
+	// Passkey not found
+	if (
+		message.includes('not registered') ||
+		message.includes('not found') ||
+		message.includes('no credentials')
+	) {
+		return 'Passkey not found. Please sign up first.'
+	}
+
+	// Network errors
+	if (
+		message.includes('network') ||
+		message.includes('fetch') ||
+		message.includes('Failed to fetch')
+	) {
+		return 'Network error. Please check your connection.'
+	}
+
+	// Timeout
+	if (message.includes('timeout') || message.includes('timed out')) {
+		return 'Request timed out. Please try again.'
+	}
+
+	// WebAuthn not supported
+	if (
+		message.includes('WebAuthn') ||
+		message.includes('not supported') ||
+		message.includes('NotSupportedError')
+	) {
+		return 'Passkeys are not supported on this device.'
+	}
+
+	// Fallback: truncate long messages
+	if (message.length > 80) {
+		return 'Authentication failed. Please try again.'
+	}
+
+	return message
+}
+
 const EXAMPLE_ACCOUNTS: Record<string, readonly string[]> = {
 	presto: [
 		'0x195d45da04bd0a8c35800ab322ff9b50ac43e31d',
@@ -89,7 +145,7 @@ function RouteComponent() {
 					<h1 className="font-sans font-semibold text-[28px] sm:text-[32px] md:text-[36px] text-primary text-center -tracking-[0.03em]">
 						{t('landing.getStarted')}
 					</h1>
-					<p className="text-secondary text-[13px] sm:text-[14px] md:text-[15px] text-center -mt-3 mb-1 max-w-[280px]">
+					<p className="text-secondary text-[14px] sm:text-[15px] md:text-[16px] text-center -mt-3 mb-1 max-w-[280px]">
 						{t('landing.exploreDescription')}
 					</p>
 					<form onSubmit={handleSubmit} className="w-full relative">
@@ -100,7 +156,7 @@ function RouteComponent() {
 							value={address}
 							onChange={(e) => setAddress(e.target.value)}
 							placeholder={t('landing.enterAddress')}
-							className="glass-input pl-4 pr-14 w-full placeholder:text-tertiary text-base-content rounded-2xl outline-0 h-[48px] sm:h-[56px] text-[16px]"
+							className="glass-input pl-4 pr-14 w-full placeholder:text-tertiary text-base-content rounded-2xl outline-0 h-[48px] sm:h-[56px] text-[17px]"
 							spellCheck={false}
 							autoComplete="off"
 							autoCapitalize="none"
@@ -123,7 +179,7 @@ function RouteComponent() {
 							</button>
 						</div>
 					</form>
-					<div className="flex items-center gap-1.5 sm:gap-1 text-[11px] justify-center mt-1 flex-wrap">
+					<div className="flex items-center gap-1.5 sm:gap-1 text-[12px] justify-center mt-1 flex-wrap">
 						{getExampleAccounts().map((addr) => (
 							<Link
 								key={addr}
@@ -132,7 +188,7 @@ function RouteComponent() {
 								className={cx(
 									'flex items-center gap-0.5 text-tertiary hover:text-secondary',
 									'px-2 py-1 sm:px-1.5 sm:py-0.5 rounded press-down focus-visible:outline-none',
-									'transition-all font-mono text-[11px] sm:text-[10px]',
+									'transition-all font-mono text-[12px] sm:text-[11px]',
 								)}
 							>
 								<UserIcon className="size-1.25 text-accent/70" />
@@ -143,7 +199,7 @@ function RouteComponent() {
 
 					<div className="w-full flex items-center gap-2 sm:gap-3 mt-4">
 						<div className="flex-1 h-px bg-base-border" />
-						<span className="text-tertiary text-[11px] sm:text-[12px] whitespace-nowrap">
+						<span className="text-tertiary text-[12px] sm:text-[13px] whitespace-nowrap">
 							{connection.address
 								? t('landing.orUsePasskey')
 								: t('landing.orSignInWithPasskey')}
@@ -166,7 +222,7 @@ function RouteComponent() {
 							disabled={connect.isPending}
 							className={cx(
 								'flex items-center gap-1.5 sm:gap-1 px-4 sm:px-3 py-2.5 sm:py-1.5 rounded-full justify-center',
-								'glass-button-accent font-medium text-[13px] sm:text-[12px]',
+								'glass-button-accent font-medium text-[14px] sm:text-[13px]',
 								'cursor-pointer press-down border border-transparent hover:border-white/30',
 								'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
 								'w-full sm:w-auto min-h-5.5 sm:min-h-0',
@@ -198,7 +254,7 @@ function RouteComponent() {
 							disabled={connect.isPending}
 							className={cx(
 								'flex items-center gap-1.5 sm:gap-1 px-4 sm:px-3 py-2.5 sm:py-1.5 rounded-full justify-center',
-								'glass-button text-primary font-medium text-[13px] sm:text-[12px]',
+								'glass-button text-primary font-medium text-[14px] sm:text-[13px]',
 								'cursor-pointer press-down border border-transparent hover:border-white/20',
 								'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
 								'w-full sm:w-auto min-h-5.5 sm:min-h-0',
@@ -220,25 +276,22 @@ function RouteComponent() {
 							<button
 								type="button"
 								onClick={() => {
-									if (connector) {
-										setPendingAction('reconnect')
-										connect.mutate({ connector })
+									if (connection.address) {
+										navigate({
+											to: '/$address',
+											params: { address: connection.address },
+										})
 									}
 								}}
-								disabled={connect.isPending}
 								className={cx(
 									'flex items-center gap-1.5 px-4 sm:px-3 py-2.5 sm:py-1.5 rounded-full justify-center',
-									'glass-button text-primary font-medium text-[13px] sm:text-[12px]',
+									'glass-button text-primary font-medium text-[14px] sm:text-[13px]',
 									'cursor-pointer press-down border border-transparent hover:border-accent/30',
-									'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
+									'transition-all',
 									'w-full sm:w-auto min-h-5.5 sm:min-h-0',
 								)}
 							>
-								{pendingAction === 'reconnect' ? (
-									<span className="size-[14px] sm:size-[12px] border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-								) : (
-									<ClockIcon className="size-[14px] sm:size-[12px] text-accent" />
-								)}
+								<ClockIcon className="size-[14px] sm:size-[12px] text-accent" />
 								<span>
 									{t('common.continue')}{' '}
 									<span className="font-mono text-secondary">
@@ -250,8 +303,8 @@ function RouteComponent() {
 					</div>
 
 					{connect.error && (
-						<p className="text-negative/70 text-[12px] text-center mt-2">
-							{connect.error.message}
+						<p className="text-negative/70 text-[13px] text-center mt-2">
+							{parseConnectionError(connect.error)}
 						</p>
 					)}
 				</div>

@@ -35,7 +35,7 @@ export type AssetData = {
 	valueUsd: number | undefined
 }
 
-export const fetchAssets = createServerFn({ method: 'GET' })
+export const fetchAssets = createServerFn({ method: 'POST' })
 	.inputValidator((input: { address: string }) => input)
 	.handler(async ({ data }): Promise<AssetData[] | null> => {
 		try {

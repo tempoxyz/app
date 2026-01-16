@@ -128,7 +128,7 @@ export function Section(props: {
 					className={`absolute inset-0 cursor-pointer select-none active:bg-black/[0.01] dark:active:bg-white/[0.02] focus-visible:!outline-2 focus-visible:!outline-accent focus-visible:!outline-offset-[-2px] ${open ? 'rounded-[10px_10px_0_0] focus-visible:!rounded-[10px_10px_0_0]' : 'rounded-[10px] focus-visible:!rounded-[10px]'}`}
 				/>
 				<div className="absolute inset-0 flex items-center pl-2 pr-2.5 pointer-events-none">
-					<span className="flex flex-1 min-w-0 items-center gap-2 overflow-hidden text-[15px] font-medium text-primary">
+					<span className="flex flex-1 min-w-0 items-center gap-2 overflow-hidden text-[16px] font-medium text-primary">
 						{backButton ? (
 							<>
 								<button
@@ -137,7 +137,7 @@ export function Section(props: {
 									className="flex items-center gap-1.5 text-accent active:text-accent/80 transition-colors cursor-pointer shrink-0 pointer-events-auto"
 								>
 									<ArrowLeftIcon className="size-[14px] shrink-0" />
-									<span className="truncate max-w-[100px] sm:max-w-[150px]">
+									<span className="truncate max-w-[100px] sm:max-w-[150px] text-[16px] font-medium">
 										{backButton.label}
 									</span>
 								</button>
@@ -151,7 +151,7 @@ export function Section(props: {
 								{subtitle && (
 									<>
 										<span className="w-px h-4 bg-card-border shrink-0" />
-										<span className="text-[12px] text-tertiary font-normal truncate">
+										<span className="text-[13px] text-tertiary font-normal truncate">
 											{subtitle}
 										</span>
 									</>

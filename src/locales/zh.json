@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "恢复实时更新",
 		"pauseLiveUpdates": "暂停实时更新",
 		"selectBlockToViewTxs": "选择区块查看交易",
-		"loadingAccessKeys": "正在加载访问密钥...",
-		"noAccessKeysConfigured": "未配置访问密钥。",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "创建密钥",
-		"accessKeys": "访问密钥"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "开始使用",

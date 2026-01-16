@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "המשך עדכונים חיים",
 		"pauseLiveUpdates": "השהה עדכונים חיים",
 		"selectBlockToViewTxs": "בחר בלוק לצפייה בעסקאות",
-		"loadingAccessKeys": "טוען מפתחות גישה...",
-		"noAccessKeysConfigured": "לא הוגדרו מפתחות גישה.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "צור מפתח",
-		"accessKeys": "מפתחות גישה"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "התחל",

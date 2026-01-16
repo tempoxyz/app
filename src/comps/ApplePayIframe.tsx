@@ -26,7 +26,7 @@ function isMobileSafari(): boolean {
 }
 
 export function ApplePayIframe(props: ApplePayIframe.Props) {
-	const { url, className, onLoad, onCancel } = props
+	const { url, className, onLoad, onCancel, inline = false } = props
 	const iframeRef = React.useRef<HTMLIFrameElement>(null)
 	const placeholderRef = React.useRef<HTMLDivElement>(null)
 	const [isLoaded, setIsLoaded] = React.useState(false)
@@ -128,7 +128,58 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 	}
 
 	const isMobileSafariBrowser = isMobileSafari()
-	const shouldExpandFullscreen = isExpanded && !isMobileSafariBrowser
+	const shouldExpandFullscreen = isExpanded && !isMobileSafariBrowser && !inline
+
+	const iframeContent = (
+		<div
+			className={cx(
+				inline
+					? 'relative w-full h-[40px]'
+					: shouldExpandFullscreen
+						? 'fixed inset-0 z-100'
+						: 'fixed z-100 pointer-events-auto bg-base-alt rounded-md p-3',
+				inline && !isLoaded && 'invisible',
+				!inline && !isLoaded && 'sr-only',
+			)}
+			style={
+				!inline && !shouldExpandFullscreen && placeholderRect
+					? {
+							top: placeholderRect.top,
+							left: placeholderRect.left,
+							width: placeholderRect.width,
+							height: placeholderRect.height,
+						}
+					: undefined
+			}
+		>
+			{!inline && !shouldExpandFullscreen && onCancel && (
+				<button
+					type="button"
+					onClick={onCancel}
+					className="absolute top-1 right-1 size-4 flex items-center justify-center rounded-full text-tertiary hover:text-primary cursor-pointer transition-colors"
+					title="Cancel"
+				>
+					<XIcon className="size-3" />
+				</button>
+			)}
+			<iframe
+				ref={iframeRef}
+				src={iframeSrc ?? ''}
+				title="Apple Pay Checkout"
+				allow="payment"
+				referrerPolicy="no-referrer"
+				className={cx(
+					'border-0 rounded-md',
+					inline ? 'w-full h-[40px]' : 'h-full w-full',
+					className,
+				)}
+			/>
+		</div>
+	)
+
+	if (inline) {
+		return iframeContent
+	}
 
 	return (
 		<>
@@ -143,47 +194,7 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 			/>
 
 			{/* Always portal to body - position via CSS */}
-			{createPortal(
-				<div
-					className={cx(
-						shouldExpandFullscreen
-							? 'fixed inset-0 z-100'
-							: 'fixed z-100 pointer-events-auto bg-base-alt rounded-md p-3',
-						!isLoaded && 'sr-only',
-					)}
-					style={
-						!shouldExpandFullscreen && placeholderRect
-							? {
-									top: placeholderRect.top,
-									left: placeholderRect.left,
-									width: placeholderRect.width,
-									height: placeholderRect.height,
-								}
-							: undefined
-					}
-				>
-					{!shouldExpandFullscreen && onCancel && (
-						<button
-							type="button"
-							onClick={onCancel}
-							className="absolute top-1 right-1 size-4 flex items-center justify-center rounded-full text-tertiary hover:text-primary cursor-pointer transition-colors"
-							title="Cancel"
-						>
-							<XIcon className="size-3" />
-						</button>
-					)}
-					<iframe
-						ref={iframeRef}
-						src={iframeSrc ?? ''}
-						title="Apple Pay Checkout"
-						allow="payment"
-						sandbox="allow-scripts allow-same-origin"
-						referrerPolicy="no-referrer"
-						className={cx('border-0 h-full w-full rounded-md', className)}
-					/>
-				</div>,
-				document.body,
-			)}
+			{createPortal(iframeContent, document.body)}
 		</>
 	)
 }
@@ -194,5 +205,6 @@ export declare namespace ApplePayIframe {
 		className?: string | undefined
 		onLoad?: () => void
 		onCancel?: () => void
+		inline?: boolean
 	}
 }

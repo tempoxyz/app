@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Élő frissítések folytatása",
 		"pauseLiveUpdates": "Élő frissítések szüneteltetése",
 		"selectBlockToViewTxs": "Válasszon blokkot a tranzakciók megtekintéséhez",
-		"loadingAccessKeys": "Hozzáférési kulcsok betöltése...",
-		"noAccessKeysConfigured": "Nincsenek hozzáférési kulcsok beállítva.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Kulcs létrehozása",
-		"accessKeys": "Hozzáférési kulcsok"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Kezdés",

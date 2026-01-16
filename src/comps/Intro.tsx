@@ -203,7 +203,7 @@ export function Intro() {
 				</div>
 				<p
 					ref={taglineRef}
-					className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none"
+					className="text-[16px] sm:text-[18px] leading-[22px] sm:leading-[24px] max-md:text-[14px] max-md:leading-[18px] max-w-[280px] sm:max-w-none"
 					style={{
 						opacity: isReady ? undefined : 0,
 						color: 'light-dark(#505050, rgba(255,255,255,0.7))',
@@ -215,7 +215,7 @@ export function Intro() {
 				<div className="flex gap-1.5 flex-wrap isolate">
 					<a
 						ref={button1Ref}
-						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
+						className="flex items-center gap-1 px-2 py-0.5 text-[13px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
 						style={{
 							color: 'light-dark(#505050, white)',
 							opacity: isReady ? undefined : 0,
@@ -230,7 +230,7 @@ export function Intro() {
 					</a>
 					<a
 						ref={button2Ref}
-						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
+						className="flex items-center gap-1 px-2 py-0.5 text-[13px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
 						style={{
 							color: 'light-dark(#505050, white)',
 							opacity: isReady ? undefined : 0,

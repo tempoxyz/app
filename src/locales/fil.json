@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Ipagpatuloy ang mga live update",
 		"pauseLiveUpdates": "I-pause ang mga live update",
 		"selectBlockToViewTxs": "Pumili ng block para makita ang mga transaksyon",
-		"loadingAccessKeys": "Naglo-load ng mga access key...",
-		"noAccessKeysConfigured": "Walang naka-configure na access key.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Gumawa ng Susi",
-		"accessKeys": "Mga Access Key"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Magsimula",

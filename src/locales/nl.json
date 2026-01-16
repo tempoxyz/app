@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Live updates hervatten",
 		"pauseLiveUpdates": "Live updates pauzeren",
 		"selectBlockToViewTxs": "Selecteer een blok om transacties te bekijken",
-		"loadingAccessKeys": "Toegangssleutels laden...",
-		"noAccessKeysConfigured": "Geen toegangssleutels geconfigureerd.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Sleutel aanmaken",
-		"accessKeys": "Toegangssleutels"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Aan de slag",

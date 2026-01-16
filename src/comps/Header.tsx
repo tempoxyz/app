@@ -28,7 +28,7 @@ export namespace Header {
 				title={`${name} Network`}
 				className={cx(
 					'flex items-center gap-[4px] px-[8px] h-[28px] border border-distinct',
-					'bg-base-alt text-base-content rounded-[14px] text-[14px] font-medium',
+					'bg-base-alt text-base-content rounded-[14px] text-[15px] font-medium',
 					className,
 				)}
 			>

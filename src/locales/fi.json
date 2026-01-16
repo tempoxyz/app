@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Jatka reaaliaikaisia päivityksiä",
 		"pauseLiveUpdates": "Keskeytä reaaliaikaiset päivitykset",
 		"selectBlockToViewTxs": "Valitse lohko nähdäksesi tapahtumat",
-		"loadingAccessKeys": "Ladataan käyttöoikeusavaimia...",
-		"noAccessKeysConfigured": "Ei käyttöoikeusavaimia määritetty.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Luo avain",
-		"accessKeys": "Pääsyavaimet"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Aloita",

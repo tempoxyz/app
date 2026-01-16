@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Sambung semula kemas kini langsung",
 		"pauseLiveUpdates": "Jeda kemas kini langsung",
 		"selectBlockToViewTxs": "Pilih blok untuk melihat transaksi",
-		"loadingAccessKeys": "Memuatkan kunci akses...",
-		"noAccessKeysConfigured": "Tiada kunci akses dikonfigurasi.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Cipta Kunci",
-		"accessKeys": "Kunci Akses"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Mula",

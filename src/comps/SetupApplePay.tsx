@@ -9,12 +9,11 @@ import {
 	useVerifyOtp,
 } from '#lib/onramp-contact'
 import { AddFunds } from './AddFunds'
-import { PhoneInput } from './PhoneInput'
 import LoaderIcon from '~icons/lucide/loader-2'
 import CheckIcon from '~icons/lucide/check'
 import ArrowRightIcon from '~icons/lucide/arrow-right'
 
-type Step = 'contact' | 'otp' | 'complete'
+type Step = 'email' | 'phone' | 'otp' | 'complete'
 
 export function SetupApplePay(props: SetupApplePay.Props) {
 	const { address } = props
@@ -22,7 +21,7 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 	const status = useOnrampStatus(address)
 	const contactInfo = useContactInfo(address)
 
-	const [step, setStep] = React.useState<Step>('contact')
+	const [step, setStep] = React.useState<Step>('email')
 	const [email, setEmail] = React.useState('')
 	const [phone, setPhone] = React.useState('')
 	const [otp, setOtp] = React.useState('')
@@ -39,6 +38,8 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 				setStep('complete')
 			} else if (status.data.hasPhone) {
 				setStep('otp')
+			} else if (status.data.hasEmail) {
+				setStep('phone')
 			}
 		}
 	}, [status.data])
@@ -52,10 +53,14 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 		}
 	}, [contactInfo.data])
 
-	const handleContactSubmit = async () => {
+	const handleEmailSubmit = async () => {
 		if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
-		if (!phone || phone.replace(/\D/g, '').length < 10) return
 		await setEmailMutation.mutateAsync(email)
+		setStep('phone')
+	}
+
+	const handlePhoneSubmit = async () => {
+		if (!phone || phone.length < 10) return
 		await setPhoneMutation.mutateAsync(phone)
 		const result = await sendOtpMutation.mutateAsync()
 		setOtpExpiresAt(new Date(result.expiresAt))
@@ -94,23 +99,26 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 	}
 
 	return (
-		<div className="flex flex-col gap-3 py-2.5">
-			{step === 'contact' && (
-				<ContactStep
+		<div className="flex flex-col gap-2 py-2.5">
+			{step === 'email' && (
+				<EmailStep
 					email={email}
+					onChange={setEmail}
+					onSubmit={handleEmailSubmit}
+					isLoading={setEmailMutation.isPending}
+					error={setEmailMutation.error?.message}
+				/>
+			)}
+
+			{step === 'phone' && (
+				<PhoneStep
 					phone={phone}
-					onEmailChange={setEmail}
-					onPhoneChange={setPhone}
-					onSubmit={handleContactSubmit}
-					isLoading={
-						setEmailMutation.isPending ||
-						setPhoneMutation.isPending ||
-						sendOtpMutation.isPending
-					}
+					onChange={setPhone}
+					onSubmit={handlePhoneSubmit}
+					onBack={() => setStep('email')}
+					isLoading={setPhoneMutation.isPending || sendOtpMutation.isPending}
 					error={
-						setEmailMutation.error?.message ??
-						setPhoneMutation.error?.message ??
-						sendOtpMutation.error?.message
+						setPhoneMutation.error?.message ?? sendOtpMutation.error?.message
 					}
 				/>
 			)}
@@ -121,7 +129,7 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 					onChange={setOtp}
 					onSubmit={handleVerifyOtp}
 					onResend={handleResendOtp}
-					onBack={() => setStep('contact')}
+					onBack={() => setStep('phone')}
 					expiresAt={otpExpiresAt}
 					isLoading={verifyOtpMutation.isPending}
 					isResending={sendOtpMutation.isPending}
@@ -132,81 +140,148 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 	)
 }
 
-function ContactStep(props: {
+function StepIndicator(props: { currentStep: Step }) {
+	const steps: Step[] = ['email', 'phone', 'otp']
+	const currentIndex = steps.indexOf(props.currentStep)
+
+	return (
+		<div className="flex items-center justify-center gap-1">
+			{steps.map((s, i) => (
+				<div
+					key={s}
+					className={cx(
+						'size-1 rounded-full transition-all',
+						i <= currentIndex ? 'bg-accent' : 'bg-card-border',
+					)}
+				/>
+			))}
+		</div>
+	)
+}
+
+function EmailStep(props: {
 	email: string
-	phone: string
-	onEmailChange: (value: string) => void
-	onPhoneChange: (value: string) => void
+	onChange: (value: string) => void
 	onSubmit: () => void
 	isLoading: boolean
 	error?: string
 }) {
-	const [showPhone, setShowPhone] = React.useState(false)
-	const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(props.email)
-	const isPhoneValid = props.phone.replace(/\D/g, '').length >= 10
-
-	const handleEmailContinue = () => {
-		if (isEmailValid) {
-			setShowPhone(true)
-		}
-	}
+	const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(props.email)
 
 	return (
-		<div className="flex flex-col gap-3">
-			<label className="flex flex-col gap-1.5">
-				<span className="text-[12px] text-secondary">Email address</span>
+		<div className="flex flex-col gap-2">
+			<p className="text-[12px] text-tertiary">
+				Enter your email address to get started with Apple Pay.
+			</p>
+
+			<div className="relative">
 				<input
 					type="email"
 					placeholder="email@example.com"
 					value={props.email}
-					onChange={(e) => props.onEmailChange(e.target.value)}
-					onKeyDown={(e) => e.key === 'Enter' && handleEmailContinue()}
-					disabled={props.isLoading || showPhone}
+					onChange={(e) => props.onChange(e.target.value)}
+					onKeyDown={(e) => e.key === 'Enter' && isValid && props.onSubmit()}
+					disabled={props.isLoading}
 					className={cx(
-						'w-full px-3 py-2 text-[13px] rounded-md border transition-colors',
-						'bg-base placeholder:text-tertiary',
-						'border-card-border text-primary hover:border-accent/50 focus:border-accent',
-						(props.isLoading || showPhone) && 'opacity-50 cursor-not-allowed',
+						'glass-input w-full pl-3 pr-8 py-1.5 text-[13px] rounded-full outline-none',
+						'placeholder:text-tertiary text-primary',
+						props.isLoading && 'opacity-50 cursor-not-allowed',
 					)}
 				/>
-			</label>
+				<button
+					type="button"
+					onClick={props.onSubmit}
+					disabled={!isValid || props.isLoading}
+					className={cx(
+						'absolute right-1.5 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center rounded-full cursor-pointer press-down transition-all',
+						isValid && !props.isLoading
+							? 'bg-accent text-white'
+							: 'bg-card-border/50 text-tertiary cursor-not-allowed',
+					)}
+				>
+					{props.isLoading ? (
+						<LoaderIcon className="size-2 animate-spin" />
+					) : (
+						<ArrowRightIcon className="size-2" />
+					)}
+				</button>
+			</div>
 
-			{showPhone && (
-				<div className="flex flex-col gap-1.5">
-					<span className="text-[12px] text-secondary">Phone</span>
-					<PhoneInput
-						value={props.phone}
-						onChange={props.onPhoneChange}
-						disabled={props.isLoading}
-						onEnter={() => isPhoneValid && props.onSubmit()}
-					/>
-				</div>
-			)}
+			<StepIndicator currentStep="email" />
 
 			{props.error && (
 				<p className="text-[11px] text-negative">{props.error}</p>
 			)}
+		</div>
+	)
+}
 
-			<button
-				type="button"
-				onClick={showPhone ? props.onSubmit : handleEmailContinue}
-				disabled={showPhone ? !isPhoneValid || props.isLoading : !isEmailValid}
-				className={cx(
-					'flex items-center justify-center gap-2 w-full py-2.5 text-[13px] font-medium rounded-md cursor-pointer press-down transition-colors',
-					(showPhone ? isPhoneValid && !props.isLoading : isEmailValid)
-						? 'bg-accent text-white hover:bg-accent/90'
-						: 'bg-base-alt text-tertiary cursor-not-allowed',
-				)}
-			>
-				{props.isLoading ? (
-					<LoaderIcon className="size-3 animate-spin" />
-				) : (
-					<>
-						<span>Continue</span>
-						<ArrowRightIcon className="size-3" />
-					</>
-				)}
-			</button>
+function PhoneStep(props: {
+	phone: string
+	onChange: (value: string) => void
+	onSubmit: () => void
+	onBack: () => void
+	isLoading: boolean
+	error?: string
+}) {
+	const formatPhone = (value: string) => {
+		const digits = value.replace(/\D/g, '')
+		if (!digits.startsWith('1') && digits.length > 0) {
+			return `+1${digits}`
+		}
+		return digits ? `+${digits}` : ''
+	}
+
+	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		props.onChange(formatPhone(e.target.value))
+	}
+
+	const isValid = props.phone.replace(/\D/g, '').length >= 11
+
+	return (
+		<div className="flex flex-col gap-2">
+			<p className="text-[12px] text-tertiary">
+				Enter your phone number. We'll send a verification code.
+			</p>
+
+			<div className="relative">
+				<input
+					type="tel"
+					placeholder="+1 (555) 123-4567"
+					value={props.phone}
+					onChange={handleChange}
+					onKeyDown={(e) => e.key === 'Enter' && isValid && props.onSubmit()}
+					disabled={props.isLoading}
+					className={cx(
+						'glass-input w-full pl-3 pr-8 py-1.5 text-[13px] rounded-full outline-none',
+						'placeholder:text-tertiary text-primary',
+						props.isLoading && 'opacity-50 cursor-not-allowed',
+					)}
+				/>
+				<button
+					type="button"
+					onClick={props.onSubmit}
+					disabled={!isValid || props.isLoading}
+					className={cx(
+						'absolute right-1.5 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center rounded-full cursor-pointer press-down transition-all',
+						isValid && !props.isLoading
+							? 'bg-accent text-white'
+							: 'bg-card-border/50 text-tertiary cursor-not-allowed',
+					)}
+				>
+					{props.isLoading ? (
+						<LoaderIcon className="size-2 animate-spin" />
+					) : (
+						<ArrowRightIcon className="size-2" />
+					)}
+				</button>
+			</div>
+
+			<StepIndicator currentStep="phone" />
+
+			{props.error && (
+				<p className="text-[11px] text-negative">{props.error}</p>
+			)}
 		</div>
 	)
 }
@@ -241,9 +316,6 @@ function OtpStep(props: {
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const value = e.target.value.replace(/\D/g, '').slice(0, 6)
 		props.onChange(value)
-		if (value.length === 6 && !props.isLoading && !isExpired) {
-			props.onSubmit()
-		}
 	}
 
 	const isValid = /^\d{6}$/.test(props.otp)
@@ -255,23 +327,43 @@ function OtpStep(props: {
 				Enter the 6-digit code sent to your phone.
 			</p>
 
-			<input
-				type="text"
-				inputMode="numeric"
-				placeholder="000000"
-				value={props.otp}
-				onChange={handleChange}
-				onKeyDown={(e) => e.key === 'Enter' && isValid && props.onSubmit()}
-				disabled={props.isLoading || isExpired}
-				className={cx(
-					'w-full px-3 py-2 text-[13px] rounded-md border transition-colors text-center tracking-[0.5em] font-mono',
-					'bg-base placeholder:text-tertiary placeholder:tracking-[0.5em]',
-					'border-card-border text-primary hover:border-accent/50 focus:border-accent',
-					(props.isLoading || isExpired) && 'opacity-50 cursor-not-allowed',
-				)}
-			/>
+			<div className="relative">
+				<input
+					type="text"
+					inputMode="numeric"
+					placeholder="000000"
+					value={props.otp}
+					onChange={handleChange}
+					onKeyDown={(e) => e.key === 'Enter' && isValid && props.onSubmit()}
+					disabled={props.isLoading || isExpired}
+					className={cx(
+						'glass-input w-full pl-3 pr-8 py-1.5 text-[13px] rounded-full outline-none text-center tracking-[0.3em] font-mono',
+						'placeholder:text-tertiary placeholder:tracking-[0.3em] text-primary',
+						(props.isLoading || isExpired) && 'opacity-50 cursor-not-allowed',
+					)}
+				/>
+				<button
+					type="button"
+					onClick={props.onSubmit}
+					disabled={!isValid || props.isLoading || isExpired}
+					className={cx(
+						'absolute right-1.5 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center rounded-full cursor-pointer press-down transition-all',
+						isValid && !props.isLoading && !isExpired
+							? 'bg-accent text-white'
+							: 'bg-card-border/50 text-tertiary cursor-not-allowed',
+					)}
+				>
+					{props.isLoading ? (
+						<LoaderIcon className="size-2 animate-spin" />
+					) : (
+						<CheckIcon className="size-2" />
+					)}
+				</button>
+			</div>
 
-			<div className="flex items-center justify-between text-[11px]">
+			<StepIndicator currentStep="otp" />
+
+			<div className="flex items-center justify-between text-[10px]">
 				{timeLeft !== null && (
 					<span className={cx(isExpired ? 'text-negative' : 'text-tertiary')}>
 						{isExpired
@@ -284,7 +376,7 @@ function OtpStep(props: {
 					onClick={props.onResend}
 					disabled={props.isResending || props.isLoading}
 					className={cx(
-						'text-accent hover:underline cursor-pointer',
+						'text-accent font-medium hover:underline cursor-pointer',
 						(props.isResending || props.isLoading) &&
 							'opacity-50 cursor-not-allowed',
 					)}
@@ -296,37 +388,6 @@ function OtpStep(props: {
 			{props.error && (
 				<p className="text-[11px] text-negative">{props.error}</p>
 			)}
-
-			<div className="flex gap-2">
-				<button
-					type="button"
-					onClick={props.onBack}
-					disabled={props.isLoading}
-					className="flex-1 py-2.5 text-[13px] font-medium rounded-md bg-base-alt text-secondary hover:text-primary cursor-pointer press-down transition-colors"
-				>
-					Back
-				</button>
-				<button
-					type="button"
-					onClick={props.onSubmit}
-					disabled={!isValid || props.isLoading || isExpired}
-					className={cx(
-						'flex-[2] flex items-center justify-center gap-2 py-2.5 text-[13px] font-medium rounded-md cursor-pointer press-down transition-colors',
-						isValid && !props.isLoading && !isExpired
-							? 'bg-accent text-white hover:bg-accent/90'
-							: 'bg-base-alt text-tertiary cursor-not-allowed',
-					)}
-				>
-					{props.isLoading ? (
-						<LoaderIcon className="size-3 animate-spin" />
-					) : (
-						<>
-							<CheckIcon className="size-3" />
-							<span>Verify</span>
-						</>
-					)}
-				</button>
-			</div>
 		</div>
 	)
 }

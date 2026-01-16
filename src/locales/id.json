@@ -71,10 +71,10 @@
 		"resumeLiveUpdates": "Lanjutkan pembaruan langsung",
 		"pauseLiveUpdates": "Jeda pembaruan langsung",
 		"selectBlockToViewTxs": "Pilih blok untuk melihat transaksi",
-		"loadingAccessKeys": "Memuat kunci akses...",
-		"noAccessKeysConfigured": "Tidak ada kunci akses yang dikonfigurasi.",
+		"loadingAccessKeys": "Loading spend keys...",
+		"noAccessKeysConfigured": "No spend keys configured.",
 		"createKey": "Buat Kunci",
-		"accessKeys": "Kunci Akses"
+		"accessKeys": "Spend Keys"
 	},
 	"landing": {
 		"getStarted": "Mulai",

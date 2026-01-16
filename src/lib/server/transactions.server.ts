@@ -599,7 +599,7 @@ export async function fetchTransactions(
 
 		const blockTimestamps = new Map<string, number>()
 		for (const [blockNum, ts] of Object.entries(timestampsResult.timestamps)) {
-			blockTimestamps.set(blockNum, ts)
+			blockTimestamps.set(blockNum, ts as number)
 		}
 
 		const tokenMetadataMap = await tokenMetadataMapPromise

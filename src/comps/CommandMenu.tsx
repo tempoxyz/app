@@ -449,7 +449,7 @@ function CommandMenuPortal({
 							value={query}
 							onChange={(e) => setQuery(e.target.value)}
 							placeholder={t('commandMenu.searchPlaceholder')}
-							className="flex-1 bg-transparent text-[17px] text-white placeholder:text-white/40 outline-none"
+							className="flex-1 bg-transparent text-[18px] text-white placeholder:text-white/40 outline-none"
 							autoComplete="off"
 							autoCorrect="off"
 							spellCheck={false}
@@ -462,19 +462,19 @@ function CommandMenuPortal({
 							value={sendAddress}
 							onChange={(e) => setSendAddress(e.target.value)}
 							placeholder={t('commandMenu.sendSubmenu.enterAddress')}
-							className="flex-1 bg-transparent text-[17px] text-white placeholder:text-white/40 outline-none font-mono"
+							className="flex-1 bg-transparent text-[18px] text-white placeholder:text-white/40 outline-none font-mono"
 							autoComplete="off"
 							autoCorrect="off"
 							spellCheck={false}
 						/>
 					)}
 					{view === 'language' && (
-						<span className="flex-1 text-[17px] text-white/60">
+						<span className="flex-1 text-[18px] text-white/60">
 							{t('commandMenu.languageSubmenu.title')}
 						</span>
 					)}
 
-					<kbd className="px-2.5 py-1.5 text-[12px] text-white/50 bg-white/5 rounded-lg border border-white/10 font-sans">
+					<kbd className="px-2.5 py-1.5 text-[13px] text-white/50 bg-white/5 rounded-lg border border-white/10 font-sans">
 						{isMac ? '⌘K' : 'Ctrl+K'}
 					</kbd>
 				</div>
@@ -488,13 +488,13 @@ function CommandMenuPortal({
 				>
 					{view === 'main' &&
 						(filteredGroups.length === 0 ? (
-							<div className="px-5 py-10 text-center text-white/40 text-[15px]">
+							<div className="px-5 py-10 text-center text-white/40 text-[16px]">
 								No results found
 							</div>
 						) : (
 							filteredGroups.map((group) => (
 								<div key={group.label} role="group" aria-label={group.label}>
-									<div className="px-5 py-2 text-[11px] font-semibold text-white/40 uppercase tracking-wider">
+									<div className="px-5 py-2 text-[12px] font-semibold text-white/40 uppercase tracking-wider">
 										{group.label}
 									</div>
 									{group.commands.map((cmd) => {
@@ -526,7 +526,7 @@ function CommandMenuPortal({
 												</span>
 												<span
 													className={cx(
-														'flex-1 text-[15px] font-medium text-left',
+														'flex-1 text-[16px] font-medium text-left',
 														isSelected ? 'text-white' : 'text-white/90',
 													)}
 												>
@@ -538,7 +538,7 @@ function CommandMenuPortal({
 															<kbd
 																key={k}
 																className={cx(
-																	'min-w-[24px] h-6 flex items-center justify-center text-[12px] font-medium rounded-md px-1.5',
+																	'min-w-[24px] h-6 flex items-center justify-center text-[13px] font-medium rounded-md px-1.5',
 																	isSelected
 																		? 'text-white/70 bg-white/20'
 																		: 'text-white/50 bg-white/10',
@@ -576,7 +576,7 @@ function CommandMenuPortal({
 								<span className="flex items-center justify-center size-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 text-white">
 									<ClipboardIcon className="size-5" />
 								</span>
-								<span className="text-[15px] font-medium text-white/90">
+								<span className="text-[16px] font-medium text-white/90">
 									{t('commandMenu.sendSubmenu.pasteFromClipboard')}
 								</span>
 							</button>
@@ -602,7 +602,7 @@ function CommandMenuPortal({
 											<span className="flex items-center justify-center size-10 rounded-xl bg-white/20 text-white">
 												<SendIcon className="size-5" />
 											</span>
-											<span className="text-[15px] font-medium text-white">
+											<span className="text-[16px] font-medium text-white">
 												{t('commandMenu.sendSubmenu.sendTo')}{' '}
 												<span className="font-mono opacity-80">
 													{sendAddress.slice(0, 8)}...{sendAddress.slice(-6)}
@@ -615,7 +615,7 @@ function CommandMenuPortal({
 											role="alert"
 											className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20"
 										>
-											<span className="text-[14px] text-red-400">
+											<span className="text-[15px] text-red-400">
 												{t('commandMenu.sendSubmenu.invalidAddress')}
 											</span>
 										</div>
@@ -651,7 +651,7 @@ function CommandMenuPortal({
 									>
 										<span
 											className={cx(
-												'text-[15px] font-medium',
+												'text-[16px] font-medium',
 												isSelected ? 'text-white' : 'text-white/90',
 											)}
 										>
@@ -673,7 +673,7 @@ function CommandMenuPortal({
 				</div>
 
 				{/* Footer */}
-				<div className="flex items-center gap-6 px-5 h-12 border-t border-white/10 bg-white/5 text-[12px] text-white/40">
+				<div className="flex items-center gap-6 px-5 h-12 border-t border-white/10 bg-white/5 text-[13px] text-white/40">
 					<span className="flex items-center gap-2">
 						<kbd className="px-1.5 py-0.5 bg-white/10 rounded-md border border-white/10">
 							↑
