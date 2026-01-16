@@ -21,6 +21,7 @@
 	"env": {
 		"devnet": {
 			"name": "app-devnet",
+			"keep_vars": true,
 			"main": "./src/index.server.ts",
 			"routes": [
 				{
@@ -52,6 +53,7 @@
 		},
 		"moderato": {
 			"name": "app-moderato",
+			"keep_vars": true,
 			"main": "./src/index.server.ts",
 			"routes": [
 				{
@@ -83,6 +85,7 @@
 		},
 		"presto": {
 			"name": "app-presto",
+			"keep_vars": true,
 			"main": "./src/index.server.ts",
 			"routes": [
 				{
