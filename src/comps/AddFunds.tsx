@@ -80,12 +80,6 @@ export function AddFunds(props: AddFunds.Props) {
 	return (
 		<>
 			<div className="flex flex-col gap-3 py-2.5">
-				<div className="flex flex-col gap-1">
-					<p className="text-[12px] text-tertiary">
-						Add funds to your account using Apple Pay.
-					</p>
-				</div>
-
 				<div className="flex flex-col gap-2">
 					<div className="flex gap-1.5">
 						{PRESET_AMOUNTS.map((value) => (

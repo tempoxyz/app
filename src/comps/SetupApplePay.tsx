@@ -14,7 +14,7 @@ import LoaderIcon from '~icons/lucide/loader-2'
 import CheckIcon from '~icons/lucide/check'
 import ArrowRightIcon from '~icons/lucide/arrow-right'
 
-type Step = 'email' | 'phone' | 'otp' | 'complete'
+type Step = 'contact' | 'otp' | 'complete'
 
 export function SetupApplePay(props: SetupApplePay.Props) {
 	const { address } = props
@@ -22,7 +22,7 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 	const status = useOnrampStatus(address)
 	const contactInfo = useContactInfo(address)
 
-	const [step, setStep] = React.useState<Step>('email')
+	const [step, setStep] = React.useState<Step>('contact')
 	const [email, setEmail] = React.useState('')
 	const [phone, setPhone] = React.useState('')
 	const [otp, setOtp] = React.useState('')
@@ -39,8 +39,6 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 				setStep('complete')
 			} else if (status.data.hasPhone) {
 				setStep('otp')
-			} else if (status.data.hasEmail) {
-				setStep('phone')
 			}
 		}
 	}, [status.data])
@@ -54,14 +52,10 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 		}
 	}, [contactInfo.data])
 
-	const handleEmailSubmit = async () => {
+	const handleContactSubmit = async () => {
 		if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
+		if (!phone || phone.replace(/\D/g, '').length < 10) return
 		await setEmailMutation.mutateAsync(email)
-		setStep('phone')
-	}
-
-	const handlePhoneSubmit = async () => {
-		if (!phone || phone.length < 10) return
 		await setPhoneMutation.mutateAsync(phone)
 		const result = await sendOtpMutation.mutateAsync()
 		setOtpExpiresAt(new Date(result.expiresAt))
@@ -101,27 +95,22 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 
 	return (
 		<div className="flex flex-col gap-3 py-2.5">
-			<StepIndicator currentStep={step} />
-
-			{step === 'email' && (
-				<EmailStep
+			{step === 'contact' && (
+				<ContactStep
 					email={email}
-					onChange={setEmail}
-					onSubmit={handleEmailSubmit}
-					isLoading={setEmailMutation.isPending}
-					error={setEmailMutation.error?.message}
-				/>
-			)}
-
-			{step === 'phone' && (
-				<PhoneStep
 					phone={phone}
-					onChange={setPhone}
-					onSubmit={handlePhoneSubmit}
-					onBack={() => setStep('email')}
-					isLoading={setPhoneMutation.isPending || sendOtpMutation.isPending}
+					onEmailChange={setEmail}
+					onPhoneChange={setPhone}
+					onSubmit={handleContactSubmit}
+					isLoading={
+						setEmailMutation.isPending ||
+						setPhoneMutation.isPending ||
+						sendOtpMutation.isPending
+					}
 					error={
-						setPhoneMutation.error?.message ?? sendOtpMutation.error?.message
+						setEmailMutation.error?.message ??
+						setPhoneMutation.error?.message ??
+						sendOtpMutation.error?.message
 					}
 				/>
 			)}
@@ -132,7 +121,7 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 					onChange={setOtp}
 					onSubmit={handleVerifyOtp}
 					onResend={handleResendOtp}
-					onBack={() => setStep('phone')}
+					onBack={() => setStep('contact')}
 					expiresAt={otpExpiresAt}
 					isLoading={verifyOtpMutation.isPending}
 					isResending={sendOtpMutation.isPending}
@@ -143,79 +132,47 @@ export function SetupApplePay(props: SetupApplePay.Props) {
 	)
 }
 
-function StepIndicator(props: { currentStep: Step }) {
-	const steps: { key: Step; label: string }[] = [
-		{ key: 'email', label: 'Email' },
-		{ key: 'phone', label: 'Phone' },
-		{ key: 'otp', label: 'Verify' },
-	]
-
-	const currentIndex = steps.findIndex((s) => s.key === props.currentStep)
-
-	return (
-		<div className="flex items-center gap-2 mb-1">
-			{steps.map((s, i) => (
-				<React.Fragment key={s.key}>
-					<div className="flex items-center gap-1.5">
-						<div
-							className={cx(
-								'size-5 rounded-full flex items-center justify-center text-[10px] font-medium',
-								i < currentIndex
-									? 'bg-positive text-white'
-									: i === currentIndex
-										? 'bg-accent text-white'
-										: 'bg-base-alt text-tertiary',
-							)}
-						>
-							{i < currentIndex ? <CheckIcon className="size-3" /> : i + 1}
-						</div>
-						<span
-							className={cx(
-								'text-[11px]',
-								i === currentIndex ? 'text-primary' : 'text-tertiary',
-							)}
-						>
-							{s.label}
-						</span>
-					</div>
-					{i < steps.length - 1 && (
-						<div className="flex-1 h-px bg-card-border" />
-					)}
-				</React.Fragment>
-			))}
-		</div>
-	)
-}
-
-function EmailStep(props: {
+function ContactStep(props: {
 	email: string
-	onChange: (value: string) => void
+	phone: string
+	onEmailChange: (value: string) => void
+	onPhoneChange: (value: string) => void
 	onSubmit: () => void
 	isLoading: boolean
 	error?: string
 }) {
-	const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(props.email)
+	const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(props.email)
+	const isPhoneValid = props.phone.replace(/\D/g, '').length >= 10
+	const isValid = isEmailValid && isPhoneValid
 
 	return (
-		<div className="flex flex-col gap-2">
-			<p className="text-[12px] text-tertiary">
-				Enter your email address to get started with Apple Pay.
-			</p>
+		<div className="flex flex-col gap-3">
+			<label className="flex flex-col gap-1.5">
+				<span className="text-[12px] text-secondary">Email address</span>
+				<input
+					type="email"
+					placeholder="email@example.com"
+					value={props.email}
+					onChange={(e) => props.onEmailChange(e.target.value)}
+					disabled={props.isLoading}
+					className={cx(
+						'w-full px-3 py-2 text-[13px] rounded-md border transition-colors',
+						'bg-base placeholder:text-tertiary',
+						'border-card-border text-primary hover:border-accent/50 focus:border-accent',
+						props.isLoading && 'opacity-50 cursor-not-allowed',
+					)}
+				/>
+			</label>
 
-			<input
-				type="email"
-				placeholder="email@example.com"
-				value={props.email}
-				onChange={(e) => props.onChange(e.target.value)}
-				onKeyDown={(e) => e.key === 'Enter' && isValid && props.onSubmit()}
-				disabled={props.isLoading}
-				className={cx(
-					'w-full px-3 py-2 text-[13px] rounded-md border transition-colors',
-					'bg-base placeholder:text-tertiary',
-					'border-card-border text-primary hover:border-accent/50 focus:border-accent',
-					props.isLoading && 'opacity-50 cursor-not-allowed',
-				)}
-			/>
+			<div className="flex flex-col gap-1.5">
+				<span className="text-[12px] text-secondary">Phone</span>
+				<PhoneInput
+					value={props.phone}
+					onChange={props.onPhoneChange}
+					disabled={props.isLoading}
+					onEnter={() => isValid && props.onSubmit()}
+				/>
+			</div>
 
 			{props.error && (
 				<p className="text-[11px] text-negative">{props.error}</p>
@@ -241,67 +198,6 @@ function EmailStep(props: {
 					</>
 				)}
 			</button>
-		</div>
-	)
-}
-
-function PhoneStep(props: {
-	phone: string
-	onChange: (value: string) => void
-	onSubmit: () => void
-	onBack: () => void
-	isLoading: boolean
-	error?: string
-}) {
-	const isValid = props.phone.replace(/\D/g, '').length >= 10
-
-	return (
-		<div className="flex flex-col gap-2">
-			<p className="text-[12px] text-tertiary">
-				Enter your phone number. We'll send a verification code.
-			</p>
-
-			<PhoneInput
-				value={props.phone}
-				onChange={props.onChange}
-				disabled={props.isLoading}
-				onEnter={() => isValid && props.onSubmit()}
-			/>
-
-			{props.error && (
-				<p className="text-[11px] text-negative">{props.error}</p>
-			)}
-
-			<div className="flex gap-2">
-				<button
-					type="button"
-					onClick={props.onBack}
-					disabled={props.isLoading}
-					className="flex-1 py-2.5 text-[13px] font-medium rounded-md bg-base-alt text-secondary hover:text-primary cursor-pointer press-down transition-colors"
-				>
-					Back
-				</button>
-				<button
-					type="button"
-					onClick={props.onSubmit}
-					disabled={!isValid || props.isLoading}
-					className={cx(
-						'flex-[2] flex items-center justify-center gap-2 py-2.5 text-[13px] font-medium rounded-md cursor-pointer press-down transition-colors',
-						isValid && !props.isLoading
-							? 'bg-accent text-white hover:bg-accent/90'
-							: 'bg-base-alt text-tertiary cursor-not-allowed',
-					)}
-				>
-					{props.isLoading ? (
-						<LoaderIcon className="size-3 animate-spin" />
-					) : (
-						<>
-							<span>Send Code</span>
-							<ArrowRightIcon className="size-3" />
-						</>
-					)}
-				</button>
-			</div>
 		</div>
 	)
 }

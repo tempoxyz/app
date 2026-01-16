@@ -38,7 +38,6 @@ import {
 	type KnownEvent,
 	type GetTokenMetadataFn,
 } from '#comps/activity'
-import { AddFunds } from '#comps/AddFunds'
 import { RewardsPopoverButton } from '#comps/RewardsPopover'
 import { SetupApplePay } from '#comps/SetupApplePay'
 import { Layout } from '#comps/Layout'
