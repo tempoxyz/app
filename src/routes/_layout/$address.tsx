@@ -1125,7 +1125,7 @@ function RouteComponent() {
 								className="text-[36px] sm:text-[40px] md:text-[56px] font-sans font-semibold text-primary -tracking-[0.02em] tabular-nums"
 							/>
 						</div>
-						<div className="flex items-center gap-2 max-w-full">
+						<div className="flex items-center gap-1.5 max-w-full">
 							<button
 								type="button"
 								onClick={() => {
@@ -1223,7 +1223,7 @@ function RouteComponent() {
 										e.stopPropagation()
 										setShowZeroBalances(!showZeroBalances)
 									}}
-									className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors cursor-pointer focus-ring"
+									className="flex items-center justify-center size-[24px] rounded-md bg-base-alt active:bg-base-alt/70 cursor-pointer focus-ring"
 									aria-label={
 										showZeroBalances
 											? t('portfolio.hideZeroBalances')
@@ -3362,7 +3362,7 @@ function ActivitySection({
 			<button
 				type="button"
 				tabIndex={0}
-				onClick={(e) => {
+				onMouseDown={(e) => {
 					e.stopPropagation()
 					setActiveTab('mine')
 				}}
@@ -3373,7 +3373,7 @@ function ActivitySection({
 					}
 				}}
 				className={cx(
-					'text-[12px] font-medium transition-all pb-0.5 border-b-2 cursor-pointer',
+					'text-[12px] font-medium pb-0.5 border-b-2 cursor-pointer',
 					activeTab === 'mine'
 						? 'text-primary border-accent'
 						: 'text-tertiary hover:text-primary border-transparent',
@@ -3384,7 +3384,7 @@ function ActivitySection({
 			<button
 				type="button"
 				tabIndex={0}
-				onClick={(e) => {
+				onMouseDown={(e) => {
 					e.stopPropagation()
 					setActiveTab('everyone')
 				}}
@@ -3395,7 +3395,7 @@ function ActivitySection({
 					}
 				}}
 				className={cx(
-					'text-[12px] font-medium transition-all pb-0.5 border-b-2 cursor-pointer',
+					'text-[12px] font-medium pb-0.5 border-b-2 cursor-pointer',
 					activeTab === 'everyone'
 						? 'text-primary border-accent'
 						: 'text-tertiary hover:text-primary border-transparent',

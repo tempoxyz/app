@@ -502,7 +502,7 @@ export function ShaderCard({
 		const canvas = canvasRef.current
 		if (!canvas) return
 
-		const gl = canvas.getContext('webgl2')
+		const gl = canvas.getContext('webgl2', { alpha: false })
 		if (!gl) {
 			console.error('WebGL2 not supported')
 			return
@@ -825,7 +825,8 @@ export function ShaderCard({
 			// Pass 7: LiquidGlass effect to screen
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 			gl.viewport(0, 0, canvas.width, canvas.height)
-			gl.clearColor(0, 0, 0, 0)
+			const bgColor = isDark ? 0.098 : 0.988 // #191919 / #fcfcfc
+			gl.clearColor(bgColor, bgColor, bgColor, 1)
 			gl.clear(gl.COLOR_BUFFER_BIT)
 
 			gl.enable(gl.BLEND)
@@ -904,7 +905,7 @@ export function ShaderCard({
 	return (
 		<canvas
 			ref={canvasRef}
-			className={`${className ?? ''} dark:drop-shadow-[0_12px_40px_rgba(0,0,0,0.25)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.1)]`}
+			className={`${className ?? ''} bg-base-background dark:drop-shadow-[0_12px_40px_rgba(0,0,0,0.25)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.1)]`}
 			style={{
 				position: 'absolute',
 				inset: -LIQUIDGLASS_CANVAS_EXTEND,

@@ -104,10 +104,7 @@ export function Intro() {
 	React.useEffect(() => {
 		const el = cardRef.current
 		if (!el) return
-		const timer = setTimeout(() => {
-			waapi.animate(el, { opacity: [0, 1], scale: [0.98, 1], ease: cardSpring })
-		}, 20)
-		return () => clearTimeout(timer)
+		waapi.animate(el, { opacity: [0, 1], scale: [0.98, 1], ease: cardSpring })
 	}, [])
 
 	return (
