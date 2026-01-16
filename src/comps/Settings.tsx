@@ -112,8 +112,8 @@ export function Settings({
 						aria-label={t('settings.feeToken')}
 						className="flex items-center gap-2.5 px-3 h-[48px] rounded-xl hover:glass-thin transition-all cursor-pointer focus-ring"
 					>
-						<span className="flex flex-col flex-1 min-w-0 text-left">
-							<span className="text-[14px] text-primary font-medium">
+						<span className="flex flex-col flex-1 min-w-0 items-start">
+							<span className="text-[16px] text-primary font-medium">
 								{t('settings.feeToken')}
 							</span>
 							<span className="text-[12px] text-tertiary">
@@ -135,8 +135,8 @@ export function Settings({
 						aria-label={t('settings.language')}
 						className="flex items-center gap-2.5 px-3 h-[48px] rounded-xl hover:glass-thin transition-all cursor-pointer focus-ring"
 					>
-						<span className="flex flex-col flex-1 min-w-0 text-left">
-							<span className="text-[14px] text-primary font-medium">
+						<span className="flex flex-col flex-1 min-w-0 items-start">
+							<span className="text-[16px] text-primary font-medium">
 								{t('settings.language')}
 							</span>
 							<span className="text-[12px] text-tertiary">

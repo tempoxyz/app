@@ -859,7 +859,12 @@ function CreateKeyForm({
 	)
 	const [showEmojiPicker, setShowEmojiPicker] = React.useState(false)
 	const [showTokenDropdown, setShowTokenDropdown] = React.useState(false)
+	const [dropdownPosition, setDropdownPosition] = React.useState({
+		top: 0,
+		left: 0,
+	})
 	const emojiButtonRef = React.useRef<HTMLButtonElement>(null)
+	const tokenButtonRef = React.useRef<HTMLButtonElement>(null)
 	const tokenDropdownRef = React.useRef<HTMLDivElement>(null)
 
 	const asset = assets.find((a) => a.address === selectedToken)
@@ -869,13 +874,25 @@ function CreateKeyForm({
 		const handleClickOutside = (e: MouseEvent) => {
 			if (
 				tokenDropdownRef.current &&
-				!tokenDropdownRef.current.contains(e.target as Node)
+				!tokenDropdownRef.current.contains(e.target as Node) &&
+				tokenButtonRef.current &&
+				!tokenButtonRef.current.contains(e.target as Node)
 			) {
 				setShowTokenDropdown(false)
 			}
 		}
 		document.addEventListener('mousedown', handleClickOutside)
 		return () => document.removeEventListener('mousedown', handleClickOutside)
+	}, [showTokenDropdown])
+
+	React.useEffect(() => {
+		if (showTokenDropdown && tokenButtonRef.current) {
+			const rect = tokenButtonRef.current.getBoundingClientRect()
+			setDropdownPosition({
+				top: rect.bottom + 4,
+				left: rect.left,
+			})
+		}
 	}, [showTokenDropdown])
 
 	const handleLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -922,20 +939,28 @@ function CreateKeyForm({
 					autoFocus
 				/>
 				<span className="text-[13px] text-secondary flex items-center gap-1.5 shrink-0">
-					<div ref={tokenDropdownRef} className="relative">
-						<button
-							type="button"
-							onClick={() => setShowTokenDropdown(!showTokenDropdown)}
-							className="flex items-center gap-1.5 h-[28px] px-2 rounded-full bg-base-alt hover:bg-base-alt/80 text-primary cursor-pointer transition-colors"
-						>
-							<TokenIcon address={selectedToken} className="size-[14px]" />
-							<span className="text-[12px] font-medium">
-								{asset?.metadata?.symbol || shortenAddress(selectedToken, 3)}
-							</span>
-							<ChevronDownIcon className="size-3 text-tertiary" />
-						</button>
-						{showTokenDropdown && (
-							<div className="absolute top-full left-0 mt-1 min-w-[140px] bg-surface border border-card-border rounded-lg shadow-lg z-50 py-1 max-h-[200px] overflow-y-auto">
+					<button
+						ref={tokenButtonRef}
+						type="button"
+						onClick={() => setShowTokenDropdown(!showTokenDropdown)}
+						className="flex items-center gap-1.5 h-[28px] px-2 rounded-full bg-base-alt hover:bg-base-alt/80 text-primary cursor-pointer transition-colors"
+					>
+						<TokenIcon address={selectedToken} className="size-[14px]" />
+						<span className="text-[12px] font-medium">
+							{asset?.metadata?.symbol || shortenAddress(selectedToken, 3)}
+						</span>
+						<ChevronDownIcon className="size-3 text-tertiary" />
+					</button>
+					{showTokenDropdown &&
+						createPortal(
+							<div
+								ref={tokenDropdownRef}
+								className="fixed min-w-[140px] bg-surface border border-card-border rounded-lg shadow-lg z-[9999] py-1 max-h-[200px] overflow-y-auto"
+								style={{
+									top: dropdownPosition.top,
+									left: dropdownPosition.left,
+								}}
+							>
 								{assets.map((a) => (
 									<button
 										key={a.address}
@@ -955,9 +980,9 @@ function CreateKeyForm({
 										</span>
 									</button>
 								))}
-							</div>
+							</div>,
+							document.body,
 						)}
-					</div>
 					<div className="flex items-center h-[28px] rounded-lg border border-card-border bg-white/5 focus-within:border-accent">
 						<span className="text-tertiary text-[12px] pl-1.5">$</span>
 						<input

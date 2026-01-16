@@ -578,7 +578,7 @@ function RouteComponent() {
 						announce={announce}
 					/>
 
-					{config.onramp.enabled && (
+					{config.onramp.enabled && isOwnProfile && (
 						<Section title="Add Funds">
 							<SetupApplePay address={address} />
 						</Section>

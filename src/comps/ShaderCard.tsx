@@ -641,7 +641,6 @@ export function ShaderCard({
 	const startTimeRef = React.useRef<number | null>(null)
 	const onReadyCalledRef = React.useRef(false)
 
-
 	React.useEffect(() => {
 		const canvas = canvasRef.current
 		if (!canvas) return

@@ -134,7 +134,7 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 		<div
 			className={cx(
 				inline
-					? 'relative w-full h-[40px]'
+					? 'relative w-full h-[50px]'
 					: shouldExpandFullscreen
 						? 'fixed inset-0 z-100'
 						: 'fixed z-100 pointer-events-auto bg-base-alt rounded-md p-3',
@@ -169,8 +169,8 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 				allow="payment"
 				referrerPolicy="no-referrer"
 				className={cx(
-					'border-0 rounded-md',
-					inline ? 'w-full h-[40px]' : 'h-full w-full',
+					'border-0',
+					inline ? 'w-full h-[50px]' : 'h-full w-full rounded-md',
 					className,
 				)}
 			/>
