@@ -57,7 +57,7 @@ export const createOnrampOrderFn = createServerFn({ method: 'POST' })
 			destinationNetwork: 'base',
 			domain: appDomain,
 			email: email ?? `${address.slice(0, 10)}@tempo.xyz`,
-			phoneNumber: phoneNumber ?? '+17144689531',
+			phoneNumber: phoneNumber ?? '+17147147144',
 			phoneNumberVerifiedAt: phoneNumberVerifiedAt ?? new Date().toISOString(),
 			purchaseAmount: amount.toFixed(2),
 			sandbox,
