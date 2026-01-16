@@ -17,6 +17,7 @@ declare namespace NodeJS {
 		readonly TEMPO_RPC_KEY: string | undefined
 		readonly PRESTO_RPC_AUTH: string | undefined
 		readonly INDEXER_API_KEY: string | undefined
+		readonly HTTP_AUTH: string | undefined
 	}
 }
 

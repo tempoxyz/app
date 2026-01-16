@@ -17,7 +17,8 @@
 	],
 	"vars": {
 		"VITE_TEMPO_ENV": "presto",
-		"PRESTO_RPC_AUTH": ""
+		"PRESTO_RPC_AUTH": "",
+		"HTTP_AUTH": ""
 	},
 	"env": {
 		"devnet": {
