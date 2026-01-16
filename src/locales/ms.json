@@ -61,8 +61,6 @@
 		"activity": "Aktiviti",
 		"assetCount": "aset",
 		"assetCount_plural": "aset",
-		"hideZeroBalances": "Sembunyikan baki sifar",
-		"showZeroBalances": "Tunjukkan baki sifar",
 		"noActivityYet": "Tiada aktiviti lagi",
 		"noActivityInBlock": "Tiada aktiviti dalam blok ini",
 		"noAssetsFound": "Tiada aset dijumpai",

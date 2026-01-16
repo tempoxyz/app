@@ -61,8 +61,6 @@
 		"activity": "Aktywność",
 		"assetCount": "aktywo",
 		"assetCount_plural": "aktywów",
-		"hideZeroBalances": "Ukryj zerowe salda",
-		"showZeroBalances": "Pokaż zerowe salda",
 		"noActivityYet": "Brak aktywności",
 		"noActivityInBlock": "Brak aktywności w tym bloku",
 		"noAssetsFound": "Nie znaleziono aktywów",

@@ -61,8 +61,6 @@
 		"activity": "Δραστηριότητα",
 		"assetCount": "στοιχείο",
 		"assetCount_plural": "στοιχεία",
-		"hideZeroBalances": "Απόκρυψη μηδενικών υπολοίπων",
-		"showZeroBalances": "Εμφάνιση μηδενικών υπολοίπων",
 		"noActivityYet": "Δεν υπάρχει δραστηριότητα ακόμα",
 		"noActivityInBlock": "Δεν υπάρχει δραστηριότητα σε αυτό το μπλοκ",
 		"noAssetsFound": "Δεν βρέθηκαν περιουσιακά στοιχεία",

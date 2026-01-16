@@ -61,8 +61,6 @@
 		"activity": "Attività",
 		"assetCount": "asset",
 		"assetCount_plural": "asset",
-		"hideZeroBalances": "Nascondi saldi zero",
-		"showZeroBalances": "Mostra saldi zero",
 		"noActivityYet": "Nessuna attività ancora",
 		"noActivityInBlock": "Nessuna attività in questo blocco",
 		"noAssetsFound": "Nessun asset trovato",

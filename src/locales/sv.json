@@ -61,8 +61,6 @@
 		"activity": "Aktivitet",
 		"assetCount": "tillgång",
 		"assetCount_plural": "tillgångar",
-		"hideZeroBalances": "Dölj nollsaldon",
-		"showZeroBalances": "Visa nollsaldon",
 		"noActivityYet": "Ingen aktivitet ännu",
 		"noActivityInBlock": "Ingen aktivitet i detta block",
 		"noAssetsFound": "Inga tillgångar hittades",

@@ -61,8 +61,6 @@
 		"activity": "Aktivite",
 		"assetCount": "varlık",
 		"assetCount_plural": "varlık",
-		"hideZeroBalances": "Sıfır bakiyeleri gizle",
-		"showZeroBalances": "Sıfır bakiyeleri göster",
 		"noActivityYet": "Henüz aktivite yok",
 		"noActivityInBlock": "Bu blokta aktivite yok",
 		"noAssetsFound": "Varlık bulunamadı",

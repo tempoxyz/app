@@ -61,8 +61,6 @@
 		"activity": "Aktivität",
 		"assetCount": "Vermögenswert",
 		"assetCount_plural": "Vermögenswerte",
-		"hideZeroBalances": "Nullguthaben ausblenden",
-		"showZeroBalances": "Nullguthaben anzeigen",
 		"noActivityYet": "Noch keine Aktivität",
 		"noActivityInBlock": "Keine Aktivität in diesem Block",
 		"noAssetsFound": "Keine Vermögenswerte gefunden",

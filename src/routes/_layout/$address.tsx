@@ -38,8 +38,6 @@ import {
 import CopyIcon from '~icons/lucide/copy'
 import ExternalLinkIcon from '~icons/lucide/external-link'
 import CheckIcon from '~icons/lucide/check'
-import EyeIcon from '~icons/lucide/eye'
-import EyeOffIcon from '~icons/lucide/eye-off'
 import SearchIcon from '~icons/lucide/search'
 import LogOutIcon from '~icons/lucide/log-out'
 import LogInIcon from '~icons/lucide/log-in'
@@ -91,7 +89,6 @@ function RouteComponent() {
 	const { address } = Route.useParams()
 	const { assets: initialAssets } = Route.useLoaderData()
 	const { copy, notifying } = useCopy()
-	const [showZeroBalances, setShowZeroBalances] = React.useState(false)
 	const { setSummary } = useActivitySummary()
 	const { disconnect } = useDisconnect()
 	const navigate = useNavigate()
@@ -361,7 +358,7 @@ function RouteComponent() {
 			(a.balance && a.balance !== '0') ||
 			FAUCET_TOKEN_ADDRESSES.has(a.address.toLowerCase()),
 	)
-	const displayedAssets = showZeroBalances ? adjustedAssets : assetsWithBalance
+	const displayedAssets = assetsWithBalance
 
 	// Find selected asset for send form header
 	const selectedSendAsset = sendingToken
@@ -562,8 +559,6 @@ function RouteComponent() {
 						assetsWithBalance={assetsWithBalance}
 						address={address}
 						selectedSendAsset={selectedSendAsset}
-						showZeroBalances={showZeroBalances}
-						setShowZeroBalances={setShowZeroBalances}
 						sendingToken={sendingToken}
 						setSendingToken={setSendingToken}
 						tokenAddressCopied={tokenAddressCopied}
@@ -606,8 +601,6 @@ function AssetsSection({
 	assetsWithBalance,
 	address,
 	selectedSendAsset,
-	showZeroBalances,
-	setShowZeroBalances,
 	sendingToken,
 	setSendingToken,
 	tokenAddressCopied,
@@ -625,8 +618,6 @@ function AssetsSection({
 	assetsWithBalance: AssetData[]
 	address: string
 	selectedSendAsset: AssetData | null
-	showZeroBalances: boolean
-	setShowZeroBalances: (v: boolean) => void
 	sendingToken: string | null
 	setSendingToken: (token: string | null) => void
 	tokenAddressCopied: boolean
@@ -677,30 +668,6 @@ function AssetsSection({
 							),
 						}
 					: undefined
-			}
-			headerRight={
-				selectedSendAsset ? undefined : (
-					<button
-						type="button"
-						onClick={(e) => {
-							e.stopPropagation()
-							setShowZeroBalances(!showZeroBalances)
-						}}
-						className="flex items-center justify-center size-[24px] rounded-md bg-base-alt active:bg-base-alt/70 cursor-pointer focus-ring"
-						aria-label={
-							showZeroBalances
-								? t('portfolio.hideZeroBalances')
-								: t('portfolio.showZeroBalances')
-						}
-						aria-pressed={showZeroBalances}
-					>
-						{showZeroBalances ? (
-							<EyeOffIcon className="size-[14px] text-tertiary" />
-						) : (
-							<EyeIcon className="size-[14px] text-tertiary" />
-						)}
-					</button>
-				)
 			}
 		>
 			<HoldingsTable

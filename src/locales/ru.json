@@ -61,8 +61,6 @@
 		"activity": "Активность",
 		"assetCount": "актив",
 		"assetCount_plural": "активов",
-		"hideZeroBalances": "Скрыть нулевые балансы",
-		"showZeroBalances": "Показать нулевые балансы",
 		"noActivityYet": "Пока нет активности",
 		"noActivityInBlock": "Нет активности в этом блоке",
 		"noAssetsFound": "Активы не найдены",

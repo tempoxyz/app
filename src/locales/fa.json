@@ -61,8 +61,6 @@
 		"activity": "فعالیت",
 		"assetCount": "دارایی",
 		"assetCount_plural": "دارایی",
-		"hideZeroBalances": "پنهان کردن موجودی صفر",
-		"showZeroBalances": "نمایش موجودی صفر",
 		"noActivityYet": "هنوز فعالیتی نیست",
 		"noActivityInBlock": "فعالیتی در این بلوک نیست",
 		"noAssetsFound": "دارایی یافت نشد",
