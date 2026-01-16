@@ -147,36 +147,55 @@ export function AddFunds(props: AddFunds.Props) {
 						/>
 					</div>
 				</div>
+			</div>
 
+			{/* Apple Pay button area */}
+			<div className="relative h-[50px]">
+				{/* Apple Pay iframe - shown when ready */}
+				{isModalOpen && (
+					<div
+						className={cx(
+							'absolute inset-0 flex gap-2 transition-opacity duration-200',
+							isIframeLoaded ? 'opacity-100' : 'opacity-0 pointer-events-none',
+						)}
+					>
+						<div className="flex-1">
+							<ApplePayIframe
+								url={iframeUrl}
+								onLoad={() => setIsIframeLoaded(true)}
+								onCancel={reset}
+								inline
+							/>
+						</div>
+						<button
+							type="button"
+							onClick={reset}
+							className="h-[50px] px-4 text-[13px] font-medium rounded-xl bg-white/10 text-secondary hover:text-primary hover:bg-white/15 cursor-pointer press-down transition-colors"
+						>
+							Cancel
+						</button>
+					</div>
+				)}
+				{/* Primary button - shown by default and during loading */}
 				<button
 					type="button"
 					onClick={handleSubmit}
 					disabled={!isValidAmount || isLoading || isModalOpen}
 					className={cx(
-						'flex items-center justify-center gap-2 w-full h-[40px] text-[14px] font-medium rounded-lg cursor-pointer press-down transition-colors',
+						'absolute inset-0 flex items-center justify-center gap-2 w-full h-[50px] text-[15px] font-medium rounded-xl transition-all duration-200',
 						isValidAmount && !isLoading && !isModalOpen
-							? 'bg-accent text-white hover:bg-accent/90'
-							: 'bg-base-alt text-tertiary cursor-not-allowed',
+							? 'bg-accent text-white hover:bg-accent/90 cursor-pointer press-down'
+							: 'bg-accent/60 text-white/70 cursor-not-allowed',
+						isModalOpen && isIframeLoaded && 'opacity-0 pointer-events-none',
 					)}
 				>
 					{isLoading || (isModalOpen && !isIframeLoaded) ? (
-						<>
-							<LoaderIcon className="size-3 animate-spin" />
-							<span>Processing...</span>
-						</>
+						<LoaderIcon className="size-4 animate-spin" />
 					) : (
-						<span>Add ${effectiveAmount || 0}</span>
+						<span>Add ${effectiveAmount || 0} with Apple Pay</span>
 					)}
 				</button>
 			</div>
-
-			{isModalOpen && (
-				<ApplePayIframe
-					url={iframeUrl}
-					onLoad={() => setIsIframeLoaded(true)}
-					onCancel={reset}
-				/>
-			)}
 
 			{createOrder.error && (
 				<p className="text-[12px] text-negative">

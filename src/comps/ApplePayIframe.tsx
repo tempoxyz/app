@@ -36,7 +36,8 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 	)
 
 	React.useEffect(() => {
-		if (!placeholderRef.current) return
+		const placeholder = inline ? placeholderRef.current : placeholderRef.current
+		if (!placeholder) return
 
 		const updateRect = () => {
 			if (placeholderRef.current) {
@@ -51,7 +52,7 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 			window.removeEventListener('resize', updateRect)
 			window.removeEventListener('scroll', updateRect)
 		}
-	}, [])
+	}, [inline])
 
 	const parsedUrl = React.useMemo(() => {
 		try {
@@ -128,21 +129,21 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 	}
 
 	const isMobileSafariBrowser = isMobileSafari()
-	const shouldExpandFullscreen = isExpanded && !isMobileSafariBrowser && !inline
+	const shouldExpandFullscreen = isExpanded && !isMobileSafariBrowser
 
 	const iframeContent = (
 		<div
 			className={cx(
-				inline
-					? 'relative w-full h-[50px]'
-					: shouldExpandFullscreen
-						? 'fixed inset-0 z-100'
-						: 'fixed z-100 pointer-events-auto bg-base-alt rounded-md p-3',
-				inline && !isLoaded && 'invisible',
-				!inline && !isLoaded && 'sr-only',
+				'fixed z-100',
+				shouldExpandFullscreen
+					? 'inset-0'
+					: inline
+						? 'pointer-events-auto'
+						: 'pointer-events-auto bg-base-alt rounded-md p-3',
+				!isLoaded && 'invisible',
 			)}
 			style={
-				!inline && !shouldExpandFullscreen && placeholderRect
+				!shouldExpandFullscreen && placeholderRect
 					? {
 							top: placeholderRect.top,
 							left: placeholderRect.left,
@@ -169,17 +170,13 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 				allow="payment"
 				referrerPolicy="no-referrer"
 				className={cx(
-					'border-0',
-					inline ? 'w-full h-[50px]' : 'h-full w-full rounded-md',
+					'border-0 h-full w-full',
+					!inline && 'rounded-md',
 					className,
 				)}
 			/>
 		</div>
 	)
-
-	if (inline) {
-		return iframeContent
-	}
 
 	return (
 		<>
@@ -187,8 +184,8 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 			<div
 				ref={placeholderRef}
 				className={cx(
-					'h-20 mb-3',
-					!isLoaded && 'sr-only',
+					inline ? 'h-[50px]' : 'h-20 mb-3',
+					!isLoaded && 'invisible',
 					shouldExpandFullscreen && 'invisible',
 				)}
 			/>
