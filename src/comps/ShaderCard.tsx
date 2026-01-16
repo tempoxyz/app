@@ -58,8 +58,6 @@ const DEFAULT_AMBIENT_COLORS: Array<[number, number, number]> = [
 	[0.545, 0.361, 0.965], // purple (#8b5cf6)
 ]
 const DEFAULT_AMBIENT_INTENSITY = 0.7
-const COLOR_TRANSITION_DURATION = 1500
-const COLOR_TRANSITION_DELAY = 1000
 
 // =============================================================================
 // LIQUIDGLASS SETTINGS
@@ -643,33 +641,6 @@ export function ShaderCard({
 	const startTimeRef = React.useRef<number | null>(null)
 	const onReadyCalledRef = React.useRef(false)
 
-	const hasRealColors = Boolean(ambientColors && ambientColors.length > 0)
-	const colorsRef = React.useRef(colors)
-	const prevColorsRef = React.useRef(colors)
-	const transitionStartRef = React.useRef<number | null>(null)
-	const hadRealColorsRef = React.useRef(hasRealColors)
-
-	if (colors !== colorsRef.current) {
-		const colorsChanged =
-			colors.length !== colorsRef.current.length ||
-			colors.some(
-				(c, i) =>
-					c[0] !== colorsRef.current[i][0] ||
-					c[1] !== colorsRef.current[i][1] ||
-					c[2] !== colorsRef.current[i][2],
-			)
-		if (colorsChanged) {
-			const shouldAnimate = hadRealColorsRef.current && hasRealColors
-			if (shouldAnimate) {
-				prevColorsRef.current = colorsRef.current
-				transitionStartRef.current = null
-			} else {
-				prevColorsRef.current = colors
-			}
-			colorsRef.current = colors
-			hadRealColorsRef.current = hasRealColors
-		}
-	}
 
 	React.useEffect(() => {
 		const canvas = canvasRef.current
@@ -839,49 +810,11 @@ export function ShaderCard({
 				baseColor[2],
 			)
 
-			if (transitionStartRef.current === null) {
-				transitionStartRef.current = timestamp
-			}
-			const timeSinceChange = timestamp - transitionStartRef.current
-			const transitionElapsed = Math.max(
-				0,
-				timeSinceChange - COLOR_TRANSITION_DELAY,
-			)
-			const transitionProgress = Math.min(
-				1,
-				transitionElapsed / COLOR_TRANSITION_DURATION,
-			)
-			const smoothProgress =
-				transitionProgress < 0.5
-					? 2 * transitionProgress * transitionProgress
-					: 1 - (-2 * transitionProgress + 2) ** 2 / 2
-
-			const prevColors = prevColorsRef.current
-			const targetColors = colorsRef.current
-			const maxLen = Math.max(prevColors.length, targetColors.length)
-			const interpolatedColors: Array<[number, number, number]> = []
-
-			for (let i = 0; i < maxLen; i++) {
-				const prevIdx = Math.min(i, prevColors.length - 1)
-				const targetIdx = Math.min(i, targetColors.length - 1)
-				const prev = prevColors[prevIdx]
-				const target = targetColors[targetIdx]
-				interpolatedColors.push([
-					prev[0] + (target[0] - prev[0]) * smoothProgress,
-					prev[1] + (target[1] - prev[1]) * smoothProgress,
-					prev[2] + (target[2] - prev[2]) * smoothProgress,
-				])
-			}
-
 			const colorData = new Float32Array(MAX_GRADIENT_COLORS * 3)
-			for (
-				let i = 0;
-				i < interpolatedColors.length && i < MAX_GRADIENT_COLORS;
-				i++
-			) {
-				colorData[i * 3] = interpolatedColors[i][0]
-				colorData[i * 3 + 1] = interpolatedColors[i][1]
-				colorData[i * 3 + 2] = interpolatedColors[i][2]
+			for (let i = 0; i < colors.length && i < MAX_GRADIENT_COLORS; i++) {
+				colorData[i * 3] = colors[i][0]
+				colorData[i * 3 + 1] = colors[i][1]
+				colorData[i * 3 + 2] = colors[i][2]
 			}
 			gl.uniform3fv(
 				gl.getUniformLocation(gradientProgram, 'u_colors'),
@@ -889,7 +822,7 @@ export function ShaderCard({
 			)
 			gl.uniform1i(
 				gl.getUniformLocation(gradientProgram, 'u_colorCount'),
-				Math.min(interpolatedColors.length, MAX_GRADIENT_COLORS),
+				Math.min(colors.length, MAX_GRADIENT_COLORS),
 			)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
@@ -1179,7 +1112,7 @@ export function ShaderCard({
 			window.removeEventListener('resize', resize)
 			cancelAnimationFrame(animationId)
 		}
-	}, [intensity, onReady])
+	}, [colors, intensity, onReady])
 
 	return (
 		<canvas
