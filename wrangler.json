@@ -11,8 +11,8 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "app-db-devnet",
-			"database_id": "acb1c13a-5666-4974-954b-ad308d3ba1b8"
+			"database_name": "app-db-presto",
+			"database_id": "1c1dbae2-1cce-49ea-991d-9a502b753d3e"
 		}
 	],
 	"vars": {
@@ -63,8 +63,8 @@
 			"d1_databases": [
 				{
 					"binding": "DB",
-					"database_name": "app-db",
-					"database_id": "placeholder-update-after-create"
+					"database_name": "app-db-moderato",
+					"database_id": "ffba4a97-9f84-45bb-b814-3dc5cb6e378f"
 				}
 			],
 			"vars": {
@@ -104,8 +104,8 @@
 			"d1_databases": [
 				{
 					"binding": "DB",
-					"database_name": "app-db",
-					"database_id": "placeholder-update-after-create"
+					"database_name": "app-db-presto",
+					"database_id": "1c1dbae2-1cce-49ea-991d-9a502b753d3e"
 				}
 			],
 			"vars": {
