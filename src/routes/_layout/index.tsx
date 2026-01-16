@@ -119,7 +119,7 @@ function RouteComponent() {
 										: 'bg-base-alt/50 text-tertiary cursor-default backdrop-blur-sm',
 								)}
 							>
-								<ArrowRight className="size-[18px]" />
+								<ArrowRight className="size-2.25" />
 							</button>
 						</div>
 					</form>
@@ -135,7 +135,7 @@ function RouteComponent() {
 									'transition-all font-mono text-[11px] sm:text-[10px]',
 								)}
 							>
-								<UserIcon className="size-[10px] text-accent/70" />
+								<UserIcon className="size-1.25 text-accent/70" />
 								<span>{truncateAddress(addr)}</span>
 							</Link>
 						))}
@@ -160,7 +160,7 @@ function RouteComponent() {
 									connect.mutate({
 										connector,
 										capabilities: { type: 'sign-up' },
-									} as Parameters<typeof connect.mutate>[0])
+									})
 								}
 							}}
 							disabled={connect.isPending}
@@ -169,14 +169,19 @@ function RouteComponent() {
 								'glass-button-accent font-medium text-[13px] sm:text-[12px]',
 								'cursor-pointer press-down border border-transparent hover:border-white/30',
 								'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
-								'w-full sm:w-auto min-h-[44px] sm:min-h-0',
+								'w-full sm:w-auto min-h-5.5 sm:min-h-0',
 							)}
 						>
-							{pendingAction === 'signup' ? (
-								<span className="size-[14px] sm:size-[12px] border-2 border-white/30 border-t-white rounded-full animate-spin" />
-							) : (
-								<KeyIcon className="size-[14px] sm:size-[12px]" />
-							)}
+							<React.Activity
+								mode={pendingAction === 'signup' ? 'visible' : 'hidden'}
+							>
+								<span className="size-1.75 sm:size-1.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+							</React.Activity>
+							<React.Activity
+								mode={pendingAction !== 'signup' ? 'visible' : 'hidden'}
+							>
+								<KeyIcon className="size-1.75 sm:size-1.5" />
+							</React.Activity>
 							<span>{t('common.signUp')}</span>
 						</button>
 						<button
@@ -196,14 +201,19 @@ function RouteComponent() {
 								'glass-button text-primary font-medium text-[13px] sm:text-[12px]',
 								'cursor-pointer press-down border border-transparent hover:border-white/20',
 								'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
-								'w-full sm:w-auto min-h-[44px] sm:min-h-0',
+								'w-full sm:w-auto min-h-5.5 sm:min-h-0',
 							)}
 						>
-							{pendingAction === 'signin' ? (
-								<span className="size-[14px] sm:size-[12px] border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-							) : (
-								<FingerprintIcon className="size-[14px] sm:size-[12px]" />
-							)}
+							<React.Activity
+								mode={pendingAction === 'signin' ? 'visible' : 'hidden'}
+							>
+								<span className="size-1.75 sm:size-1.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+							</React.Activity>
+							<React.Activity
+								mode={pendingAction !== 'signin' ? 'visible' : 'hidden'}
+							>
+								<FingerprintIcon className="size-1.75 sm:size-1.5" />
+							</React.Activity>
 							<span>{t('common.signIn')}</span>
 						</button>
 						{connection.address && (
@@ -221,7 +231,7 @@ function RouteComponent() {
 									'glass-button text-primary font-medium text-[13px] sm:text-[12px]',
 									'cursor-pointer press-down border border-transparent hover:border-accent/30',
 									'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
-									'w-full sm:w-auto min-h-[44px] sm:min-h-0',
+									'w-full sm:w-auto min-h-5.5 sm:min-h-0',
 								)}
 							>
 								{pendingAction === 'reconnect' ? (

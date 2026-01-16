@@ -130,30 +130,30 @@ function RootDocument({
 				<HeadContent />
 			</head>
 			<body className="antialiased">
-				<WagmiProvider config={wagmiConfig} initialState={wagmiState}>
-					<QueryClientProvider client={queryClient}>
-						<AnnouncerProvider>
+				<AnnouncerProvider data-element="announcer-provider">
+					<WagmiProvider config={wagmiConfig} initialState={wagmiState}>
+						<QueryClientProvider client={queryClient}>
 							<CommandMenuProvider>
 								<Outlet />
 							</CommandMenuProvider>
-						</AnnouncerProvider>
-						{config.devtools.enabled && (
-							<TanStackDevtools
-								config={{ position: 'bottom-right' }}
-								plugins={[
-									{
-										name: 'Tanstack Query',
-										render: <ReactQueryDevtools />,
-									},
-									{
-										name: 'Tanstack Router',
-										render: <TanStackRouterDevtoolsPanel />,
-									},
-								]}
-							/>
-						)}
-					</QueryClientProvider>
-				</WagmiProvider>
+							{config.devtools.enabled && (
+								<TanStackDevtools
+									config={{ position: 'bottom-right' }}
+									plugins={[
+										{
+											name: 'Tanstack Query',
+											render: <ReactQueryDevtools />,
+										},
+										{
+											name: 'Tanstack Router',
+											render: <TanStackRouterDevtoolsPanel />,
+										},
+									]}
+								/>
+							)}
+						</QueryClientProvider>
+					</WagmiProvider>
+				</AnnouncerProvider>
 				<Scripts />
 			</body>
 		</html>

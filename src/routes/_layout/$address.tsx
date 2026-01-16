@@ -23,7 +23,7 @@ import { sendTransaction } from 'viem/actions'
 import { Account as TempoAccount } from 'viem/tempo'
 import { PublicKey } from 'ox'
 import {
-	useAccount,
+	useConnection,
 	useConnectorClient,
 	useDisconnect,
 	useWriteContract,
@@ -800,7 +800,7 @@ function RouteComponent() {
 	const navigate = useNavigate()
 	const [searchValue, setSearchValue] = React.useState('')
 	const [searchFocused, setSearchFocused] = React.useState(false)
-	const account = useAccount()
+	const connection = useConnection()
 	const { sendTo, token: initialToken } = Route.useSearch()
 	const { t } = useTranslation()
 	const { announce } = useAnnounce()
@@ -915,7 +915,8 @@ function RouteComponent() {
 		Map<string, bigint>
 	>(new Map())
 
-	const isOwnProfile = account.address?.toLowerCase() === address.toLowerCase()
+	const isOwnProfile =
+		connection.address?.toLowerCase() === address.toLowerCase()
 
 	const applyOptimisticUpdate = React.useCallback(
 		(tokenAddress: string, amount: bigint) => {
@@ -1287,7 +1288,7 @@ function RouteComponent() {
 							onOptimisticSend={applyOptimisticUpdate}
 							onOptimisticClear={clearOptimisticUpdate}
 							isOwnProfile={isOwnProfile}
-							connectedAddress={account.address}
+							connectedAddress={connection.address}
 							initialSendTo={sendTo}
 							sendingToken={sendingToken}
 							onSendingTokenChange={setSendingToken}
