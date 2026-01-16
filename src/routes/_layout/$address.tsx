@@ -2114,7 +2114,7 @@ function BlockTimeline({
 		<section
 			role="region"
 			ref={containerRef}
-			className="flex flex-col gap-1.5 mt-2 mb-3"
+			className="flex flex-col gap-1.5 mt-2 mb-3 w-full overflow-hidden"
 			onMouseUp={handleMouseUp}
 			onMouseLeave={() => {
 				setHoveredBlock(null)
@@ -2135,7 +2135,7 @@ function BlockTimeline({
 						? `block-${blocks[focusedBlockIndex]?.blockNumber.toString()}`
 						: undefined
 				}
-				className="flex items-center justify-center gap-[2px] w-full overflow-x-auto no-scrollbar py-1.5 -mx-2 px-2 focus-ring rounded-sm"
+				className="flex items-center gap-[2px] w-full overflow-x-auto no-scrollbar py-1.5 focus-ring rounded-sm"
 			>
 				{blocks.map((block, index) => {
 					const isSelected = selectedBlock === block.blockNumber
@@ -3468,14 +3468,14 @@ function ActivitySection({
 					/>
 				</>
 			) : (
-				<>
+				<div className="w-full overflow-hidden">
 					<BlockTimeline
 						activity={activity}
 						currentBlock={currentBlock}
 						selectedBlock={selectedBlock}
 						onSelectBlock={setSelectedBlock}
 					/>
-					<div className="border-b border-border-tertiary -mx-4 mt-2 mb-3" />
+					<div className="border-b border-border-tertiary -mx-2 mt-2 mb-3" />
 
 					{selectedBlock === undefined ? (
 						<div className="flex flex-col items-center justify-center min-h-[80px] py-6 gap-2">
@@ -3520,7 +3520,7 @@ function ActivitySection({
 							)}
 						</div>
 					)}
-				</>
+				</div>
 			)}
 		</Section>
 	)

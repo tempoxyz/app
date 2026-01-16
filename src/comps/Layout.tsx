@@ -30,8 +30,8 @@ export namespace Layout {
 
 	export function Content(props: PropsWithChildren) {
 		return (
-			<div className="flex w-full flex-1 flex-col md:ml-[calc(40vw+100px)] md:pt-[60px] md:pb-[60px] md:pr-[60px] max-md:pt-3 max-md:pb-0">
-				<div className="flex w-full flex-1 flex-col max-md:px-3">
+			<div className="flex w-full flex-1 flex-col min-w-0 md:ml-[calc(40vw+100px)] md:pt-[60px] md:pb-[60px] md:pr-[60px] max-md:pt-3 max-md:pb-0">
+				<div className="flex w-full flex-1 flex-col min-w-0 max-md:px-3">
 					{props.children}
 				</div>
 			</div>

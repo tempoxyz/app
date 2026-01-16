@@ -184,7 +184,7 @@ export function Section(props: {
 			>
 				<div
 					ref={wrapperRef}
-					className="bg-card border-t border-card-border px-2"
+					className="bg-card border-t border-card-border px-2 overflow-x-hidden"
 				>
 					<div ref={innerRef} className="origin-top">
 						{children}
