@@ -9,6 +9,7 @@ import {
 	useVerifyOtp,
 } from '#lib/onramp-contact'
 import { AddFunds } from './AddFunds'
+import { PhoneInput } from './PhoneInput'
 import LoaderIcon from '~icons/lucide/loader-2'
 import CheckIcon from '~icons/lucide/check'
 import ArrowRightIcon from '~icons/lucide/arrow-right'
@@ -252,19 +253,7 @@ function PhoneStep(props: {
 	isLoading: boolean
 	error?: string
 }) {
-	const formatPhone = (value: string) => {
-		const digits = value.replace(/\D/g, '')
-		if (!digits.startsWith('1') && digits.length > 0) {
-			return `+1${digits}`
-		}
-		return digits ? `+${digits}` : ''
-	}
-
-	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		props.onChange(formatPhone(e.target.value))
-	}
-
-	const isValid = props.phone.replace(/\D/g, '').length >= 11
+	const isValid = props.phone.replace(/\D/g, '').length >= 10
 
 	return (
 		<div className="flex flex-col gap-2">
@@ -272,19 +261,11 @@ function PhoneStep(props: {
 				Enter your phone number. We'll send a verification code.
 			</p>
 
-			<input
-				type="tel"
-				placeholder="+1 (555) 123-4567"
+			<PhoneInput
 				value={props.phone}
-				onChange={handleChange}
-				onKeyDown={(e) => e.key === 'Enter' && isValid && props.onSubmit()}
+				onChange={props.onChange}
 				disabled={props.isLoading}
-				className={cx(
-					'w-full px-3 py-2 text-[13px] rounded-md border transition-colors',
-					'bg-base placeholder:text-tertiary',
-					'border-card-border text-primary hover:border-accent/50 focus:border-accent',
-					props.isLoading && 'opacity-50 cursor-not-allowed',
-				)}
+				onEnter={() => isValid && props.onSubmit()}
 			/>
 
 			{props.error && (
