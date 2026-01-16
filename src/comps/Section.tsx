@@ -141,7 +141,7 @@ export function Section(props: {
 								{titleRight && (
 									<>
 										<span className="w-px h-4 bg-card-border shrink-0" />
-										{titleRight}
+										<span className="pointer-events-auto">{titleRight}</span>
 									</>
 								)}
 							</>
