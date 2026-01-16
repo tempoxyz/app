@@ -4,6 +4,7 @@
 	"compatibility_date": "2025-12-17",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "./dist/server/serve-cloudflare.js",
+	"assets": { "directory": "./dist/public", "binding": "ASSETS" },
 	"keep_vars": true,
 	"workers_dev": true,
 	"preview_urls": true,
@@ -22,6 +23,7 @@
 		"devnet": {
 			"name": "app-devnet",
 			"main": "./dist/server/serve-cloudflare.js",
+			"assets": { "directory": "./dist/public", "binding": "ASSETS" },
 			"routes": [
 				{
 					"custom_domain": true,
@@ -53,6 +55,7 @@
 		"moderato": {
 			"name": "app-moderato",
 			"main": "./dist/server/serve-cloudflare.js",
+			"assets": { "directory": "./dist/public", "binding": "ASSETS" },
 			"routes": [
 				{
 					"custom_domain": true,
@@ -84,6 +87,7 @@
 		"presto": {
 			"name": "app-presto",
 			"main": "./dist/server/serve-cloudflare.js",
+			"assets": { "directory": "./dist/public", "binding": "ASSETS" },
 			"routes": [
 				{
 					"custom_domain": true,

@@ -16,6 +16,7 @@ declare namespace Cloudflare {
 		TWILIO_AUTH_TOKEN: string;
 		TWILIO_PHONE_NUMBER: string;
 		DB: D1Database;
+		ASSETS: Fetcher;
 	}
 }
 interface Env extends Cloudflare.Env {}
