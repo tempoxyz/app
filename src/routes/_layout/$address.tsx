@@ -38,7 +38,7 @@ import {
 	type KnownEvent,
 	type GetTokenMetadataFn,
 } from '#comps/activity'
-import { AddFunds } from '#comps/AddFunds'
+import { SetupApplePay } from '#comps/SetupApplePay'
 import { Layout } from '#comps/Layout'
 import { TokenIcon } from '#comps/TokenIcon'
 import { Section } from '#comps/Section'
@@ -1298,7 +1298,7 @@ function RouteComponent() {
 
 					{config.onramp.enabled && (
 						<Section title="Add Funds">
-							<AddFunds address={address} />
+							<SetupApplePay address={address} />
 						</Section>
 					)}
 

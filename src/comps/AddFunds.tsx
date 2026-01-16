@@ -9,7 +9,7 @@ const MIN_AMOUNT = 5
 const MAX_AMOUNT = 10000
 
 export function AddFunds(props: AddFunds.Props) {
-	const { address } = props
+	const { address, email, phone, phoneVerifiedAt } = props
 	const showApplePay = useShowApplePay()
 	const [amount, setAmount] = React.useState<number>(50)
 	const [customAmount, setCustomAmount] = React.useState<string>('')
@@ -17,6 +17,9 @@ export function AddFunds(props: AddFunds.Props) {
 
 	const { createOrder, iframeUrl, isLoading, reset } = useOnrampOrder({
 		address,
+		email,
+		phoneNumber: phone,
+		phoneNumberVerifiedAt: phoneVerifiedAt,
 		onSuccess: () => {
 			console.log('Onramp success!')
 		},
@@ -178,5 +181,8 @@ export function AddFunds(props: AddFunds.Props) {
 export declare namespace AddFunds {
 	type Props = {
 		address: string
+		email?: string
+		phone?: string
+		phoneVerifiedAt?: string
 	}
 }

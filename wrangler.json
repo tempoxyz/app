@@ -8,6 +8,13 @@
 	"workers_dev": true,
 	"preview_urls": true,
 	"placement": { "mode": "smart" },
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "app-db",
+			"database_id": "placeholder-update-after-create"
+		}
+	],
 	"vars": {
 		"VITE_TEMPO_ENV": "presto"
 	},
@@ -20,6 +27,13 @@
 					"custom_domain": true,
 					"zone_name": "tempo.xyz",
 					"pattern": "app.devnet.tempo.xyz"
+				}
+			],
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "app-db",
+					"database_id": "placeholder-update-after-create"
 				}
 			],
 			"vars": {
@@ -44,6 +58,13 @@
 					"custom_domain": true,
 					"zone_name": "tempo.xyz",
 					"pattern": "app.moderato.tempo.xyz"
+				}
+			],
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "app-db",
+					"database_id": "placeholder-update-after-create"
 				}
 			],
 			"vars": {
@@ -78,6 +99,13 @@
 					"custom_domain": true,
 					"zone_name": "tempo.xyz",
 					"pattern": "app.mainnet.tempo.xyz"
+				}
+			],
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "app-db",
+					"database_id": "placeholder-update-after-create"
 				}
 			],
 			"vars": {
