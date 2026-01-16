@@ -39,6 +39,7 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 	.inputValidator((input: { address: string }) => input)
 	.handler(async ({ data }): Promise<AssetData[] | null> => {
 		try {
+			const fnStart = performance.now()
 			const address = data.address as Address.Address
 			// Get chain ID from runtime env for server functions
 			let chainId: number
@@ -56,8 +57,15 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 							? 42430
 							: 4217
 			}
+			console.log(
+				`[perf]   fetchAssets env setup: ${(performance.now() - fnStart).toFixed(0)}ms`,
+			)
 
+			const idxStart = performance.now()
 			const { QB } = await getIndexSupply()
+			console.log(
+				`[perf]   fetchAssets getIndexSupply: ${(performance.now() - idxStart).toFixed(0)}ms`,
+			)
 			const qb = QB.withSignatures([TRANSFER_SIGNATURE])
 
 			// Single query: fetch all transfers involving this address
@@ -69,7 +77,11 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 					eb.or([eb('to', '=', address), eb('from', '=', address)]),
 				)
 
+			const queryStart = performance.now()
 			const transfersResult = await transfersQuery.execute()
+			console.log(
+				`[perf]   fetchAssets query execute: ${(performance.now() - queryStart).toFixed(0)}ms (${transfersResult.length} rows)`,
+			)
 
 			const balances = new Map<string, bigint>()
 			const addrLower = address.toLowerCase()
