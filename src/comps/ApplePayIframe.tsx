@@ -72,9 +72,6 @@ export function ApplePayIframe(props: ApplePayIframe.Props) {
 	const iframeSrc = React.useMemo(() => {
 		if (!parsedUrl) return null
 		const urlObj = new URL(parsedUrl)
-		if (import.meta.env.DEV) {
-			console.log('[debug] not setting useApplePaySandbox')
-		}
 		return urlObj.toString()
 	}, [parsedUrl])
 
