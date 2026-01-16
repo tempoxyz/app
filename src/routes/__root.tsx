@@ -1,27 +1,18 @@
-import { TanStackDevtools } from '@tanstack/react-devtools'
-import { type QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import type { QueryClient } from '@tanstack/react-query'
 import {
 	createRootRouteWithContext,
 	HeadContent,
 	Outlet,
 	Scripts,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import * as React from 'react'
 import { I18nextProvider, useTranslation } from 'react-i18next'
-import { deserialize, type State, WagmiProvider } from 'wagmi'
-import { getWagmiConfig, getWagmiStateSSR } from '#wagmi.config'
-import { CommandMenuProvider } from '#comps/CommandMenu'
 import { AnnouncerProvider } from '#lib/a11y'
-import { config } from '#lib/config'
 import i18n, { isRtl } from '#lib/i18n'
 import css from './styles.css?url'
 
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient
 }>()({
-	loader: () => getWagmiStateSSR(),
 	head: () => ({
 		meta: [
 			{ charSet: 'utf-8' },
@@ -92,30 +83,14 @@ export const Route = createRootRouteWithContext<{
 })
 
 function RootComponent() {
-	const { queryClient } = Route.useRouteContext()
-	const [wagmiConfig] = React.useState(() => getWagmiConfig())
-	const wagmiState = Route.useLoaderData({ select: deserialize<State> })
-
 	return (
 		<I18nextProvider i18n={i18n}>
-			<RootDocument
-				queryClient={queryClient}
-				wagmiConfig={wagmiConfig}
-				wagmiState={wagmiState}
-			/>
+			<RootDocument />
 		</I18nextProvider>
 	)
 }
 
-function RootDocument({
-	queryClient,
-	wagmiConfig,
-	wagmiState,
-}: {
-	queryClient: QueryClient
-	wagmiConfig: ReturnType<typeof getWagmiConfig>
-	wagmiState: State | undefined
-}) {
+function RootDocument() {
 	const { i18n: i18nInstance } = useTranslation()
 	const lang = i18nInstance.language
 	const dir = isRtl(lang) ? 'rtl' : 'ltr'
@@ -131,28 +106,7 @@ function RootDocument({
 			</head>
 			<body className="antialiased">
 				<AnnouncerProvider data-element="announcer-provider">
-					<WagmiProvider config={wagmiConfig} initialState={wagmiState}>
-						<QueryClientProvider client={queryClient}>
-							<CommandMenuProvider>
-								<Outlet />
-							</CommandMenuProvider>
-							{config.devtools.enabled && (
-								<TanStackDevtools
-									config={{ position: 'bottom-right' }}
-									plugins={[
-										{
-											name: 'Tanstack Query',
-											render: <ReactQueryDevtools />,
-										},
-										{
-											name: 'Tanstack Router',
-											render: <TanStackRouterDevtoolsPanel />,
-										},
-									]}
-								/>
-							)}
-						</QueryClientProvider>
-					</WagmiProvider>
+					<Outlet />
 				</AnnouncerProvider>
 				<Scripts />
 			</body>

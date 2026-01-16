@@ -10,12 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as BridgeRouteImport } from './routes/_bridge'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAddressRouteImport } from './routes/_layout/$address'
-import { Route as LayoutBridgeRouteRouteImport } from './routes/_layout/bridge/route'
+import { Route as BridgeBridgeRouteRouteImport } from './routes/_bridge/bridge/route'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BridgeRoute = BridgeRouteImport.update({
+  id: '/_bridge',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutIndexRoute = LayoutIndexRouteImport.update({
@@ -28,26 +33,27 @@ const LayoutAddressRoute = LayoutAddressRouteImport.update({
   path: '/$address',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutBridgeRouteRoute = LayoutBridgeRouteRouteImport.update({
+const BridgeBridgeRouteRoute = BridgeBridgeRouteRouteImport.update({
   id: '/bridge',
   path: '/bridge',
-  getParentRoute: () => LayoutRoute,
+  getParentRoute: () => BridgeRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/bridge': typeof LayoutBridgeRouteRoute
+  '/bridge': typeof BridgeBridgeRouteRoute
   '/$address': typeof LayoutAddressRoute
   '/': typeof LayoutIndexRoute
 }
 export interface FileRoutesByTo {
-  '/bridge': typeof LayoutBridgeRouteRoute
+  '/bridge': typeof BridgeBridgeRouteRoute
   '/$address': typeof LayoutAddressRoute
   '/': typeof LayoutIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/_bridge': typeof BridgeRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
-  '/_layout/bridge': typeof LayoutBridgeRouteRoute
+  '/_bridge/bridge': typeof BridgeBridgeRouteRoute
   '/_layout/$address': typeof LayoutAddressRoute
   '/_layout/': typeof LayoutIndexRoute
 }
@@ -58,13 +64,15 @@ export interface FileRouteTypes {
   to: '/bridge' | '/$address' | '/'
   id:
     | '__root__'
+    | '/_bridge'
     | '/_layout'
-    | '/_layout/bridge'
+    | '/_bridge/bridge'
     | '/_layout/$address'
     | '/_layout/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  BridgeRoute: typeof BridgeRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
 }
 
@@ -75,6 +83,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_bridge': {
+      id: '/_bridge'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof BridgeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/': {
@@ -91,24 +106,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAddressRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/bridge': {
-      id: '/_layout/bridge'
+    '/_bridge/bridge': {
+      id: '/_bridge/bridge'
       path: '/bridge'
       fullPath: '/bridge'
-      preLoaderRoute: typeof LayoutBridgeRouteRouteImport
-      parentRoute: typeof LayoutRoute
+      preLoaderRoute: typeof BridgeBridgeRouteRouteImport
+      parentRoute: typeof BridgeRoute
     }
   }
 }
 
+interface BridgeRouteChildren {
+  BridgeBridgeRouteRoute: typeof BridgeBridgeRouteRoute
+}
+
+const BridgeRouteChildren: BridgeRouteChildren = {
+  BridgeBridgeRouteRoute: BridgeBridgeRouteRoute,
+}
+
+const BridgeRouteWithChildren =
+  BridgeRoute._addFileChildren(BridgeRouteChildren)
+
 interface LayoutRouteChildren {
-  LayoutBridgeRouteRoute: typeof LayoutBridgeRouteRoute
   LayoutAddressRoute: typeof LayoutAddressRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
-  LayoutBridgeRouteRoute: LayoutBridgeRouteRoute,
   LayoutAddressRoute: LayoutAddressRoute,
   LayoutIndexRoute: LayoutIndexRoute,
 }
@@ -117,6 +141,7 @@ const LayoutRouteWithChildren =
   LayoutRoute._addFileChildren(LayoutRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  BridgeRoute: BridgeRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
 }
 export const routeTree = rootRouteImport

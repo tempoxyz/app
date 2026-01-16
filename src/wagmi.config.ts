@@ -1,6 +1,6 @@
 import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
 import { getRequestHeader } from '@tanstack/react-start/server'
-import { tempoDevnet, tempoLocalnet, tempoModerato } from 'viem/chains'
+import { tempoDevnet, tempoLocalnet, tempoModerato } from 'wagmi/chains'
 import { tempoPresto } from './lib/chains'
 import {
 	cookieStorage,
