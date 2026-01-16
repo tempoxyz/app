@@ -108,19 +108,21 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 
 			const MAX_TOKENS = 50
 
-			const assets: AssetData[] = tokensArray.slice(0, MAX_TOKENS).map((row) => {
-				const isUsd = HARDCODED_USD_TOKENS.has(row.token.toLowerCase())
-				const valueUsd = isUsd
-					? Number(row.balance) / 10 ** TIP20_DECIMALS
-					: undefined
+			const assets: AssetData[] = tokensArray
+				.slice(0, MAX_TOKENS)
+				.map((row) => {
+					const isUsd = HARDCODED_USD_TOKENS.has(row.token.toLowerCase())
+					const valueUsd = isUsd
+						? Number(row.balance) / 10 ** TIP20_DECIMALS
+						: undefined
 
-				return {
-					address: row.token,
-					metadata: undefined,
-					balance: row.balance.toString(),
-					valueUsd,
-				}
-			})
+					return {
+						address: row.token,
+						metadata: undefined,
+						balance: row.balance.toString(),
+						valueUsd,
+					}
+				})
 				.sort((a, b) => {
 					// Sort by balance first (non-zero balances first)
 					const aHasBalance = a.balance && a.balance !== '0'

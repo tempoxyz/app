@@ -1,10 +1,15 @@
 name: Verify
 on:
+  pull_request:
   workflow_call:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 env:
-  NODE_OPTIONS: '--disable-warning=ExperimentalWarning --disable-warning=DeprecationWarning'
+  NODE_OPTIONS: "--disable-warning=ExperimentalWarning --disable-warning=DeprecationWarning"
 
 jobs:
   checks:
@@ -18,5 +23,11 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/install-dependencies
 
+      - name: Lint
+        run: pnpm biome ci .
+
       - name: Check types
         run: pnpm gen:types && pnpm check:types
+
+      - name: Build
+        run: pnpm build
