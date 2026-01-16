@@ -176,6 +176,20 @@ function printReport(
 	}
 }
 
+const GZIP_WARNING_KB = 10
+const GZIP_STRONG_WARNING_KB = 25
+
+function getGzipWarning(gzipBytes: number): string | null {
+	const gzipKb = gzipBytes / 1024
+	if (gzipKb > GZIP_STRONG_WARNING_KB) {
+		return `🔴 WARNING: Bundle gzip size (${gzipKb.toFixed(1)} KB) exceeds ${GZIP_STRONG_WARNING_KB} KB!`
+	}
+	if (gzipKb > GZIP_WARNING_KB) {
+		return `🟠 Note: Bundle gzip size (${gzipKb.toFixed(1)} KB) exceeds ${GZIP_WARNING_KB} KB`
+	}
+	return null
+}
+
 function printTerminalReport(
 	current: BundleStats,
 	baseline: BundleStats | null,
@@ -188,6 +202,11 @@ function printTerminalReport(
 	console.log(
 		`  Total:  ${formatBytes(current.total.size)} (gzip: ${formatBytes(current.total.gzip)}, brotli: ${formatBytes(current.total.brotli)})`,
 	)
+
+	const warning = getGzipWarning(current.total.gzip)
+	if (warning) {
+		console.log(`\n  ${warning}`)
+	}
 
 	if (baseline) {
 		console.log('\nBaseline:')
@@ -248,6 +267,13 @@ function printMarkdownReport(
 	} else {
 		output += `**Total:** ${formatBytes(current.total.size)} (gzip: ${formatBytes(current.total.gzip)}, brotli: ${formatBytes(current.total.brotli)})\n\n`
 		output += `*No baseline available for comparison*\n`
+	}
+
+	const gzipKb = current.total.gzip / 1024
+	if (gzipKb > GZIP_STRONG_WARNING_KB) {
+		output += `\n> [!WARNING]\n> Bundle gzip size (${gzipKb.toFixed(1)} KB) exceeds ${GZIP_STRONG_WARNING_KB} KB!\n`
+	} else if (gzipKb > GZIP_WARNING_KB) {
+		output += `\n> [!NOTE]\n> Bundle gzip size (${gzipKb.toFixed(1)} KB) exceeds ${GZIP_WARNING_KB} KB\n`
 	}
 
 	output += '\n<details>\n<summary>Top 10 chunks</summary>\n\n'
