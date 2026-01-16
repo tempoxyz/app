@@ -62,7 +62,9 @@
 		"**/.pnpm-store/**": true
 	},
 	"markdownlint.config": {
-		"no-inline-html": false
+    "no-inline-html": false,
+    "table-column-style": false,
+    "no-emphasis-as-heading": false
 	},
 	"tailwindCSS.showPixelEquivalents": true,
 	"tailwindCSS.lint.cssConflict": "warning",
