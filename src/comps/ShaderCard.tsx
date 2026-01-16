@@ -58,66 +58,8 @@ const DEFAULT_AMBIENT_COLORS: Array<[number, number, number]> = [
 	[0.545, 0.361, 0.965], // purple (#8b5cf6)
 ]
 const DEFAULT_AMBIENT_INTENSITY = 0.7
-const COLOR_TRANSITION_DURATION = 500
-
-// Oklab color space conversion for perceptually uniform color interpolation
-function srgbToLinear(x: number): number {
-	return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)
-}
-
-function linearToSrgb(x: number): number {
-	return x <= 0.0031308 ? x * 12.92 : 1.055 * Math.pow(x, 1 / 2.4) - 0.055
-}
-
-function rgbToOklab(r: number, g: number, b: number): [number, number, number] {
-	const lr = srgbToLinear(r)
-	const lg = srgbToLinear(g)
-	const lb = srgbToLinear(b)
-
-	const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb)
-	const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb)
-	const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb)
-
-	return [
-		0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
-		1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
-		0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
-	]
-}
-
-function oklabToRgb(L: number, a: number, b: number): [number, number, number] {
-	const l = L + 0.3963377774 * a + 0.2158037573 * b
-	const m = L - 0.1055613458 * a - 0.0638541728 * b
-	const s = L - 0.0894841775 * a - 1.291485548 * b
-
-	const l3 = l * l * l
-	const m3 = m * m * m
-	const s3 = s * s * s
-
-	const lr = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3
-	const lg = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3
-	const lb = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3
-
-	return [
-		Math.max(0, Math.min(1, linearToSrgb(lr))),
-		Math.max(0, Math.min(1, linearToSrgb(lg))),
-		Math.max(0, Math.min(1, linearToSrgb(lb))),
-	]
-}
-
-function lerpColorOklab(
-	c1: [number, number, number],
-	c2: [number, number, number],
-	t: number,
-): [number, number, number] {
-	const [L1, a1, b1] = rgbToOklab(c1[0], c1[1], c1[2])
-	const [L2, a2, b2] = rgbToOklab(c2[0], c2[1], c2[2])
-	return oklabToRgb(
-		L1 + (L2 - L1) * t,
-		a1 + (a2 - a1) * t,
-		b1 + (b2 - b1) * t,
-	)
-}
+const COLOR_TRANSITION_DURATION = 1500
+const COLOR_TRANSITION_DELAY = 1000
 
 // =============================================================================
 // LIQUIDGLASS SETTINGS
@@ -701,9 +643,11 @@ export function ShaderCard({
 	const startTimeRef = React.useRef<number | null>(null)
 	const onReadyCalledRef = React.useRef(false)
 
+	const hasRealColors = Boolean(ambientColors && ambientColors.length > 0)
 	const colorsRef = React.useRef(colors)
 	const prevColorsRef = React.useRef(colors)
 	const transitionStartRef = React.useRef<number | null>(null)
+	const hadRealColorsRef = React.useRef(hasRealColors)
 
 	if (colors !== colorsRef.current) {
 		const colorsChanged =
@@ -715,9 +659,15 @@ export function ShaderCard({
 					c[2] !== colorsRef.current[i][2],
 			)
 		if (colorsChanged) {
-			prevColorsRef.current = colorsRef.current
+			const shouldAnimate = hadRealColorsRef.current && hasRealColors
+			if (shouldAnimate) {
+				prevColorsRef.current = colorsRef.current
+				transitionStartRef.current = null
+			} else {
+				prevColorsRef.current = colors
+			}
 			colorsRef.current = colors
-			transitionStartRef.current = null
+			hadRealColorsRef.current = hasRealColors
 		}
 	}
 
@@ -892,7 +842,8 @@ export function ShaderCard({
 			if (transitionStartRef.current === null) {
 				transitionStartRef.current = timestamp
 			}
-			const transitionElapsed = timestamp - transitionStartRef.current
+			const timeSinceChange = timestamp - transitionStartRef.current
+			const transitionElapsed = Math.max(0, timeSinceChange - COLOR_TRANSITION_DELAY)
 			const transitionProgress = Math.min(
 				1,
 				transitionElapsed / COLOR_TRANSITION_DURATION,
@@ -910,9 +861,13 @@ export function ShaderCard({
 			for (let i = 0; i < maxLen; i++) {
 				const prevIdx = Math.min(i, prevColors.length - 1)
 				const targetIdx = Math.min(i, targetColors.length - 1)
-				interpolatedColors.push(
-					lerpColorOklab(prevColors[prevIdx], targetColors[targetIdx], smoothProgress),
-				)
+				const prev = prevColors[prevIdx]
+				const target = targetColors[targetIdx]
+				interpolatedColors.push([
+					prev[0] + (target[0] - prev[0]) * smoothProgress,
+					prev[1] + (target[1] - prev[1]) * smoothProgress,
+					prev[2] + (target[2] - prev[2]) * smoothProgress,
+				])
 			}
 
 			const colorData = new Float32Array(MAX_GRADIENT_COLORS * 3)
