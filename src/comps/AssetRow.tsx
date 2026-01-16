@@ -726,7 +726,7 @@ export function AssetRow({
 						aria-label={t('common.send')}
 						aria-busy={sendState === 'sending'}
 						className={cx(
-							'size-[34px] rounded-lg press-down transition-colors flex items-center justify-center shrink-0 focus-ring',
+							'size-[34px] rounded-lg press-down flex items-center justify-center shrink-0 focus-visible:outline-solid focus-visible:!outline-2 focus-visible:outline-accent focus-visible:!-outline-offset-2 focus-visible:!rounded-lg',
 							sendState === 'sent'
 								? 'bg-positive text-white cursor-default'
 								: sendState === 'error'
@@ -836,7 +836,7 @@ export function AssetRow({
 						}}
 						disabled={faucetState !== 'idle' || !isFaucetToken}
 						className={cx(
-							'flex items-center justify-center size-[24px] rounded-md transition-colors focus-ring',
+							'group/faucet flex items-center justify-center size-[24px] rounded-md focus-ring',
 							isFaucetToken
 								? 'hover:bg-accent/10 cursor-pointer'
 								: 'opacity-0 pointer-events-none',
@@ -849,7 +849,7 @@ export function AssetRow({
 						) : faucetState === 'loading' ? (
 							<FillingDroplet />
 						) : (
-							<DropletIcon className="size-[14px] text-tertiary hover:text-accent transition-colors" />
+							<DropletIcon className="size-[14px] text-tertiary group-hover/faucet:text-accent" />
 						)}
 					</button>
 				)}
@@ -859,10 +859,10 @@ export function AssetRow({
 						e.stopPropagation()
 						handleToggle()
 					}}
-					className="flex items-center justify-center size-[28px] rounded-md hover:bg-accent/10 cursor-pointer transition-all opacity-60 group-hover:opacity-100 focus-ring"
+					className="group/send flex items-center justify-center size-[28px] rounded-md hover:bg-accent/10 cursor-pointer transition-opacity opacity-60 group-hover:opacity-100 focus-visible:outline-solid focus-visible:!outline-2 focus-visible:outline-accent focus-visible:!-outline-offset-2 focus-visible:!rounded-md"
 					aria-label={t('common.send')}
 				>
-					<SendIcon className="size-[14px] text-tertiary hover:text-accent transition-colors" />
+					<SendIcon className="size-[14px] text-tertiary group-hover/send:text-accent" />
 				</button>
 			</span>
 		</div>

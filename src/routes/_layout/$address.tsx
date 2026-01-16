@@ -31,9 +31,9 @@ import {
 import { useActivitySummary, type ActivityType } from '#lib/activity-context'
 import { LottoNumber } from '#comps/LottoNumber'
 import {
-	Settings,
-	SETTINGS_VIEW_TITLES,
-	type SettingsView,
+	SettingsMainMenu,
+	SettingsFeeTokenContent,
+	SettingsLanguageContent,
 } from '#comps/Settings'
 import CopyIcon from '~icons/lucide/copy'
 import ExternalLinkIcon from '~icons/lucide/external-link'
@@ -101,7 +101,6 @@ function RouteComponent() {
 	const [sendingToken, setSendingToken] = React.useState<string | null>(
 		initialToken ?? null,
 	)
-	const [tokenAddressCopied, setTokenAddressCopied] = React.useState(false)
 
 	// Assets state - starts from loader, can be refetched without page refresh
 	const [assetsData, setAssetsData] = React.useState(initialAssets)
@@ -367,14 +366,6 @@ function RouteComponent() {
 			) ?? null)
 		: null
 
-	const copyTokenAddress = React.useCallback(() => {
-		if (selectedSendAsset) {
-			copy(selectedSendAsset.address)
-			setTokenAddressCopied(true)
-			setTimeout(() => setTokenAddressCopied(false), 1500)
-		}
-	}, [selectedSendAsset, copy])
-
 	// Get token addresses for access key spending limit queries
 	const tokenAddresses = React.useMemo(
 		() => dedupedAssets.map((a) => a.address),
@@ -561,8 +552,6 @@ function RouteComponent() {
 						selectedSendAsset={selectedSendAsset}
 						sendingToken={sendingToken}
 						setSendingToken={setSendingToken}
-						tokenAddressCopied={tokenAddressCopied}
-						copyTokenAddress={copyTokenAddress}
 						handleFaucetSuccess={handleFaucetSuccess}
 						handleSendSuccess={handleSendSuccess}
 						applyOptimisticUpdate={applyOptimisticUpdate}
@@ -603,8 +592,6 @@ function AssetsSection({
 	selectedSendAsset,
 	sendingToken,
 	setSendingToken,
-	tokenAddressCopied,
-	copyTokenAddress,
 	handleFaucetSuccess,
 	handleSendSuccess,
 	applyOptimisticUpdate,
@@ -620,8 +607,6 @@ function AssetsSection({
 	selectedSendAsset: AssetData | null
 	sendingToken: string | null
 	setSendingToken: (token: string | null) => void
-	tokenAddressCopied: boolean
-	copyTokenAddress: () => void
 	handleFaucetSuccess: () => void
 	handleSendSuccess: () => void
 	applyOptimisticUpdate: (tokenAddress: string, amount: bigint) => void
@@ -634,41 +619,60 @@ function AssetsSection({
 	const { t } = useTranslation()
 	const { keys: signableAccessKeys } = useSignableAccessKeys()
 
+	const subscreens = React.useMemo(() => {
+		if (!selectedSendAsset) return undefined
+		return [
+			{
+				name:
+					selectedSendAsset.metadata?.symbol ||
+					shortenAddress(selectedSendAsset.address, 3),
+				content: (
+					<HoldingsTable
+						assets={assets}
+						address={address}
+						onFaucetSuccess={handleFaucetSuccess}
+						onSendSuccess={handleSendSuccess}
+						onOptimisticSend={applyOptimisticUpdate}
+						onOptimisticClear={clearOptimisticUpdate}
+						isOwnProfile={isOwnProfile}
+						connectedAddress={connectedAddress}
+						initialSendTo={sendTo}
+						sendingToken={sendingToken}
+						onSendingTokenChange={setSendingToken}
+						announce={announce}
+						faucetTokenAddresses={FAUCET_TOKEN_ADDRESSES}
+						accessKeys={signableAccessKeys}
+					/>
+				),
+			},
+		]
+	}, [
+		selectedSendAsset,
+		assets,
+		address,
+		handleFaucetSuccess,
+		handleSendSuccess,
+		applyOptimisticUpdate,
+		clearOptimisticUpdate,
+		isOwnProfile,
+		connectedAddress,
+		sendTo,
+		sendingToken,
+		setSendingToken,
+		announce,
+		signableAccessKeys,
+	])
+
 	return (
 		<Section
 			title={t('portfolio.assets')}
 			subtitle={`${assetsWithBalance.length} ${t('portfolio.assetCount', { count: assetsWithBalance.length })}`}
 			defaultOpen
-			backButton={
-				selectedSendAsset
-					? {
-							label:
-								selectedSendAsset.metadata?.symbol ||
-								shortenAddress(selectedSendAsset.address, 3),
-							onClick: () => setSendingToken(null),
-							extra: (
-								<>
-									<span className="w-px h-4 bg-card-border" />
-									<button
-										type="button"
-										onClick={(e) => {
-											e.stopPropagation()
-											copyTokenAddress()
-										}}
-										className="flex items-center gap-1.5 text-[12px] text-tertiary hover:text-primary font-mono transition-colors cursor-pointer"
-									>
-										<span>{shortenAddress(selectedSendAsset.address, 4)}</span>
-										{tokenAddressCopied ? (
-											<CheckIcon className="w-[10px] h-[10px] text-positive shrink-0" />
-										) : (
-											<CopyIcon className="w-[10px] h-[10px] shrink-0" />
-										)}
-									</button>
-								</>
-							),
-						}
-					: undefined
-			}
+			subscreens={subscreens}
+			subscreen={sendingToken ? 0 : null}
+			onSubscreenChange={(index) => {
+				if (index === null) setSendingToken(null)
+			}}
 		>
 			<HoldingsTable
 				assets={assets}
@@ -718,8 +722,7 @@ function SettingsSection({ assets }: { assets: AssetData[] }) {
 		}
 		return 'en'
 	})
-	const [currentView, setCurrentView] = React.useState<SettingsView>('main')
-	const [triggerBack, setTriggerBack] = React.useState(false)
+	const [subscreen, setSubscreen] = React.useState<number | null>(null)
 
 	const handleLanguageChange = React.useCallback((lang: string) => {
 		setCurrentLanguage(lang)
@@ -730,29 +733,43 @@ function SettingsSection({ assets }: { assets: AssetData[] }) {
 		}
 	}, [])
 
-	const handleBack = React.useCallback(() => {
-		setTriggerBack(true)
-		setTimeout(() => setTriggerBack(false), 50)
-	}, [])
-
-	const submenuTitle =
-		currentView !== 'main' ? t(SETTINGS_VIEW_TITLES[currentView]) : undefined
+	const subscreens = React.useMemo(
+		() => [
+			{
+				name: t('settings.feeToken'),
+				content: (
+					<SettingsFeeTokenContent
+						assets={assets}
+						currentFeeToken={currentFeeToken}
+						onFeeTokenChange={setCurrentFeeToken}
+					/>
+				),
+			},
+			{
+				name: t('settings.language'),
+				content: (
+					<SettingsLanguageContent
+						currentLanguage={currentLanguage}
+						onLanguageChange={handleLanguageChange}
+					/>
+				),
+			},
+		],
+		[t, assets, currentFeeToken, currentLanguage, handleLanguageChange],
+	)
 
 	return (
 		<Section
 			title={t('settings.title')}
-			backButton={
-				submenuTitle ? { label: submenuTitle, onClick: handleBack } : undefined
-			}
+			subscreens={subscreens}
+			subscreen={subscreen}
+			onSubscreenChange={setSubscreen}
 		>
-			<Settings
+			<SettingsMainMenu
 				assets={assets}
 				currentFeeToken={currentFeeToken}
-				onFeeTokenChange={setCurrentFeeToken}
 				currentLanguage={currentLanguage}
-				onLanguageChange={handleLanguageChange}
-				onViewChange={setCurrentView}
-				externalNavigateBack={triggerBack}
+				onNavigate={setSubscreen}
 			/>
 		</Section>
 	)
