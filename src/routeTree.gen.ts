@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAddressRouteImport } from './routes/_layout/$address'
+import { Route as LayoutBridgeRouteRouteImport } from './routes/_layout/bridge/route'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -27,27 +28,40 @@ const LayoutAddressRoute = LayoutAddressRouteImport.update({
   path: '/$address',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutBridgeRouteRoute = LayoutBridgeRouteRouteImport.update({
+  id: '/bridge',
+  path: '/bridge',
+  getParentRoute: () => LayoutRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
+  '/bridge': typeof LayoutBridgeRouteRoute
   '/$address': typeof LayoutAddressRoute
   '/': typeof LayoutIndexRoute
 }
 export interface FileRoutesByTo {
+  '/bridge': typeof LayoutBridgeRouteRoute
   '/$address': typeof LayoutAddressRoute
   '/': typeof LayoutIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
+  '/_layout/bridge': typeof LayoutBridgeRouteRoute
   '/_layout/$address': typeof LayoutAddressRoute
   '/_layout/': typeof LayoutIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/$address' | '/'
+  fullPaths: '/bridge' | '/$address' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/$address' | '/'
-  id: '__root__' | '/_layout' | '/_layout/$address' | '/_layout/'
+  to: '/bridge' | '/$address' | '/'
+  id:
+    | '__root__'
+    | '/_layout'
+    | '/_layout/bridge'
+    | '/_layout/$address'
+    | '/_layout/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,15 +91,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAddressRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/bridge': {
+      id: '/_layout/bridge'
+      path: '/bridge'
+      fullPath: '/bridge'
+      preLoaderRoute: typeof LayoutBridgeRouteRouteImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
 interface LayoutRouteChildren {
+  LayoutBridgeRouteRoute: typeof LayoutBridgeRouteRoute
   LayoutAddressRoute: typeof LayoutAddressRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
+  LayoutBridgeRouteRoute: LayoutBridgeRouteRoute,
   LayoutAddressRoute: LayoutAddressRoute,
   LayoutIndexRoute: LayoutIndexRoute,
 }
