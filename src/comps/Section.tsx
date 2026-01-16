@@ -211,7 +211,11 @@ export function Section(props: {
 								className="absolute inset-y-0 left-0 flex items-center pl-2 pr-4 text-accent cursor-pointer shrink-0 pointer-events-auto !rounded-tl-[10px] focus-visible:outline-solid focus-visible:!outline-2 focus-visible:outline-accent focus-visible:!-outline-offset-2"
 								style={
 									subscreen == null
-										? { opacity: 0, transform: 'translateX(40px)', pointerEvents: 'none' }
+										? {
+												opacity: 0,
+												transform: 'translateX(40px)',
+												pointerEvents: 'none',
+											}
 										: undefined
 								}
 							>
