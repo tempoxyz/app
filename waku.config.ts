@@ -1,9 +1,8 @@
-import type { Plugin } from 'vite'
 import { defineConfig } from 'waku/config'
 import tailwindcss from '@tailwindcss/vite'
 import Icons from 'unplugin-icons/vite'
 
-function forAllEnvironments(plugin: Plugin): Plugin {
+function forAllEnvironments<T extends { apply?: unknown }>(plugin: T): T {
 	return Object.assign({}, plugin, {
 		applyToEnvironment() {
 			return true
@@ -15,6 +14,7 @@ const iconsPlugin = Icons({ compiler: 'jsx', jsx: 'react' })
 
 export default defineConfig({
 	vite: {
+		// @ts-expect-error - Plugin type mismatch between vite and rolldown-vite
 		plugins: [tailwindcss(), forAllEnvironments(iconsPlugin)],
 		resolve: {
 			alias: {
@@ -30,7 +30,7 @@ export default defineConfig({
 			),
 		},
 		build: {
-			minify: 'oxc',
+			minify: 'esbuild',
 		},
 		ssr: {
 			noExternal: ['wagmi', '@wagmi/core', '@wagmi/connectors'],

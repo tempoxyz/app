@@ -6,6 +6,9 @@ declare namespace Cloudflare {
 		VITE_TEMPO_ENV: "presto" | "devnet" | "moderato";
 		INDEXER_API_KEY: string;
 		VITE_ONRAMP_API_URL: string;
+		PRESTO_RPC_AUTH?: string;
+		CB_API_KEY_ID?: string;
+		CB_API_KEY_SECRET?: string;
 	}
 }
 interface Env extends Cloudflare.Env {}

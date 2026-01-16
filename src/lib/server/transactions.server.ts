@@ -267,6 +267,128 @@ export async function fetchTransactionsFromExplorer(address: string) {
 	}
 }
 
+export async function fetchBlockData(fromBlock: string, count: number) {
+	const tempoEnv = await getTempoEnv()
+	const rpcUrl = getRpcUrl(tempoEnv)
+
+	const { env } = await import('cloudflare:workers')
+	const auth = env.PRESTO_RPC_AUTH as string | undefined
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	}
+	if (auth && shouldUseAuth(tempoEnv)) {
+		headers.Authorization = `Basic ${btoa(auth)}`
+	}
+
+	try {
+		const fromBlockNum = BigInt(fromBlock)
+		const batchRequest = Array.from({ length: count }, (_, i) => ({
+			jsonrpc: '2.0',
+			id: i + 1,
+			method: 'eth_getBlockByNumber',
+			params: [`0x${(fromBlockNum - BigInt(i)).toString(16)}`, false],
+		}))
+
+		const response = await fetch(rpcUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(batchRequest),
+		})
+
+		if (!response.ok) return { blocks: [] }
+
+		const results = (await response.json()) as Array<{
+			id: number
+			result?: { number: string; transactions: string[] }
+		}>
+
+		const blocks = results
+			.filter((r): r is typeof r & { result: NonNullable<typeof r.result> } =>
+				Boolean(r.result),
+			)
+			.map((r) => ({
+				blockNumber: r.result.number,
+				txCount: r.result.transactions?.length ?? 0,
+			}))
+
+		return { blocks }
+	} catch {
+		return { blocks: [] }
+	}
+}
+
+export async function fetchBlockWithReceipts(blockNumber: string) {
+	const tempoEnv = await getTempoEnv()
+	const rpcUrl = getRpcUrl(tempoEnv)
+
+	const { env } = await import('cloudflare:workers')
+	const auth = env.PRESTO_RPC_AUTH as string | undefined
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	}
+	if (auth && shouldUseAuth(tempoEnv)) {
+		headers.Authorization = `Basic ${btoa(auth)}`
+	}
+
+	try {
+		// First get the block to find transaction hashes
+		const blockResponse = await fetch(rpcUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify({
+				jsonrpc: '2.0',
+				id: 1,
+				method: 'eth_getBlockByNumber',
+				params: [`0x${BigInt(blockNumber).toString(16)}`, true],
+			}),
+		})
+
+		if (!blockResponse.ok) return { receipts: [], timestamp: undefined }
+
+		const blockResult = (await blockResponse.json()) as {
+			result?: { transactions: Array<{ hash: string }>; timestamp?: string }
+		}
+
+		const txHashes =
+			blockResult.result?.transactions?.map((tx) => tx.hash) ?? []
+		const timestamp = blockResult.result?.timestamp
+			? Number.parseInt(blockResult.result.timestamp, 16) * 1000
+			: undefined
+		if (txHashes.length === 0) return { receipts: [], timestamp }
+
+		// Batch fetch all receipts
+		const batchRequest = txHashes.map((hash, i) => ({
+			jsonrpc: '2.0',
+			id: i + 1,
+			method: 'eth_getTransactionReceipt',
+			params: [hash],
+		}))
+
+		const receiptsResponse = await fetch(rpcUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(batchRequest),
+		})
+
+		if (!receiptsResponse.ok) return { receipts: [] }
+
+		const receiptsResult = (await receiptsResponse.json()) as Array<{
+			id: number
+			result?: RpcTransactionReceipt
+		}>
+
+		const receipts = receiptsResult
+			.filter((r): r is typeof r & { result: NonNullable<typeof r.result> } =>
+				Boolean(r.result),
+			)
+			.map((r) => r.result)
+
+		return { receipts, timestamp }
+	} catch {
+		return { receipts: [], timestamp: undefined }
+	}
+}
+
 export async function fetchTokenMetadata(addresses: string[]) {
 	if (addresses.length === 0) return { tokens: {} }
 

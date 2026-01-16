@@ -8,6 +8,8 @@ import {
 	fetchCurrentBlockNumber,
 	fetchTransactionsFromExplorer,
 	fetchTokenMetadata,
+	fetchBlockData,
+	fetchBlockWithReceipts,
 	type RpcTransactionReceipt,
 } from '#lib/server/transactions.server'
 
@@ -1246,12 +1248,10 @@ function BlockTimeline({
 				: blocksBeforeCurrent + 1
 
 			try {
-				const result = await fetchBlockData({
-					data: {
-						fromBlock: `0x${currentBlock.toString(16)}`,
-						count: blocksToFetch,
-					},
-				})
+				const result = await fetchBlockData(
+					`0x${currentBlock.toString(16)}`,
+					blocksToFetch,
+				)
 				if (result.blocks.length > 0) {
 					setBlockTxCounts((prev) => {
 						const next = new Map(prev)
@@ -1294,12 +1294,7 @@ function BlockTimeline({
 
 			try {
 				const maxBlock = missingBlocks.reduce((a, b) => (a > b ? a : b))
-				const result = await fetchBlockData({
-					data: {
-						fromBlock: `0x${maxBlock.toString(16)}`,
-						count: 5,
-					},
-				})
+				const result = await fetchBlockData(`0x${maxBlock.toString(16)}`, 5)
 				if (result.blocks.length > 0) {
 					setBlockTxCounts((prev) => {
 						const next = new Map(prev)
@@ -2764,9 +2759,7 @@ function ActivitySection({
 		let cancelled = false
 		const loadBlockTxs = async () => {
 			try {
-				const result = await fetchBlockWithReceipts({
-					data: { blockNumber: selectedBlock.toString() },
-				})
+				const result = await fetchBlockWithReceipts(selectedBlock.toString())
 
 				if (cancelled) return
 
@@ -2788,9 +2781,9 @@ function ActivitySection({
 					// Fetch metadata for unknown tokens
 					if (unknownTokens.size > 0 && !cancelled) {
 						try {
-							const metadataResult = await fetchTokenMetadata({
-								data: { addresses: Array.from(unknownTokens) },
-							})
+							const metadataResult = await fetchTokenMetadata(
+								Array.from(unknownTokens),
+							)
 							for (const [addr, meta] of Object.entries(
 								metadataResult.tokens,
 							)) {

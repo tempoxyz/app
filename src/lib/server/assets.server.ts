@@ -59,8 +59,16 @@ export async function fetchAssets(
 			// biome-ignore lint/complexity/noBannedTypes: IDX library typing
 			.where((eb: { or: Function }) =>
 				eb.or([
-					(eb as (...args: unknown[]) => unknown)('to', '=', address),
-					(eb as (...args: unknown[]) => unknown)('from', '=', address),
+					(eb as unknown as (col: string, op: string, val: string) => unknown)(
+						'to',
+						'=',
+						address,
+					),
+					(eb as unknown as (col: string, op: string, val: string) => unknown)(
+						'from',
+						'=',
+						address,
+					),
 				]),
 			)
 

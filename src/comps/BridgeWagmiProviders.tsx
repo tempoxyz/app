@@ -33,6 +33,7 @@ export default function BridgeWagmiProviders({
 	}, [wagmiConfig, cookie])
 
 	return (
+		// @ts-expect-error - Bridge config has different chains than main config
 		<WagmiProvider config={wagmiConfig} initialState={wagmiState}>
 			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 		</WagmiProvider>
