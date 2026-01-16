@@ -188,7 +188,10 @@ function RouteComponent() {
 			}
 		}
 
-		fetchTransactions(address as Address.Address, Promise.resolve(tokenMetadataMapForActivity))
+		fetchTransactions(
+			address as Address.Address,
+			Promise.resolve(tokenMetadataMapForActivity),
+		)
 			.then((result) => {
 				if (!cancelled) {
 					setActivity(result)

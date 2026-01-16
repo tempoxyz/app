@@ -104,7 +104,10 @@ export function Section(props: {
 
 	const prevControlledOpen = React.useRef(controlledOpen)
 	React.useEffect(() => {
-		if (controlledOpen !== undefined && controlledOpen !== prevControlledOpen.current) {
+		if (
+			controlledOpen !== undefined &&
+			controlledOpen !== prevControlledOpen.current
+		) {
 			setOpenWithAnimation(controlledOpen)
 		}
 		prevControlledOpen.current = controlledOpen

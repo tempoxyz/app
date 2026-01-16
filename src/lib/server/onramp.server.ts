@@ -1,3 +1,5 @@
+import { env } from 'cloudflare:workers'
+import { getRequestHeader } from '@tanstack/react-start/server'
 import { createServerFn } from '@tanstack/react-start'
 import { getAddress } from 'viem'
 import * as z from 'zod'
@@ -21,34 +23,19 @@ export const createOnrampOrderFn = createServerFn({ method: 'POST' })
 	.handler(async ({ data }) => {
 		const { address, amount, email, phoneNumber, phoneNumberVerifiedAt } = data
 
-		let cbApiKeyId: string | undefined
-		let cbApiKeySecret: string | undefined
-		let appDomain: string
-		let environment: string
-
-		try {
-			const { env } = await import('cloudflare:workers')
-			cbApiKeyId = env.CB_API_KEY_ID as string | undefined
-			cbApiKeySecret = env.CB_API_KEY_SECRET as string | undefined
-			appDomain =
-				env.VITE_TEMPO_ENV === 'presto'
-					? 'app.tempo.xyz'
-					: env.VITE_TEMPO_ENV === 'moderato'
-						? 'app.moderato.tempo.xyz'
-						: 'app.devnet.tempo.xyz'
-			environment = env.VITE_TEMPO_ENV ?? 'presto'
-		} catch {
-			cbApiKeyId = process.env.CB_API_KEY_ID
-			cbApiKeySecret = process.env.CB_API_KEY_SECRET
-			appDomain = 'localhost'
-			environment = process.env.VITE_TEMPO_ENV ?? 'development'
-		}
+		const cbApiKeyId = env.CB_API_KEY_ID as string | undefined
+		const cbApiKeySecret = env.CB_API_KEY_SECRET as string | undefined
 
 		if (!cbApiKeyId || !cbApiKeySecret) {
 			throw new Error('Coinbase API credentials not configured')
 		}
 
-		const sandbox = environment === 'development' || environment === 'devnet'
+		const origin = getRequestHeader('origin') ?? getRequestHeader('host') ?? ''
+		const appDomain = new URL(
+			origin.startsWith('http') ? origin : `https://${origin}`,
+		).host
+
+		const sandbox = import.meta.env.DEV
 
 		const result = await createOnrampOrder({
 			keyId: cbApiKeyId,
