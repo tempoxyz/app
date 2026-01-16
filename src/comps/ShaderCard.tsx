@@ -45,6 +45,7 @@ const WORDMARK_TEXTURE_SCALE = 4
 const WORDMARK_FLOW_DIRECTION = -1
 const WORDMARK_WAVE_AMPLITUDE = 40.0
 const WORDMARK_WAVE_SCALE = 0.5
+const WORDMARK_WAVE_SPEED = 0.00003
 const WORDMARK_NOISE_SIZE = 256
 
 // =============================================================================
@@ -989,7 +990,10 @@ export function ShaderCard({
 				gl.getUniformLocation(waveProgram, 'u_waveScale'),
 				WORDMARK_WAVE_SCALE,
 			)
-			gl.uniform1f(gl.getUniformLocation(waveProgram, 'u_waveTime'), time)
+			gl.uniform1f(
+				gl.getUniformLocation(waveProgram, 'u_waveTime'),
+				time * WORDMARK_WAVE_SPEED,
+			)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
