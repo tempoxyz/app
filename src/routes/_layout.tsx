@@ -6,7 +6,6 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import * as React from 'react'
 import { deserialize, type State, WagmiProvider } from 'wagmi'
 import { getWagmiConfig, getWagmiStateSSR } from '#wagmi.config'
-import { CommandMenuProvider } from '#comps/CommandMenu'
 import { Intro } from '#comps/Intro'
 import { Layout } from '#comps/Layout'
 import { ActivityProvider } from '#lib/activity-context'
@@ -25,18 +24,16 @@ function LayoutRoute() {
 	return (
 		<WagmiProvider config={wagmiConfig} initialState={wagmiState}>
 			<QueryClientProvider client={queryClient}>
-				<CommandMenuProvider>
-					<ActivityProvider>
-						<Layout>
-							<Layout.Hero>
-								<Intro />
-							</Layout.Hero>
-							<Layout.Content>
-								<Outlet />
-							</Layout.Content>
-						</Layout>
-					</ActivityProvider>
-				</CommandMenuProvider>
+				<ActivityProvider>
+					<Layout>
+						<Layout.Hero>
+							<Intro />
+						</Layout.Hero>
+						<Layout.Content>
+							<Outlet />
+						</Layout.Content>
+					</Layout>
+				</ActivityProvider>
 				{config.devtools.enabled && (
 					<TanStackDevtools
 						config={{ position: 'bottom-right' }}
