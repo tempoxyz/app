@@ -540,15 +540,58 @@ function createWordmarkTexture(
 	return texture
 }
 
+function noise4D(x: number, y: number, z: number, w: number, seed: number): number {
+	const hash = (a: number, b: number, c: number, d: number) => {
+		const n = a * 1.0 + b * 57.0 + c * 113.0 + d * 173.0 + seed
+		const s = Math.sin(n) * 43758.5453123
+		return s - Math.floor(s)
+	}
+
+	const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z), iw = Math.floor(w)
+	const fx = x - ix, fy = y - iy, fz = z - iz, fw = w - iw
+
+	const ux = fx * fx * (3 - 2 * fx)
+	const uy = fy * fy * (3 - 2 * fy)
+	const uz = fz * fz * (3 - 2 * fz)
+	const uw = fw * fw * (3 - 2 * fw)
+
+	let value = 0
+	for (let dw = 0; dw <= 1; dw++) {
+		for (let dz = 0; dz <= 1; dz++) {
+			for (let dy = 0; dy <= 1; dy++) {
+				for (let dx = 0; dx <= 1; dx++) {
+					const h = hash(ix + dx, iy + dy, iz + dz, iw + dw)
+					const wx = dx === 0 ? 1 - ux : ux
+					const wy = dy === 0 ? 1 - uy : uy
+					const wz = dz === 0 ? 1 - uz : uz
+					const ww = dw === 0 ? 1 - uw : uw
+					value += h * wx * wy * wz * ww
+				}
+			}
+		}
+	}
+	return value
+}
+
 function createNoiseTexture(gl: WebGL2RenderingContext): WebGLTexture | null {
 	const size = WORDMARK_NOISE_SIZE
 	const data = new Uint8Array(size * size * 4)
 
+	// Generate tileable noise by sampling on a torus (wrapping coordinates)
+	const scale = 4
 	for (let y = 0; y < size; y++) {
 		for (let x = 0; x < size; x++) {
 			const i = (y * size + x) * 4
-			data[i] = Math.floor(noise2D(x * 0.02, y * 0.02, 0) * 255)
-			data[i + 1] = Math.floor(noise2D(x * 0.02, y * 0.02, 100) * 255)
+			// Map to angles for seamless tiling
+			const ax = (x / size) * Math.PI * 2
+			const ay = (y / size) * Math.PI * 2
+			// Sample noise on a torus surface
+			const nx = Math.cos(ax) * scale
+			const ny = Math.sin(ax) * scale
+			const nz = Math.cos(ay) * scale
+			const nw = Math.sin(ay) * scale
+			data[i] = Math.floor(noise4D(nx, ny, nz, nw, 0) * 255)
+			data[i + 1] = Math.floor(noise4D(nx, ny, nz, nw, 100) * 255)
 			data[i + 2] = 128
 			data[i + 3] = 255
 		}
@@ -573,31 +616,6 @@ function createNoiseTexture(gl: WebGL2RenderingContext): WebGLTexture | null {
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
 	return texture
-}
-
-function noise2D(x: number, y: number, seed: number): number {
-	const hash = (n: number) => {
-		const s = Math.sin(n + seed) * 43758.5453123
-		return s - Math.floor(s)
-	}
-
-	const ix = Math.floor(x)
-	const iy = Math.floor(y)
-	const fx = x - ix
-	const fy = y - iy
-
-	const ux = fx * fx * (3 - 2 * fx)
-	const uy = fy * fy * (3 - 2 * fy)
-
-	const n00 = hash(ix + iy * 57)
-	const n10 = hash(ix + 1 + iy * 57)
-	const n01 = hash(ix + (iy + 1) * 57)
-	const n11 = hash(ix + 1 + (iy + 1) * 57)
-
-	const nx0 = n00 * (1 - ux) + n10 * ux
-	const nx1 = n01 * (1 - ux) + n11 * ux
-
-	return nx0 * (1 - uy) + nx1 * uy
 }
 
 // =============================================================================
