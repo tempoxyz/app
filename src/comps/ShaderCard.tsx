@@ -540,15 +540,27 @@ function createWordmarkTexture(
 	return texture
 }
 
-function noise4D(x: number, y: number, z: number, w: number, seed: number): number {
+function noise4D(
+	x: number,
+	y: number,
+	z: number,
+	w: number,
+	seed: number,
+): number {
 	const hash = (a: number, b: number, c: number, d: number) => {
 		const n = a * 1.0 + b * 57.0 + c * 113.0 + d * 173.0 + seed
 		const s = Math.sin(n) * 43758.5453123
 		return s - Math.floor(s)
 	}
 
-	const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z), iw = Math.floor(w)
-	const fx = x - ix, fy = y - iy, fz = z - iz, fw = w - iw
+	const ix = Math.floor(x),
+		iy = Math.floor(y),
+		iz = Math.floor(z),
+		iw = Math.floor(w)
+	const fx = x - ix,
+		fy = y - iy,
+		fz = z - iz,
+		fw = w - iw
 
 	const ux = fx * fx * (3 - 2 * fx)
 	const uy = fy * fy * (3 - 2 * fy)
