@@ -38,6 +38,8 @@ import {
 	type KnownEvent,
 	type GetTokenMetadataFn,
 } from '#comps/activity'
+import { AddFunds } from '#comps/AddFunds'
+import { RewardsPopoverButton } from '#comps/RewardsPopover'
 import { SetupApplePay } from '#comps/SetupApplePay'
 import { Layout } from '#comps/Layout'
 import { TokenIcon } from '#comps/TokenIcon'
@@ -1197,6 +1199,10 @@ function RouteComponent() {
 							>
 								<ExternalLinkIcon className="size-[14px] text-tertiary" />
 							</a>
+							<RewardsPopoverButton
+								assets={assetsData}
+								accountAddress={address}
+							/>
 						</div>
 					</div>
 					<div className="order-1 sm:order-2 self-center sm:self-start w-full sm:w-auto px-8 sm:px-0">
