@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { config } from './config'
 
-const COINBASE_PAY_ORIGIN = 'https://pay.coinbase.com'
-const ONRAMP_API_URL =
-	import.meta.env.VITE_ONRAMP_API_URL ?? 'http://localhost:8788'
+const COINBASE_PAY_ORIGIN = config.onramp.coinbasePayOrigin
+const ONRAMP_API_URL = config.onramp.apiUrl
 
 export type OnrampEventName =
 	| 'onramp_api.load_pending'
