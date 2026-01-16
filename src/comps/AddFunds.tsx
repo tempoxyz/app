@@ -2,8 +2,10 @@ import * as React from 'react'
 import { cx } from '#lib/css'
 import { useOnrampOrder, useShowApplePay } from '#lib/onramp'
 import { ApplePayIframe } from '#comps/ApplePayIframe'
+import LoaderIcon from '~icons/lucide/loader-2'
 
 const PRESET_AMOUNTS = [25, 50, 100, 250]
+const MIN_AMOUNT = 5
 const MAX_AMOUNT = 9999
 
 export function AddFunds(props: AddFunds.Props) {
@@ -13,7 +15,7 @@ export function AddFunds(props: AddFunds.Props) {
 	const [customAmount, setCustomAmount] = React.useState<string>('')
 	const [isCustom, setIsCustom] = React.useState(false)
 
-	const { createOrder, iframeUrl, reset } = useOnrampOrder({
+	const { createOrder, iframeUrl, isLoading, reset } = useOnrampOrder({
 		address,
 		email,
 		phoneNumber: phone,
@@ -25,6 +27,10 @@ export function AddFunds(props: AddFunds.Props) {
 			console.error('Onramp error:', error)
 		},
 	})
+
+	const effectiveAmount = isCustom ? Number(customAmount) || 0 : amount
+	const isValidAmount =
+		effectiveAmount >= MIN_AMOUNT && effectiveAmount <= MAX_AMOUNT
 
 	const [isInputFocused, setIsInputFocused] = React.useState(false)
 
@@ -67,7 +73,12 @@ export function AddFunds(props: AddFunds.Props) {
 		setIsInputFocused(false)
 	}
 
-	const [_isIframeLoaded, setIsIframeLoaded] = React.useState(false)
+	const handleSubmit = () => {
+		if (!isValidAmount) return
+		createOrder.mutate({ amount: effectiveAmount })
+	}
+
+	const [isIframeLoaded, setIsIframeLoaded] = React.useState(false)
 	const isModalOpen = !!iframeUrl
 
 	React.useEffect(() => {
@@ -136,6 +147,27 @@ export function AddFunds(props: AddFunds.Props) {
 						/>
 					</div>
 				</div>
+
+				<button
+					type="button"
+					onClick={handleSubmit}
+					disabled={!isValidAmount || isLoading || isModalOpen}
+					className={cx(
+						'flex items-center justify-center gap-2 w-full h-[40px] text-[14px] font-medium rounded-lg cursor-pointer press-down transition-colors',
+						isValidAmount && !isLoading && !isModalOpen
+							? 'bg-accent text-white hover:bg-accent/90'
+							: 'bg-base-alt text-tertiary cursor-not-allowed',
+					)}
+				>
+					{isLoading || (isModalOpen && !isIframeLoaded) ? (
+						<>
+							<LoaderIcon className="size-3 animate-spin" />
+							<span>Processing...</span>
+						</>
+					) : (
+						<span>Add ${effectiveAmount || 0}</span>
+					)}
+				</button>
 			</div>
 
 			{isModalOpen && (
@@ -147,7 +179,10 @@ export function AddFunds(props: AddFunds.Props) {
 			)}
 
 			{createOrder.error && (
-				<p className="text-[12px] text-negative">{createOrder.error.message}</p>
+				<p className="text-[12px] text-negative">
+					Amount must be between ${MIN_AMOUNT} and $
+					{MAX_AMOUNT.toLocaleString()}
+				</p>
 			)}
 		</div>
 	)
