@@ -29,7 +29,8 @@
 		"noUncheckedSideEffectImports": true,
 		"resolveJsonModule": true,
 		"paths": {
-			"#*": ["./src/*"]
+			"#*": ["./src/*"],
+			"#wrangler.json": ["./wrangler.json"]
 		}
 	},
 	"files": ["env.d.ts", "reset.d.ts", "worker-configuration.d.ts"],

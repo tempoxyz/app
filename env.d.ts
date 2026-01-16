@@ -22,12 +22,3 @@ declare namespace NodeJS {
 
 declare const __BASE_URL__: string
 declare const __BUILD_VERSION__: string
-
-declare namespace Cloudflare {
-	interface Env {
-		INDEXER_API_KEY: string
-		PRESTO_RPC_AUTH: string
-		CB_API_KEY_ID: string
-		CB_API_KEY_SECRET: string
-	}
-}
