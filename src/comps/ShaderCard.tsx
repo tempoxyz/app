@@ -483,12 +483,14 @@ export interface ShaderCardProps {
 	className?: string
 	ambientColors?: Array<[number, number, number]>
 	ambientIntensity?: number
+	onReady?: () => void
 }
 
 export function ShaderCard({
 	className,
 	ambientColors,
 	ambientIntensity,
+	onReady,
 }: ShaderCardProps) {
 	const colors =
 		ambientColors && ambientColors.length > 0
@@ -497,12 +499,13 @@ export function ShaderCard({
 	const intensity = ambientIntensity ?? DEFAULT_AMBIENT_INTENSITY
 	const canvasRef = React.useRef<HTMLCanvasElement>(null)
 	const startTimeRef = React.useRef<number | null>(null)
+	const onReadyCalledRef = React.useRef(false)
 
 	React.useEffect(() => {
 		const canvas = canvasRef.current
 		if (!canvas) return
 
-		const gl = canvas.getContext('webgl2', { alpha: false })
+		const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false })
 		if (!gl) {
 			console.error('WebGL2 not supported')
 			return
@@ -825,8 +828,7 @@ export function ShaderCard({
 			// Pass 7: LiquidGlass effect to screen
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 			gl.viewport(0, 0, canvas.width, canvas.height)
-			const bgColor = isDark ? 0.098 : 0.988 // #191919 / #fcfcfc
-			gl.clearColor(bgColor, bgColor, bgColor, 1)
+			gl.clearColor(0, 0, 0, 0)
 			gl.clear(gl.COLOR_BUFFER_BIT)
 
 			gl.enable(gl.BLEND)
@@ -892,6 +894,11 @@ export function ShaderCard({
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
+			if (!onReadyCalledRef.current) {
+				onReadyCalledRef.current = true
+				onReady?.()
+			}
+
 			animationId = requestAnimationFrame(render)
 		}
 		animationId = requestAnimationFrame(render)
@@ -905,7 +912,7 @@ export function ShaderCard({
 	return (
 		<canvas
 			ref={canvasRef}
-			className={`${className ?? ''} bg-base-background dark:drop-shadow-[0_12px_40px_rgba(0,0,0,0.25)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.1)]`}
+			className={`${className ?? ''} dark:drop-shadow-[0_12px_40px_rgba(0,0,0,0.25)] drop-shadow-[0_12px_40px_rgba(0,0,0,0.1)]`}
 			style={{
 				position: 'absolute',
 				inset: -LIQUIDGLASS_CANVAS_EXTEND,

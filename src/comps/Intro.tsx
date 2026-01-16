@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { waapi, spring } from 'animejs'
+import { waapi, spring, stagger } from 'animejs'
 import { useTranslation } from 'react-i18next'
 import { ShaderCard } from './ShaderCard'
 import { useActivitySummary, type ActivityType } from '#lib/activity-context'
@@ -94,39 +94,82 @@ function useAmbientColors() {
 	return { colors, intensity }
 }
 
-const cardSpring = spring({ mass: 1, stiffness: 800, damping: 60 })
+const introSpring = spring({
+	mass: 2,
+	stiffness: 1000,
+	damping: 80,
+})
 
 export function Intro() {
 	const { t } = useTranslation()
 	const { colors, intensity } = useAmbientColors()
-	const cardRef = React.useRef<HTMLDivElement>(null)
+	const canvasRef = React.useRef<HTMLDivElement>(null)
+	const wordmarkRef = React.useRef<HTMLDivElement>(null)
+	const taglineRef = React.useRef<HTMLParagraphElement>(null)
+	const buttonsRef = React.useRef<HTMLDivElement>(null)
+	const [isReady, setIsReady] = React.useState(false)
 
-	React.useEffect(() => {
-		const el = cardRef.current
-		if (!el) return
-		waapi.animate(el, { opacity: [0, 1], scale: [0.98, 1], ease: cardSpring })
+	const handleReady = React.useCallback(() => {
+		setIsReady(true)
+		const canvas = canvasRef.current
+		const wordmark = wordmarkRef.current
+		const tagline = taglineRef.current
+		const buttons = buttonsRef.current
+		if (!canvas || !wordmark || !tagline || !buttons) return
+
+		// 1. Card appears
+		waapi.animate(canvas, {
+			opacity: [0, 1],
+			scale: [0.92, 1],
+			ease: introSpring,
+		})
+
+		// 2. Content appears staggered
+		waapi.animate([wordmark, tagline, buttons], {
+			opacity: [0, 1],
+			translateX: [-14, 0],
+			ease: introSpring,
+			delay: stagger(80, { start: 100 }),
+		})
 	}, [])
 
 	return (
 		<div
-			ref={cardRef}
-			style={{ opacity: 0 }}
-			className="relative flex min-h-full flex-col items-start justify-end px-5 sm:px-6 py-5 max-md:min-h-[120px] max-md:py-3 max-md:px-4"
+			className="relative grid min-h-full px-5 sm:px-6 py-5 max-md:min-h-[120px] max-md:py-3 max-md:px-4"
+			style={{ gridTemplateRows: '1fr auto', gridTemplateColumns: '1fr' }}
 		>
-			<ShaderCard
-				className="max-md:hidden pointer-events-none"
-				ambientColors={colors}
-				ambientIntensity={intensity}
-			/>
-			<div className="relative flex flex-col items-start gap-y-2 z-10 max-md:gap-y-1.5">
-				<TempoWordmark />
+			<div ref={canvasRef} style={{ opacity: 0 }} className="absolute inset-0">
+				<ShaderCard
+					className="max-md:hidden pointer-events-none"
+					ambientColors={colors}
+					ambientIntensity={intensity}
+					onReady={handleReady}
+				/>
+			</div>
+			{!isReady && (
+				<div className="z-10 place-self-center row-start-1 row-end-3 col-start-1">
+					<TempoWordmark />
+				</div>
+			)}
+			<div className="relative flex flex-col items-start gap-y-2 z-10 max-md:gap-y-1.5 row-start-2 col-start-1">
+				<div ref={wordmarkRef} style={{ opacity: isReady ? undefined : 0 }}>
+					<TempoWordmark />
+				</div>
 				<p
+					ref={taglineRef}
 					className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none"
-					style={{ color: 'light-dark(#505050, rgba(255,255,255,0.7))' }}
+					style={{
+						opacity: isReady ? undefined : 0,
+						color: 'light-dark(#505050, rgba(255,255,255,0.7))',
+					}}
 				>
 					{t('intro.tagline')}
 				</p>
-				<div className="flex gap-1.5 flex-wrap isolate">
+				<div
+					ref={buttonsRef}
+					className="flex gap-1.5 flex-wrap isolate"
+					style={{ opacity: isReady ? undefined : 0 }}
+				>
 					<a
 						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
 						style={{ color: 'light-dark(#505050, white)' }}
