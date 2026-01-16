@@ -150,7 +150,7 @@ export function AddFunds(props: AddFunds.Props) {
 							<span>Processing...</span>
 						</>
 					) : (
-						<span>Pay ${effectiveAmount || 0}</span>
+						<span>Add ${effectiveAmount || 0}</span>
 					)}
 				</button>
 
