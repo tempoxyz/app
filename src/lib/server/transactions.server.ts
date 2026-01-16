@@ -116,7 +116,6 @@ export const faucetFundAddress = createServerFn({ method: 'POST' })
 export const fetchTransactionReceipts = createServerFn({ method: 'POST' })
 	.inputValidator((data: { hashes: string[] }) => data)
 	.handler(async ({ data }) => {
-		const setupStart = performance.now()
 		const { hashes } = data
 		const tempoEnv = await getTempoEnv()
 		const rpcUrl = getRpcUrl(tempoEnv)
@@ -129,9 +128,6 @@ export const fetchTransactionReceipts = createServerFn({ method: 'POST' })
 		if (auth && shouldUseAuth(tempoEnv)) {
 			headers.Authorization = `Basic ${btoa(auth)}`
 		}
-		console.log(
-			`[perf]     fetchTransactionReceipts setup: ${(performance.now() - setupStart).toFixed(0)}ms`,
-		)
 
 		const batchRequest = hashes.map((hash, i) => ({
 			jsonrpc: '2.0',
@@ -141,31 +137,18 @@ export const fetchTransactionReceipts = createServerFn({ method: 'POST' })
 		}))
 
 		try {
-			const fetchStart = performance.now()
 			const response = await fetch(rpcUrl, {
 				method: 'POST',
 				headers,
 				body: JSON.stringify(batchRequest),
 			})
-			console.log(
-				`[perf]     fetchTransactionReceipts fetch: ${(performance.now() - fetchStart).toFixed(0)}ms`,
-			)
 			if (!response.ok) {
 				return { receipts: hashes.map((hash) => ({ hash, receipt: null })) }
 			}
-			const textStart = performance.now()
-			const text = await response.text()
-			console.log(
-				`[perf]     fetchTransactionReceipts text(): ${(performance.now() - textStart).toFixed(0)}ms (${(text.length / 1024).toFixed(0)}KB)`,
-			)
-			const parseStart = performance.now()
-			const results = JSON.parse(text) as Array<{
+			const results = (await response.json()) as Array<{
 				id: number
 				result?: RpcTransactionReceipt
 			}>
-			console.log(
-				`[perf]     fetchTransactionReceipts JSON.parse: ${(performance.now() - parseStart).toFixed(0)}ms`,
-			)
 
 			const receipts = hashes.map((hash, i) => {
 				const result = results.find((r) => r.id === i + 1)
@@ -180,7 +163,6 @@ export const fetchTransactionReceipts = createServerFn({ method: 'POST' })
 export const fetchBlockTimestamps = createServerFn({ method: 'POST' })
 	.inputValidator((data: { blockNumbers: string[] }) => data)
 	.handler(async ({ data }) => {
-		const setupStart = performance.now()
 		const { blockNumbers } = data
 		if (blockNumbers.length === 0) return { timestamps: {} }
 
@@ -195,9 +177,6 @@ export const fetchBlockTimestamps = createServerFn({ method: 'POST' })
 		if (auth && shouldUseAuth(tempoEnv)) {
 			headers.Authorization = `Basic ${btoa(auth)}`
 		}
-		console.log(
-			`[perf]     fetchBlockTimestamps setup: ${(performance.now() - setupStart).toFixed(0)}ms`,
-		)
 
 		try {
 			const batchRequest = blockNumbers.map((blockNum, i) => ({
@@ -207,31 +186,18 @@ export const fetchBlockTimestamps = createServerFn({ method: 'POST' })
 				params: [blockNum, false],
 			}))
 
-			const fetchStart = performance.now()
 			const response = await fetch(rpcUrl, {
 				method: 'POST',
 				headers,
 				body: JSON.stringify(batchRequest),
 			})
-			console.log(
-				`[perf]     fetchBlockTimestamps fetch: ${(performance.now() - fetchStart).toFixed(0)}ms`,
-			)
 
 			if (!response.ok) return { timestamps: {} }
 
-			const textStart = performance.now()
-			const text = await response.text()
-			console.log(
-				`[perf]     fetchBlockTimestamps text(): ${(performance.now() - textStart).toFixed(0)}ms (${(text.length / 1024).toFixed(0)}KB)`,
-			)
-			const parseStart = performance.now()
-			const results = JSON.parse(text) as Array<{
+			const results = (await response.json()) as Array<{
 				id: number
 				result?: { timestamp?: string }
 			}>
-			console.log(
-				`[perf]     fetchBlockTimestamps JSON.parse: ${(performance.now() - parseStart).toFixed(0)}ms`,
-			)
 
 			const timestamps: Record<string, number> = {}
 			for (let i = 0; i < blockNumbers.length; i++) {
@@ -346,7 +312,6 @@ export const fetchCurrentBlockNumber = createServerFn({
 export const fetchTransactionsFromExplorer = createServerFn({ method: 'GET' })
 	.inputValidator((data: { address: string }) => data)
 	.handler(async ({ data }) => {
-		const setupStart = performance.now()
 		const { address } = data
 		const tempoEnv = await getTempoEnv()
 		const explorerUrl =
@@ -360,18 +325,11 @@ export const fetchTransactionsFromExplorer = createServerFn({ method: 'GET' })
 		if (auth) {
 			headers.Authorization = `Basic ${btoa(auth)}`
 		}
-		console.log(
-			`[perf]     fetchTransactionsFromExplorer setup: ${(performance.now() - setupStart).toFixed(0)}ms`,
-		)
 
 		try {
-			const fetchStart = performance.now()
 			const response = await fetch(
 				`${explorerUrl}/api/address/${address}?include=all&limit=50`,
 				{ headers },
-			)
-			console.log(
-				`[perf]     fetchTransactionsFromExplorer fetch: ${(performance.now() - fetchStart).toFixed(0)}ms`,
 			)
 			if (!response.ok) {
 				return {
@@ -379,14 +337,10 @@ export const fetchTransactionsFromExplorer = createServerFn({ method: 'GET' })
 					error: `HTTP ${response.status}`,
 				}
 			}
-			const parseStart = performance.now()
 			const json = (await response.json()) as {
 				transactions?: ApiTransaction[]
 				error?: string | null
 			}
-			console.log(
-				`[perf]     fetchTransactionsFromExplorer json parse: ${(performance.now() - parseStart).toFixed(0)}ms`,
-			)
 			return {
 				transactions: json.transactions ?? [],
 				error: json.error ?? null,
@@ -626,7 +580,6 @@ export async function fetchTransactions(
 		const hashes = txData.map((tx) => tx.hash)
 
 		const txsWithTimestamp = txData.filter((tx) => tx.timestamp).length
-		console.log(`[perf]   explorer timestamps: ${txsWithTimestamp}/${txData.length} txs have timestamps`)
 
 		// Get unique block numbers from explorer response for parallel fetch
 		const blockNumbersFromExplorer = new Set<string>()
@@ -635,7 +588,6 @@ export async function fetchTransactions(
 		}
 
 		// Fetch receipts and timestamps in parallel
-		const parallelStart = performance.now()
 		const [receiptsResult, timestampsResult] = await Promise.all([
 			fetchTransactionReceipts({ data: { hashes } }),
 			txsWithTimestamp < txData.length && blockNumbersFromExplorer.size > 0
@@ -644,7 +596,6 @@ export async function fetchTransactions(
 					})
 				: Promise.resolve({ timestamps: {} }),
 		])
-		console.log(`[perf]   parallel receipts+timestamps: ${(performance.now() - parallelStart).toFixed(0)}ms`)
 
 		const blockTimestamps = new Map<string, number>()
 		for (const [blockNum, ts] of Object.entries(timestampsResult.timestamps)) {
