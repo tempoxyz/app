@@ -313,13 +313,17 @@ function OtpStep(props: {
 		return () => clearInterval(interval)
 	}, [props.expiresAt])
 
+	const isExpired = timeLeft === 0
+
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const value = e.target.value.replace(/\D/g, '').slice(0, 6)
 		props.onChange(value)
+		if (value.length === 6 && !props.isLoading && !isExpired) {
+			props.onSubmit()
+		}
 	}
 
 	const isValid = /^\d{6}$/.test(props.otp)
-	const isExpired = timeLeft === 0
 
 	return (
 		<div className="flex flex-col gap-2">
