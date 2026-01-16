@@ -326,15 +326,7 @@ function CommandMenuPortal({
 		groups.push({ label: t('commandMenu.links'), commands: links })
 
 		return groups
-	}, [
-		t,
-		account.address,
-		close,
-		router,
-		disconnect,
-		connect,
-		connector,
-	])
+	}, [t, account.address, close, router, disconnect, connect, connector])
 
 	const filteredGroups = React.useMemo(() => {
 		if (!query.trim()) return commandGroups

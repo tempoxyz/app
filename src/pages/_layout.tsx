@@ -5,7 +5,9 @@ import { LayoutClient } from '#comps/LayoutClient'
 
 export default async function LayoutPage({
 	children,
-}: { children: React.ReactNode }) {
+}: {
+	children: React.ReactNode
+}) {
 	const headers = getHeaders()
 	const cookie = headers?.cookie ?? ''
 

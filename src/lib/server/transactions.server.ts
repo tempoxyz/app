@@ -11,7 +11,8 @@ type ApiTransaction = {
 	timestamp?: string
 }
 
-const TEMPO_ENV = typeof process !== 'undefined' ? process.env.VITE_TEMPO_ENV : undefined
+const TEMPO_ENV =
+	typeof process !== 'undefined' ? process.env.VITE_TEMPO_ENV : undefined
 
 async function getTempoEnv(): Promise<string | undefined> {
 	try {

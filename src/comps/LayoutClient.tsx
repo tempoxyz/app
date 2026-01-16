@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import type * as React from 'react'
 import WagmiProviders from '#comps/WagmiProviders'
 
 export function LayoutClient({

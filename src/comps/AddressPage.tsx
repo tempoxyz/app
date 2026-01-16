@@ -8,18 +8,16 @@ import {
 	fetchCurrentBlockNumber,
 	fetchTransactionsFromExplorer,
 	fetchTokenMetadata,
-	type RpcLog,
 	type RpcTransactionReceipt,
 } from '#lib/server/transactions.server'
 
-import { Address } from 'ox'
+import type { Address } from 'ox'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { encode } from 'uqr'
 import {
 	createClient,
 	createPublicClient,
-	decodeAbiParameters,
 	erc20Abi,
 	encodeFunctionData,
 	formatUnits,
@@ -88,7 +86,6 @@ import RefreshCwIcon from '~icons/lucide/refresh-cw'
 import { useTranslation } from 'react-i18next'
 import i18n, { isRtl } from '#lib/i18n'
 import { useAnnounce, LiveRegion, useFocusTrap, useEscapeKey } from '#lib/a11y'
-import * as z from 'zod/mini'
 
 // Tokens that can be funded via the faucet
 const FAUCET_TOKEN_ADDRESSES = new Set([
@@ -110,8 +107,6 @@ const FAUCET_TOKEN_DEFAULTS: AssetData[] = [
 		valueUsd: 0,
 	},
 ]
-
-
 
 type ActivityItem = {
 	hash: string
@@ -186,7 +181,9 @@ async function fetchTransactions(
 		const blockTimestamps = new Map<string, number>()
 		if (blockNumbers.size > 0) {
 			try {
-				const timestampsResult = await fetchBlockTimestamps(Array.from(blockNumbers))
+				const timestampsResult = await fetchBlockTimestamps(
+					Array.from(blockNumbers),
+				)
 				for (const [blockNum, ts] of Object.entries(
 					timestampsResult.timestamps,
 				)) {
@@ -237,7 +234,9 @@ export function AddressPage({
 	address: Address.Address
 	initialAssets: AssetData[]
 }) {
-	const [initialActivity, setInitialActivity] = React.useState<ActivityItem[]>([])
+	const [initialActivity, setInitialActivity] = React.useState<ActivityItem[]>(
+		[],
+	)
 	const { copy, notifying } = useCopy()
 	const [showZeroBalances, setShowZeroBalances] = React.useState(false)
 	const { setSummary } = useActivitySummary()
@@ -255,14 +254,16 @@ export function AddressPage({
 	)
 	const [tokenAddressCopied, setTokenAddressCopied] = React.useState(false)
 
-
 	// Fetch activity on mount (assets come from SSR)
 	React.useEffect(() => {
 		let mounted = true
 
 		const loadActivity = async () => {
 			// Build token metadata map from SSR assets
-			const tokenMetadataMap = new Map<Address.Address, { decimals: number; symbol: string }>()
+			const tokenMetadataMap = new Map<
+				Address.Address,
+				{ decimals: number; symbol: string }
+			>()
 			for (const asset of ssrAssets) {
 				if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
 					tokenMetadataMap.set(asset.address, {
@@ -273,7 +274,10 @@ export function AddressPage({
 			}
 
 			// Fetch activity
-			const activityResult = await fetchTransactions(address, Promise.resolve(tokenMetadataMap))
+			const activityResult = await fetchTransactions(
+				address,
+				Promise.resolve(tokenMetadataMap),
+			)
 			if (!mounted) return
 			setInitialActivity(activityResult)
 		}
@@ -561,7 +565,7 @@ export function AddressPage({
 								e.preventDefault()
 								const trimmed = searchValue.trim()
 								if (trimmed.match(/^0x[a-fA-F0-9]{40}$/)) {
-									router.push('/' + trimmed)
+									router.push(`/${trimmed}`)
 									setSearchValue('')
 									setSearchFocused(false)
 								}
@@ -589,7 +593,7 @@ export function AddressPage({
 										type="button"
 										onMouseDown={(e) => {
 											e.preventDefault()
-											router.push('/' + searchValue.trim() )
+											router.push(`/${searchValue.trim()}`)
 											setSearchValue('')
 											setSearchFocused(false)
 										}}

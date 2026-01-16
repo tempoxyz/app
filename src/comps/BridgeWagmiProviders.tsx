@@ -2,11 +2,7 @@
 
 import * as React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import {
-	cookieToInitialState,
-	type State,
-	WagmiProvider,
-} from 'wagmi'
+import { cookieToInitialState, type State, WagmiProvider } from 'wagmi'
 import { getBridgeWagmiConfig } from '#lib/bridge-wagmi.config'
 
 const queryClient = new QueryClient({
@@ -38,9 +34,7 @@ export default function BridgeWagmiProviders({
 
 	return (
 		<WagmiProvider config={wagmiConfig} initialState={wagmiState}>
-			<QueryClientProvider client={queryClient}>
-				{children}
-			</QueryClientProvider>
+			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 		</WagmiProvider>
 	)
 }

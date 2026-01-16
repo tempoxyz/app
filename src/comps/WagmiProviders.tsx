@@ -2,11 +2,7 @@
 
 import * as React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import {
-	cookieToInitialState,
-	type State,
-	WagmiProvider,
-} from 'wagmi'
+import { cookieToInitialState, type State, WagmiProvider } from 'wagmi'
 import { getWagmiConfig } from '#wagmi.config'
 import { CommandMenuProvider } from '#comps/CommandMenu'
 import { ActivityProvider } from '#lib/activity-context'

@@ -220,7 +220,9 @@ function EmojiPicker({
 }) {
 	return (
 		<React.Suspense
-			fallback={<div className="w-[352px] h-[435px] bg-neutral-900 rounded-lg fixed z-[9999]" />}
+			fallback={
+				<div className="w-[352px] h-[435px] bg-neutral-900 rounded-lg fixed z-[9999]" />
+			}
 		>
 			<EmojiPickerLazy
 				selectedEmoji={selectedEmoji}

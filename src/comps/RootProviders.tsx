@@ -18,7 +18,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 	const dir = isRtl(lang) ? 'rtl' : 'ltr'
 
 	return (
-		<html lang={lang} dir={dir} className="scheme-light-dark scrollbar-gutter-stable">
+		<html
+			lang={lang}
+			dir={dir}
+			className="scheme-light-dark scrollbar-gutter-stable"
+		>
 			<head>
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -32,11 +36,17 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 					property="og:description"
 					content="View your balances, send tokens, and track activity on Tempo."
 				/>
-				<meta property="og:image" content="https://app.tempo.xyz/og-image.png" />
+				<meta
+					property="og:image"
+					content="https://app.tempo.xyz/og-image.png"
+				/>
 				<meta property="og:image:width" content="1200" />
 				<meta property="og:image:height" content="630" />
 				<meta name="twitter:card" content="summary_large_image" />
-				<meta name="twitter:image" content="https://app.tempo.xyz/og-image.png" />
+				<meta
+					name="twitter:image"
+					content="https://app.tempo.xyz/og-image.png"
+				/>
 				<link
 					rel="preload"
 					href="/fonts/PilatTest-Regular.otf"

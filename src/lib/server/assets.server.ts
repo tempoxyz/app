@@ -46,11 +46,7 @@ export async function fetchAssets(
 				tempoEnv === 'moderato' ? 42431 : tempoEnv === 'devnet' ? 42430 : 4217
 		} catch {
 			chainId =
-				TEMPO_ENV === 'moderato'
-					? 42431
-					: TEMPO_ENV === 'devnet'
-						? 42430
-						: 4217
+				TEMPO_ENV === 'moderato' ? 42431 : TEMPO_ENV === 'devnet' ? 42430 : 4217
 		}
 
 		const { QB } = await getIndexSupply()
@@ -60,10 +56,11 @@ export async function fetchAssets(
 			.selectFrom('transfer')
 			.select(['address', 'from', 'to', 'amount'])
 			.where('chain', '=', chainId)
+			// biome-ignore lint/complexity/noBannedTypes: IDX library typing
 			.where((eb: { or: Function }) =>
 				eb.or([
-					(eb as { (...args: unknown[]): unknown })('to', '=', address),
-					(eb as { (...args: unknown[]): unknown })('from', '=', address),
+					(eb as (...args: unknown[]) => unknown)('to', '=', address),
+					(eb as (...args: unknown[]) => unknown)('from', '=', address),
 				]),
 			)
 
