@@ -980,10 +980,7 @@ export function ShaderCard({
 				gl.getUniformLocation(waveProgram, 'u_waveScale'),
 				WORDMARK_WAVE_SCALE,
 			)
-			gl.uniform1f(
-				gl.getUniformLocation(waveProgram, 'u_waveTime'),
-				time * WORDMARK_WAVE_SPEED,
-			)
+			gl.uniform1f(gl.getUniformLocation(waveProgram, 'u_waveTime'), time)
 
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
