@@ -1180,7 +1180,7 @@ function RouteComponent() {
 									<br />
 									{address.slice(21)}
 								</code>
-								<span className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt shrink-0 group-active:translate-y-px">
+								<span className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors shrink-0 group-active:translate-y-px">
 									{notifying ? (
 										<CheckIcon className="size-[14px] text-positive" />
 									) : (
