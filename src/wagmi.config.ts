@@ -33,7 +33,7 @@ function serializeCredential(credential: PublicKeyCredential) {
 		id: credential.id,
 		rawId: arrayBufferToBase64(credential.rawId),
 		type: credential.type,
-		authenticatorAttachment: (credential as any).authenticatorAttachment,
+		authenticatorAttachment: credential.authenticatorAttachment,
 		response: {
 			attestationObject: arrayBufferToBase64(response.attestationObject),
 			clientDataJSON: arrayBufferToBase64(response.clientDataJSON),
@@ -204,11 +204,9 @@ export function getWagmiConfig() {
 		batch: { multicall: false },
 		chains: [chain, tempoLocalnet],
 		connectors: [
-			// rpId is determined dynamically: the key-manager's challenge response
-			// may include an rp.id which takes precedence, otherwise the browser
-			// uses the current origin's effective domain
 			webAuthn({
 				keyManager: getKeyManager(),
+				rpId: globalThis.location?.hostname.split('.').slice(-2).join('.'),
 			}),
 		],
 		multiInjectedProviderDiscovery: false,

@@ -1,10 +1,16 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAccount, useConnect, useConnectors } from 'wagmi'
+import {
+	useConnection,
+	useConnectionEffect,
+	useConnect,
+	useConnectors,
+} from 'wagmi'
 import { Layout } from '#comps/Layout'
 import { cx } from '#lib/css'
 import ArrowRight from '~icons/lucide/arrow-right'
+import { isAddress } from 'viem'
 import UserIcon from '~icons/lucide/user'
 import KeyIcon from '~icons/lucide/key-round'
 import FingerprintIcon from '~icons/lucide/fingerprint'
@@ -34,74 +40,46 @@ function truncateAddress(address: string) {
 }
 
 export const Route = createFileRoute('/_layout/')({
-	component: Landing,
+	component: RouteComponent,
 })
 
-function Landing() {
+function RouteComponent() {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const [address, setAddress] = React.useState('')
 	const inputRef = React.useRef<HTMLInputElement>(null)
 
-	const account = useAccount()
 	const connect = useConnect()
+	const connection = useConnection()
 	const [connector] = useConnectors()
 	const [pendingAction, setPendingAction] = React.useState<
 		'signup' | 'signin' | 'reconnect' | null
 	>(null)
-	const [recentAddress, setRecentAddress] = React.useState<string | null>(null)
 
-	// Check for recently connected account
-	React.useEffect(() => {
-		try {
-			// Read from wagmi's cookie storage
-			const cookies = document.cookie.split(';')
-			for (const cookie of cookies) {
-				const [name, value] = cookie.trim().split('=')
-				if (name === 'wagmi.store') {
-					const decoded = decodeURIComponent(value)
-					const parsed = JSON.parse(decoded) as {
-						state?: {
-							connections?: { value?: [unknown, { accounts?: string[] }][] }
-						}
-					}
-					// The lastActiveCredential contains the public key which we can derive an address from
-					if (parsed?.state?.connections?.value?.[0]?.[1]?.accounts?.[0]) {
-						setRecentAddress(parsed.state.connections.value[0][1].accounts[0])
-					}
-				}
-			}
-		} catch (_e) {
-			// Ignore parsing errors
-		}
-	}, [])
+	useConnectionEffect({
+		onConnect: (data) => {
+			if (data.address)
+				navigate({ to: '/$address', params: { address: data.address } })
+		},
+	})
 
 	React.useEffect(() => {
-		if (!connect.isPending) {
-			setPendingAction(null)
-		}
+		if (!connect.isPending) setPendingAction(null)
 	}, [connect.isPending])
 
-	const isValidAddress = address.startsWith('0x') && address.length === 42
+	const isValidAddress = React.useMemo(
+		() => address && isAddress(address),
+		[address],
+	)
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
-		if (isValidAddress) {
-			navigate({ to: '/$address', params: { address } })
-		}
+		if (isValidAddress) navigate({ to: '/$address', params: { address } })
 	}
 
 	React.useEffect(() => {
-		if (account.address) {
-			navigate({ to: '/$address', params: { address: account.address } })
-		}
-	}, [account.address, navigate])
-
-	React.useEffect(() => {
-		if (!account.address) {
-			inputRef.current?.focus()
-		}
-	}, [account.address])
+		if (!connection.address) inputRef.current?.focus()
+	}, [connection.address])
 
 	return (
 		<>
@@ -141,7 +119,7 @@ function Landing() {
 										: 'bg-base-alt/50 text-tertiary cursor-default backdrop-blur-sm',
 								)}
 							>
-								<ArrowRight className="size-[18px]" />
+								<ArrowRight className="size-2.25" />
 							</button>
 						</div>
 					</form>
@@ -157,7 +135,7 @@ function Landing() {
 									'transition-all font-mono text-[11px] sm:text-[10px]',
 								)}
 							>
-								<UserIcon className="size-[10px] text-accent/70" />
+								<UserIcon className="size-1.25 text-accent/70" />
 								<span>{truncateAddress(addr)}</span>
 							</Link>
 						))}
@@ -166,7 +144,7 @@ function Landing() {
 					<div className="w-full flex items-center gap-2 sm:gap-3 mt-4">
 						<div className="flex-1 h-px bg-base-border" />
 						<span className="text-tertiary text-[11px] sm:text-[12px] whitespace-nowrap">
-							{recentAddress
+							{connection.address
 								? t('landing.orUsePasskey')
 								: t('landing.orSignInWithPasskey')}
 						</span>
@@ -179,10 +157,10 @@ function Landing() {
 							onClick={() => {
 								if (connector) {
 									setPendingAction('signup')
-									connect.connect({
+									connect.mutate({
 										connector,
 										capabilities: { type: 'sign-up' },
-									} as Parameters<typeof connect.connect>[0])
+									})
 								}
 							}}
 							disabled={connect.isPending}
@@ -191,14 +169,19 @@ function Landing() {
 								'glass-button-accent font-medium text-[13px] sm:text-[12px]',
 								'cursor-pointer press-down border border-transparent hover:border-white/30',
 								'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
-								'w-full sm:w-auto min-h-[44px] sm:min-h-0',
+								'w-full sm:w-auto min-h-5.5 sm:min-h-0',
 							)}
 						>
-							{pendingAction === 'signup' ? (
-								<span className="size-[14px] sm:size-[12px] border-2 border-white/30 border-t-white rounded-full animate-spin" />
-							) : (
-								<KeyIcon className="size-[14px] sm:size-[12px]" />
-							)}
+							<React.Activity
+								mode={pendingAction === 'signup' ? 'visible' : 'hidden'}
+							>
+								<span className="size-1.75 sm:size-1.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+							</React.Activity>
+							<React.Activity
+								mode={pendingAction !== 'signup' ? 'visible' : 'hidden'}
+							>
+								<KeyIcon className="size-1.75 sm:size-1.5" />
+							</React.Activity>
 							<span>{t('common.signUp')}</span>
 						</button>
 						<button
@@ -206,10 +189,10 @@ function Landing() {
 							onClick={() => {
 								if (connector) {
 									setPendingAction('signin')
-									connect.connect({
+									connect.mutate({
 										connector,
 										capabilities: { type: 'sign-in', selectAccount: true },
-									} as Parameters<typeof connect.connect>[0])
+									} as Parameters<typeof connect.mutate>[0])
 								}
 							}}
 							disabled={connect.isPending}
@@ -218,23 +201,28 @@ function Landing() {
 								'glass-button text-primary font-medium text-[13px] sm:text-[12px]',
 								'cursor-pointer press-down border border-transparent hover:border-white/20',
 								'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
-								'w-full sm:w-auto min-h-[44px] sm:min-h-0',
+								'w-full sm:w-auto min-h-5.5 sm:min-h-0',
 							)}
 						>
-							{pendingAction === 'signin' ? (
-								<span className="size-[14px] sm:size-[12px] border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-							) : (
-								<FingerprintIcon className="size-[14px] sm:size-[12px]" />
-							)}
+							<React.Activity
+								mode={pendingAction === 'signin' ? 'visible' : 'hidden'}
+							>
+								<span className="size-1.75 sm:size-1.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+							</React.Activity>
+							<React.Activity
+								mode={pendingAction !== 'signin' ? 'visible' : 'hidden'}
+							>
+								<FingerprintIcon className="size-1.75 sm:size-1.5" />
+							</React.Activity>
 							<span>{t('common.signIn')}</span>
 						</button>
-						{recentAddress && (
+						{connection.address && (
 							<button
 								type="button"
 								onClick={() => {
 									if (connector) {
 										setPendingAction('reconnect')
-										connect.connect({ connector })
+										connect.mutate({ connector })
 									}
 								}}
 								disabled={connect.isPending}
@@ -243,7 +231,7 @@ function Landing() {
 									'glass-button text-primary font-medium text-[13px] sm:text-[12px]',
 									'cursor-pointer press-down border border-transparent hover:border-accent/30',
 									'disabled:opacity-70 disabled:cursor-not-allowed transition-all',
-									'w-full sm:w-auto min-h-[44px] sm:min-h-0',
+									'w-full sm:w-auto min-h-5.5 sm:min-h-0',
 								)}
 							>
 								{pendingAction === 'reconnect' ? (
@@ -254,7 +242,7 @@ function Landing() {
 								<span>
 									{t('common.continue')}{' '}
 									<span className="font-mono text-secondary">
-										{truncateAddress(recentAddress)}
+										{truncateAddress(connection.address)}
 									</span>
 								</span>
 							</button>

@@ -1,6 +1,11 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import {
+	Link,
+	createFileRoute,
+	notFound,
+	useNavigate,
+} from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import type { Address } from 'ox'
+import { Address } from 'ox'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { encode } from 'uqr'
@@ -18,7 +23,7 @@ import { sendTransaction } from 'viem/actions'
 import { Account as TempoAccount } from 'viem/tempo'
 import { PublicKey } from 'ox'
 import {
-	useAccount,
+	useConnection,
 	useConnectorClient,
 	useDisconnect,
 	useWriteContract,
@@ -46,6 +51,7 @@ import {
 } from '#lib/access-keys-context'
 import { cx } from '#lib/css'
 import { useCopy } from '#lib/hooks'
+import { config } from '#lib/config'
 import { fetchAssets, type AssetData } from '#lib/server/assets.server'
 import { useActivitySummary, type ActivityType } from '#lib/activity-context'
 import { LottoNumber } from '#comps/LottoNumber'
@@ -76,6 +82,7 @@ import RefreshCwIcon from '~icons/lucide/refresh-cw'
 import { useTranslation } from 'react-i18next'
 import i18n, { isRtl } from '#lib/i18n'
 import { useAnnounce, LiveRegion, useFocusTrap, useEscapeKey } from '#lib/a11y'
+import * as z from 'zod/mini'
 
 // Tokens that can be funded via the faucet
 const FAUCET_TOKEN_ADDRESSES = new Set([
@@ -97,6 +104,52 @@ const FAUCET_TOKEN_DEFAULTS: AssetData[] = [
 		valueUsd: 0,
 	},
 ]
+
+export const Route = createFileRoute('/_layout/$address')({
+	component: RouteComponent,
+	validateSearch: z.object({
+		test: z.optional(z.boolean()),
+		sendTo: z.optional(z.string()),
+		token: z.optional(z.string()),
+	}),
+	beforeLoad: ({ params }) => {
+		if (!Address.validate(params.address)) throw notFound()
+	},
+	loader: async ({ params }) => {
+		const address = params.address as Address.Address
+
+		// Start assets fetch
+		const assetsPromise = fetchAssets({ data: { address: params.address } })
+
+		// Derive token metadata promise from assets
+		const tokenMetadataPromise = assetsPromise.then((assets) => {
+			const map = new Map<
+				Address.Address,
+				{ decimals: number; symbol: string }
+			>()
+			for (const asset of assets ?? []) {
+				if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
+					map.set(asset.address, {
+						decimals: asset.metadata.decimals,
+						symbol: asset.metadata.symbol,
+					})
+				}
+			}
+			return map
+		})
+
+		// Start activity fetch in parallel - it will await metadata only when parsing
+		const activityPromise = fetchTransactions(address, tokenMetadataPromise)
+
+		// Wait for both
+		const [assets, activity] = await Promise.all([
+			assetsPromise,
+			activityPromise,
+		])
+
+		return { assets: assets ?? [], activity }
+	},
+})
 
 const faucetFundAddress = createServerFn({ method: 'POST' })
 	.inputValidator((data: { address: string }) => data)
@@ -662,7 +715,9 @@ function convertRpcReceiptToViemReceipt(
 
 async function fetchTransactions(
 	address: Address.Address,
-	tokenMetadataMap: Map<Address.Address, { decimals: number; symbol: string }>,
+	tokenMetadataMapPromise: Promise<
+		Map<Address.Address, { decimals: number; symbol: string }>
+	>,
 ): Promise<ActivityItem[]> {
 	try {
 		const result = await fetchTransactionsFromExplorer({ data: { address } })
@@ -678,10 +733,6 @@ async function fetchTransactions(
 		const hashes = txData.map((tx) => tx.hash)
 
 		const receiptsResult = await fetchTransactionReceipts({ data: { hashes } })
-
-		const getTokenMetadata: GetTokenMetadataFn = (tokenAddress) => {
-			return tokenMetadataMap.get(tokenAddress)
-		}
 
 		// Collect unique block numbers to fetch timestamps
 		const blockNumbers = new Set<string>()
@@ -704,6 +755,12 @@ async function fetchTransactions(
 			} catch {
 				// Continue without timestamps if fetch fails
 			}
+		}
+
+		// Await token metadata only when ready to parse
+		const tokenMetadataMap = await tokenMetadataMapPromise
+		const getTokenMetadata: GetTokenMetadataFn = (tokenAddress) => {
+			return tokenMetadataMap.get(tokenAddress)
 		}
 
 		const items: ActivityItem[] = []
@@ -733,55 +790,7 @@ async function fetchTransactions(
 	}
 }
 
-type AddressSearchParams = {
-	test?: boolean
-	sendTo?: string
-	token?: string
-}
-
-export const Route = createFileRoute('/_layout/$address')({
-	component: AddressView,
-	validateSearch: (search: Record<string, unknown>): AddressSearchParams => ({
-		test: 'test' in search ? true : undefined,
-		sendTo: typeof search.sendTo === 'string' ? search.sendTo : undefined,
-		token: typeof search.token === 'string' ? search.token : undefined,
-	}),
-	loader: async ({ params }) => {
-		const assets = await fetchAssets({ data: { address: params.address } })
-
-		const tokenMetadataMap = new Map<
-			Address.Address,
-			{ decimals: number; symbol: string }
-		>()
-		for (const asset of assets ?? []) {
-			if (asset.metadata?.decimals !== undefined && asset.metadata?.symbol) {
-				tokenMetadataMap.set(asset.address, {
-					decimals: asset.metadata.decimals,
-					symbol: asset.metadata.symbol,
-				})
-			}
-		}
-
-		const activity = await fetchTransactions(
-			params.address as Address.Address,
-			tokenMetadataMap,
-		)
-		return { assets: assets ?? [], activity }
-	},
-})
-
-function eventTypeToActivityType(eventType: string): ActivityType {
-	const type = eventType.toLowerCase()
-	if (type.includes('send') || type.includes('transfer')) return 'send'
-	if (type.includes('receive')) return 'received'
-	if (type.includes('swap') || type.includes('exchange')) return 'swap'
-	if (type.includes('mint')) return 'mint'
-	if (type.includes('burn')) return 'burn'
-	if (type.includes('approve') || type.includes('approval')) return 'approve'
-	return 'unknown'
-}
-
-function AddressView() {
+function RouteComponent() {
 	const { address } = Route.useParams()
 	const { assets: initialAssets, activity: initialActivity } =
 		Route.useLoaderData()
@@ -792,7 +801,7 @@ function AddressView() {
 	const navigate = useNavigate()
 	const [searchValue, setSearchValue] = React.useState('')
 	const [searchFocused, setSearchFocused] = React.useState(false)
-	const account = useAccount()
+	const connection = useConnection()
 	const { sendTo, token: initialToken } = Route.useSearch()
 	const { t } = useTranslation()
 	const { announce } = useAnnounce()
@@ -805,6 +814,29 @@ function AddressView() {
 	const [assetsData, setAssetsData] = React.useState(initialAssets)
 	// Activity state - starts from loader, can be refetched
 	const [activity, setActivity] = React.useState(initialActivity)
+
+	// Fetch token metadata client-side (async, non-blocking)
+	React.useEffect(() => {
+		const assetsMissingMetadata = initialAssets.filter((a) => !a.metadata)
+		if (assetsMissingMetadata.length === 0) return
+
+		const addresses = assetsMissingMetadata.map((a) => a.address)
+		fetchTokenMetadata({ data: { addresses } }).then((result) => {
+			if (!result.tokens || Object.keys(result.tokens).length === 0) return
+
+			setAssetsData((prev) =>
+				prev.map((asset) => {
+					if (asset.metadata) return asset
+					const meta = result.tokens[asset.address.toLowerCase()]
+					if (!meta) return asset
+					return {
+						...asset,
+						metadata: { name: meta.name, symbol: meta.symbol, decimals: 6 },
+					}
+				}),
+			)
+		})
+	}, [initialAssets])
 
 	// Block timeline state
 	const [currentBlock, setCurrentBlock] = React.useState<bigint | null>(null)
@@ -874,7 +906,7 @@ function AddressView() {
 	const refetchActivity = React.useCallback(async () => {
 		const newActivity = await fetchTransactions(
 			address as Address.Address,
-			tokenMetadataMap,
+			Promise.resolve(tokenMetadataMap),
 		)
 		setActivity(newActivity)
 	}, [address, tokenMetadataMap])
@@ -884,7 +916,8 @@ function AddressView() {
 		Map<string, bigint>
 	>(new Map())
 
-	const isOwnProfile = account.address?.toLowerCase() === address.toLowerCase()
+	const isOwnProfile =
+		connection.address?.toLowerCase() === address.toLowerCase()
 
 	const applyOptimisticUpdate = React.useCallback(
 		(tokenAddress: string, amount: bigint) => {
@@ -1039,7 +1072,7 @@ function AddressView() {
 								fill="none"
 								aria-hidden="true"
 							>
-								<title>Tempo logo</title>
+								<title>Tempo</title>
 								<path
 									d="M123.273 190.794H93.445L121.09 105.318H85.7334L93.445 80.2642H191.95L184.238 105.318H150.773L123.273 190.794Z"
 									style={{ fill: 'light-dark(#f5f5f5, #0a0a0a)' }}
@@ -1133,42 +1166,42 @@ function AddressView() {
 								className="text-[36px] sm:text-[40px] md:text-[56px] font-sans font-semibold text-primary -tracking-[0.02em] tabular-nums"
 							/>
 						</div>
-						<div className="flex items-center gap-2 max-w-full">
-							<code className="text-[11px] sm:text-[13px] font-mono text-secondary leading-tight min-w-0">
-								{address.slice(0, 21)}
-								<br />
-								{address.slice(21)}
-							</code>
-							<div className="flex items-center gap-1.5">
-								<button
-									type="button"
-									onClick={() => {
-										copy(address)
-										announce(t('a11y.addressCopied'))
-									}}
-									className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt hover:bg-base-alt/70 cursor-pointer press-down transition-colors shrink-0 focus-ring"
-									aria-label={t('common.copyAddress')}
-								>
+						<div className="flex items-center gap-1.5 max-w-full">
+							<button
+								type="button"
+								onClick={() => {
+									copy(address)
+									announce(t('a11y.addressCopied'))
+								}}
+								className="group flex items-center gap-2 cursor-pointer rounded-md focus-ring"
+								aria-label={t('common.copyAddress')}
+							>
+								<code className="text-[11px] sm:text-[13px] font-mono text-secondary leading-tight min-w-0 text-left group-active:translate-y-px">
+									{address.slice(0, 21)}
+									<br />
+									{address.slice(21)}
+								</code>
+								<span className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt shrink-0 group-active:translate-y-px">
 									{notifying ? (
 										<CheckIcon className="size-[14px] text-positive" />
 									) : (
 										<CopyIcon className="size-[14px] text-tertiary" />
 									)}
-								</button>
-								<a
-									href={`https://explore.mainnet.tempo.xyz/address/${address}`}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt hover:bg-base-alt/70 press-down transition-colors shrink-0 focus-ring"
-									aria-label={t('common.viewOnExplorer')}
-								>
-									<ExternalLinkIcon className="size-[14px] text-tertiary" />
-								</a>
-								<RewardsPopoverButton
-									assets={assetsData}
-									accountAddress={address}
-								/>
-							</div>
+								</span>
+							</button>
+							<a
+								href={`https://explore.mainnet.tempo.xyz/address/${address}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center justify-center size-[32px] sm:size-[28px] rounded-full sm:rounded-md bg-base-alt hover:bg-base-alt/70 press-down transition-colors shrink-0 focus-ring"
+								aria-label={t('common.viewOnExplorer')}
+							>
+								<ExternalLinkIcon className="size-[14px] text-tertiary" />
+							</a>
+							<RewardsPopoverButton
+								assets={assetsData}
+								accountAddress={address}
+							/>
 						</div>
 					</div>
 					<div className="order-1 sm:order-2 self-center sm:self-start w-full sm:w-auto px-8 sm:px-0">
@@ -1235,7 +1268,7 @@ function AddressView() {
 										e.stopPropagation()
 										setShowZeroBalances(!showZeroBalances)
 									}}
-									className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors cursor-pointer focus-ring"
+									className="flex items-center justify-center size-[24px] rounded-md bg-base-alt active:bg-base-alt/70 cursor-pointer focus-ring"
 									aria-label={
 										showZeroBalances
 											? t('portfolio.hideZeroBalances')
@@ -1260,7 +1293,7 @@ function AddressView() {
 							onOptimisticSend={applyOptimisticUpdate}
 							onOptimisticClear={clearOptimisticUpdate}
 							isOwnProfile={isOwnProfile}
-							connectedAddress={account.address}
+							connectedAddress={connection.address}
 							initialSendTo={sendTo}
 							sendingToken={sendingToken}
 							onSendingTokenChange={setSendingToken}
@@ -1268,9 +1301,11 @@ function AddressView() {
 						/>
 					</Section>
 
-					<Section title="Add Funds">
-						<AddFunds address={address} />
-					</Section>
+					{config.onramp.enabled && (
+						<Section title="Add Funds">
+							<AddFunds address={address} />
+						</Section>
+					)}
 
 					<ActivitySection
 						activity={activity}
@@ -1286,6 +1321,17 @@ function AddressView() {
 			</div>
 		</AccessKeysProvider>
 	)
+}
+
+function eventTypeToActivityType(eventType: string): ActivityType {
+	const type = eventType.toLowerCase()
+	if (type.includes('send') || type.includes('transfer')) return 'send'
+	if (type.includes('receive')) return 'received'
+	if (type.includes('swap') || type.includes('exchange')) return 'swap'
+	if (type.includes('mint')) return 'mint'
+	if (type.includes('burn')) return 'burn'
+	if (type.includes('approve') || type.includes('approval')) return 'approve'
+	return 'unknown'
 }
 
 function QRCode({
@@ -1581,18 +1627,16 @@ function ActivityHeatmap({
 				className={cx('flex w-full py-2', isMobile ? 'gap-[4px]' : 'gap-[3px]')}
 			>
 				{grid.map((column, hi) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: grid is static and doesn't reorder
 					<div
-						key={`h-${hi}`}
+						key={`h-${hi.toString()}`}
 						className={cx(
 							'flex flex-col flex-1',
 							isMobile ? 'gap-[4px]' : 'gap-[3px]',
 						)}
 					>
 						{column.map((cell, di) => (
-							// biome-ignore lint/a11y/noStaticElementInteractions: hover tooltip only
 							<div
-								key={`${hi}-${di}`}
+								key={`${hi}-${di.toString()}`}
 								className={cx(
 									'w-full aspect-square cursor-default',
 									isMobile ? 'rounded-[3px]' : 'rounded-[2px]',
@@ -1954,6 +1998,7 @@ function BlockTimeline({
 			currentBlock,
 			onSelectBlock,
 			prefetchAdjacentBlocks,
+			// biome-ignore lint/correctness/useExhaustiveDependencies: TODO: fix this
 			handleBlockClick,
 		],
 	)
@@ -2046,7 +2091,7 @@ function BlockTimeline({
 				<div className="flex items-center justify-center gap-[2px] w-full p-1">
 					{Array.from({ length: 30 }).map((_, i) => (
 						<div
-							key={i}
+							key={i.toString()}
 							className="shrink-0 size-[8px] rounded-[1px] bg-base-alt/20 animate-pulse"
 						/>
 					))}
@@ -2066,7 +2111,8 @@ function BlockTimeline({
 	const shownBlock = displayBlock ?? currentBlock
 
 	return (
-		<div
+		<section
+			role="region"
 			ref={containerRef}
 			className="flex flex-col gap-1.5 mt-2 mb-3"
 			onMouseUp={handleMouseUp}
@@ -2233,6 +2279,7 @@ function BlockTimeline({
 							<PlayIcon className="size-2 text-accent fill-accent" />
 						) : (
 							<svg className="size-2" viewBox="0 0 24 24" fill="currentColor">
+								<title>Play icon</title>
 								<rect x="6" y="4" width="4" height="16" rx="1" />
 								<rect x="14" y="4" width="4" height="16" rx="1" />
 							</svg>
@@ -2246,7 +2293,7 @@ function BlockTimeline({
 					</span>
 				</div>
 			</div>
-		</div>
+		</section>
 	)
 }
 
@@ -3357,10 +3404,10 @@ function ActivitySection({
 
 	const tabButtons = (
 		<div className="flex items-center gap-3">
-			<span
-				role="button"
+			<button
+				type="button"
 				tabIndex={0}
-				onClick={(e) => {
+				onMouseDown={(e) => {
 					e.stopPropagation()
 					setActiveTab('mine')
 				}}
@@ -3371,18 +3418,18 @@ function ActivitySection({
 					}
 				}}
 				className={cx(
-					'text-[12px] font-medium transition-all pb-0.5 border-b-2 cursor-pointer',
+					'text-[12px] font-medium pb-0.5 border-b-2 cursor-pointer',
 					activeTab === 'mine'
 						? 'text-primary border-accent'
 						: 'text-tertiary hover:text-primary border-transparent',
 				)}
 			>
 				{t('portfolio.mine')}
-			</span>
-			<span
-				role="button"
+			</button>
+			<button
+				type="button"
 				tabIndex={0}
-				onClick={(e) => {
+				onMouseDown={(e) => {
 					e.stopPropagation()
 					setActiveTab('everyone')
 				}}
@@ -3393,14 +3440,14 @@ function ActivitySection({
 					}
 				}}
 				className={cx(
-					'text-[12px] font-medium transition-all pb-0.5 border-b-2 cursor-pointer',
+					'text-[12px] font-medium pb-0.5 border-b-2 cursor-pointer',
 					activeTab === 'everyone'
 						? 'text-primary border-accent'
 						: 'text-tertiary hover:text-primary border-transparent',
 				)}
 			>
 				{t('portfolio.everyone')}
-			</span>
+			</button>
 		</div>
 	)
 
@@ -3521,7 +3568,7 @@ function BlockActivityList({
 				<div className="flex items-center justify-center gap-1 pt-3 pb-1">
 					{Array.from({ length: totalPages }, (_, i) => (
 						<button
-							key={`block-activity-page-${i}`}
+							key={`block-activity-page-${i.toString()}`}
 							type="button"
 							onClick={() => setPage(i)}
 							className={cx(
@@ -3613,7 +3660,7 @@ function ActivityList({
 				<div className="flex items-center justify-center gap-1 pt-3 pb-1">
 					{Array.from({ length: totalPages }, (_, i) => (
 						<button
-							key={`activity-page-${i}`}
+							key={`activity-page-${i.toString()}`}
 							type="button"
 							onClick={() => setPage(i)}
 							className={cx(
@@ -3812,7 +3859,6 @@ function TransactionModal({
 	)
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop overlay
 		<div
 			ref={overlayRef}
 			role="presentation"
@@ -3822,7 +3868,6 @@ function TransactionModal({
 			)}
 			onClick={handleClose}
 		>
-			{/* biome-ignore lint/a11y/useKeyWithClickEvents: dialog handles keyboard via focus trap */}
 			<div
 				ref={focusTrapRef}
 				role="dialog"

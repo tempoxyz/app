@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { waapi, spring, stagger } from 'animejs'
 import { useTranslation } from 'react-i18next'
 import { ShaderCard } from './ShaderCard'
 import { useActivitySummary, type ActivityType } from '#lib/activity-context'
@@ -96,22 +97,130 @@ function useAmbientColors() {
 export function Intro() {
 	const { t } = useTranslation()
 	const { colors, intensity } = useAmbientColors()
+	const canvasRef = React.useRef<HTMLDivElement>(null)
+	const centeredWordmarkRef = React.useRef<HTMLDivElement>(null)
+	const wordmarkRef = React.useRef<HTMLDivElement>(null)
+	const taglineRef = React.useRef<HTMLParagraphElement>(null)
+	const button1Ref = React.useRef<HTMLAnchorElement>(null)
+	const button2Ref = React.useRef<HTMLAnchorElement>(null)
+	const [isReady, setIsReady] = React.useState(false)
+
+	const handleReady = React.useCallback(() => {
+		setIsReady(true)
+		const canvas = canvasRef.current
+		const centeredWordmark = centeredWordmarkRef.current
+		const wordmark = wordmarkRef.current
+		const tagline = taglineRef.current
+		const button1 = button1Ref.current
+		const button2 = button2Ref.current
+		if (
+			!canvas ||
+			!centeredWordmark ||
+			!wordmark ||
+			!tagline ||
+			!button1 ||
+			!button2
+		)
+			return
+
+		// 0. Centered wordmark disappears
+		waapi.animate(centeredWordmark, {
+			opacity: [1, 0],
+			scale: [1, 0.95],
+			ease: spring({
+				mass: 1,
+				stiffness: 8000,
+				damping: 400,
+			}),
+		})
+
+		// 1. Card appears
+		waapi.animate(canvas, {
+			opacity: [0, 1],
+			scale: [0.92, 1],
+			ease: spring({
+				mass: 1,
+				stiffness: 1000,
+				damping: 80,
+			}),
+			delay: 80,
+		})
+
+		// 2. Wordmark and tagline appear staggered
+		waapi.animate([wordmark, tagline], {
+			opacity: [0, 1],
+			scale: [0.97, 1],
+			ease: spring({
+				mass: 1,
+				stiffness: 4000,
+				damping: 200,
+			}),
+			delay: stagger(80, { start: 120 }),
+		})
+
+		// 3. Buttons appear staggered with translateX
+		waapi.animate([button1, button2], {
+			opacity: [0, 1],
+			scale: [0.97, 1],
+			ease: spring({
+				mass: 1,
+				stiffness: 2000,
+				damping: 200,
+			}),
+			delay: stagger(60, { start: 300 }),
+		})
+	}, [])
 
 	return (
-		<div className="relative flex min-h-full flex-col items-start justify-end px-7 sm:px-8 py-7 max-md:min-h-[120px] max-md:py-4 max-md:px-5">
-			<ShaderCard
-				className="max-md:hidden pointer-events-none"
-				ambientColors={colors}
-				ambientIntensity={intensity}
-			/>
-			<div className="relative flex flex-col items-start gap-y-2 z-10 max-md:gap-y-1.5">
+		<div
+			className="relative grid min-h-full px-5 sm:px-6 py-5 max-md:min-h-[120px] max-md:py-3 max-md:px-4"
+			style={{ gridTemplateRows: '1fr auto', gridTemplateColumns: '1fr' }}
+		>
+			<div ref={canvasRef} style={{ opacity: 0 }} className="absolute inset-0">
+				<ShaderCard
+					className="max-md:hidden pointer-events-none"
+					ambientColors={colors}
+					ambientIntensity={intensity}
+					onReady={handleReady}
+				/>
+			</div>
+			<div
+				ref={centeredWordmarkRef}
+				className="z-10 place-self-center row-start-1 row-end-3 col-start-1"
+				style={{ pointerEvents: isReady ? 'none' : undefined }}
+			>
 				<TempoWordmark />
-				<p className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] text-[#505050] dark:text-secondary max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none">
+			</div>
+			<div className="relative flex flex-col items-start gap-y-2 z-10 max-md:gap-y-1.5 row-start-2 col-start-1">
+				<div
+					ref={wordmarkRef}
+					style={{
+						opacity: isReady ? undefined : 0,
+						transformOrigin: 'left center',
+					}}
+				>
+					<TempoWordmark />
+				</div>
+				<p
+					ref={taglineRef}
+					className="text-[15px] sm:text-[17px] leading-[22px] sm:leading-[24px] max-md:text-[13px] max-md:leading-[18px] max-w-[280px] sm:max-w-none"
+					style={{
+						opacity: isReady ? undefined : 0,
+						color: 'light-dark(#505050, rgba(255,255,255,0.7))',
+						transformOrigin: 'left center',
+					}}
+				>
 					{t('intro.tagline')}
 				</p>
 				<div className="flex gap-1.5 flex-wrap isolate">
 					<a
-						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium text-white/90 bg-white/10 border border-white/15 rounded-full hover:text-white hover:border-white/30 hover:bg-white/15 transition-all"
+						ref={button1Ref}
+						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
+						style={{
+							color: 'light-dark(#505050, white)',
+							opacity: isReady ? undefined : 0,
+							transformOrigin: 'center',
+						}}
 						href="https://tempo.xyz"
 						rel="noreferrer"
 						target="_blank"
@@ -120,7 +229,13 @@ export function Intro() {
 						{t('intro.website')}
 					</a>
 					<a
-						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium text-white/90 bg-white/10 border border-white/15 rounded-full hover:text-white hover:border-white/30 hover:bg-white/15 transition-all"
+						ref={button2Ref}
+						className="flex items-center gap-1 px-2 py-0.5 text-[12px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
+						style={{
+							color: 'light-dark(#505050, white)',
+							opacity: isReady ? undefined : 0,
+							transformOrigin: 'center',
+						}}
 						href="https://docs.tempo.xyz"
 						rel="noreferrer"
 						target="_blank"

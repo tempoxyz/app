@@ -33,11 +33,14 @@
 	"json": {
 		"formatter": {
 			"enabled": true
+		},
+		"linter": {
+			"enabled": true
 		}
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!**/routeTree.gen.ts"]
+		"includes": ["**", "!**/routeTree.gen.ts", "!worker-configuration.d.ts"]
 	},
 	"formatter": {
 		"enabled": true,
@@ -67,7 +70,12 @@
 				}
 			},
 			"a11y": {
-				"noAutofocus": "off"
+				"noAutofocus": "off",
+				"useSemanticElements": "off",
+				"useFocusableInteractive": "off",
+				"useKeyWithClickEvents": "off",
+				"noStaticElementInteractions": "off",
+				"useKeyWithMouseEvents": "off"
 			}
 		}
 	},

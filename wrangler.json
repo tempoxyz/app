@@ -9,9 +9,7 @@
 	"preview_urls": true,
 	"placement": { "mode": "smart" },
 	"vars": {
-		"VITE_TEMPO_ENV": "presto",
-		"PRESTO_RPC_AUTH": "",
-		"INDEXER_API_KEY": ""
+		"VITE_TEMPO_ENV": "presto"
 	},
 	"env": {
 		"devnet": {
@@ -25,8 +23,7 @@
 				}
 			],
 			"vars": {
-				"VITE_TEMPO_ENV": "devnet",
-				"INDEXER_API_KEY": ""
+				"VITE_TEMPO_ENV": "devnet"
 			},
 			"workers_dev": true,
 			"observability": {
@@ -50,9 +47,7 @@
 				}
 			],
 			"vars": {
-				"VITE_TEMPO_ENV": "moderato",
-				"PRESTO_RPC_AUTH": "",
-				"INDEXER_API_KEY": ""
+				"VITE_TEMPO_ENV": "moderato"
 			},
 			"workers_dev": true,
 			"observability": {
@@ -86,9 +81,7 @@
 				}
 			],
 			"vars": {
-				"VITE_TEMPO_ENV": "presto",
-				"PRESTO_RPC_AUTH": "",
-				"INDEXER_API_KEY": ""
+				"VITE_TEMPO_ENV": "presto"
 			},
 			"workers_dev": true,
 			"observability": {

@@ -41,9 +41,7 @@ export function RewardsPopoverButton(props: {
 	const isOwnProfile =
 		account.address?.toLowerCase() === accountAddress.toLowerCase()
 
-	const assetsWithBalance = assets.filter(
-		(a) => a.balance && a.balance !== '0',
-	)
+	const assetsWithBalance = assets.filter((a) => a.balance && a.balance !== '0')
 
 	const activeToken = assetsWithBalance[0]?.address ?? null
 

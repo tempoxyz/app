@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { waapi, spring } from 'animejs'
-import { cx } from '#lib/css'
 import ArrowLeftIcon from '~icons/lucide/arrow-left'
 import PlusIcon from '~icons/lucide/plus'
 import MinusIcon from '~icons/lucide/minus'
@@ -102,28 +101,22 @@ export function Section(props: {
 	}
 
 	return (
-		<div className="rounded-xl border border-card-border bg-card-header">
-			<div className="flex items-center h-[44px] pl-2 pr-2.5">
+		<div className="rounded-xl border border-card-border bg-card-header overflow-hidden">
+			<div className="relative h-[44px]">
 				<button
 					type="button"
 					onClick={handleClick}
 					aria-expanded={open}
-					className={cx(
-						'flex flex-1 min-w-0 items-center justify-between cursor-pointer select-none press-down transition-colors',
-						'text-[15px] font-medium text-primary hover:text-accent',
-						'rounded-xl! focus-visible:outline-2! focus-visible:outline-accent! focus-visible:outline-offset-0!',
-					)}
-				>
-					<span className="flex items-center gap-2 min-w-0 overflow-hidden">
+					className={`absolute inset-0 cursor-pointer select-none active:bg-black/[0.01] dark:active:bg-white/[0.02] focus-visible:!outline-2 focus-visible:!outline-accent focus-visible:!outline-offset-[-2px] ${open ? 'rounded-[10px_10px_0_0] focus-visible:!rounded-[10px_10px_0_0]' : 'rounded-[10px] focus-visible:!rounded-[10px]'}`}
+				/>
+				<div className="absolute inset-0 flex items-center pl-2 pr-2.5 pointer-events-none">
+					<span className="flex flex-1 min-w-0 items-center gap-2 overflow-hidden text-[15px] font-medium text-primary">
 						{backButton ? (
 							<>
 								<button
 									type="button"
-									onClick={(e) => {
-										e.stopPropagation()
-										backButton.onClick()
-									}}
-									className="flex items-center gap-1.5 text-accent hover:text-accent/80 transition-colors cursor-pointer shrink-0"
+									onClick={backButton.onClick}
+									className="flex items-center gap-1.5 text-accent active:text-accent/80 transition-colors cursor-pointer shrink-0 pointer-events-auto"
 								>
 									<ArrowLeftIcon className="size-[14px] shrink-0" />
 									<span className="truncate max-w-[100px] sm:max-w-[150px]">
@@ -148,51 +141,50 @@ export function Section(props: {
 								{titleRight && (
 									<>
 										<span className="w-px h-4 bg-card-border shrink-0" />
-										{titleRight}
+										<span className="pointer-events-auto">{titleRight}</span>
 									</>
 								)}
 							</>
 						)}
 					</span>
-				</button>
-				<span className="flex items-center gap-1.5">
-					{headerRight}
-					{externalLink && (
-						<a
-							href={externalLink}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors focus-ring"
-							onClick={(e) => e.stopPropagation()}
-							aria-label="View on external site"
-						>
-							<GlobeIcon className="size-[14px] text-tertiary" />
-						</a>
-					)}
-					<button
-						type="button"
-						onClick={handleClick}
-						aria-expanded={open}
-						aria-label={open ? 'Collapse section' : 'Expand section'}
-						className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors cursor-pointer focus-ring"
-					>
-						{open ? (
-							<MinusIcon className="size-[14px] text-tertiary" />
-						) : (
-							<PlusIcon className="size-[14px] text-tertiary" />
+					<span className="flex items-center gap-1.5 pointer-events-auto">
+						{headerRight}
+						{externalLink && (
+							<a
+								href={externalLink}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center justify-center size-[24px] rounded-md bg-base-alt active:bg-base-alt/70 transition-colors focus-ring"
+								aria-label="View on external site"
+							>
+								<GlobeIcon className="size-[14px] text-tertiary" />
+							</a>
 						)}
-					</button>
-				</span>
+						<button
+							type="button"
+							onClick={handleClick}
+							aria-expanded={open}
+							aria-label={open ? 'Collapse section' : 'Expand section'}
+							className="flex items-center justify-center size-[24px] rounded-md bg-base-alt active:bg-base-alt/70 transition-colors cursor-pointer focus-ring"
+						>
+							{open ? (
+								<MinusIcon className="size-[14px] text-tertiary" />
+							) : (
+								<PlusIcon className="size-[14px] text-tertiary" />
+							)}
+						</button>
+					</span>
+				</div>
 			</div>
 			<div
 				ref={contentRef}
-				className="overflow-hidden rounded-b-xl"
+				className="overflow-hidden"
 				style={{ height: open ? 'auto' : 0 }}
 				inert={!open ? true : undefined}
 			>
 				<div
 					ref={wrapperRef}
-					className="bg-card border-t border-card-border px-2 rounded-b-xl overflow-hidden"
+					className="bg-card border-t border-card-border px-2"
 				>
 					<div ref={innerRef} className="origin-top">
 						{children}

@@ -1263,7 +1263,7 @@ export function AccessKeysSection({
 	const headerPill =
 		allKeys.length > 0 ? (
 			<span className="flex items-center gap-1 px-1 h-[24px] bg-base-alt rounded-md text-[11px] text-secondary">
-				<KeyIcon className="size-[12px]" />
+				<KeyIcon className="size-1.5" />
 				<span className="font-mono font-medium">{allKeys.length}</span>
 			</span>
 		) : null

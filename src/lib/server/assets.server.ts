@@ -1,8 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import * as IDX from 'idxs'
 import type { Address } from 'ox'
-import { decodeAbiParameters } from 'viem'
-import { TOKEN_CREATED_EVENT } from '#lib/abis'
 
 const TIP20_DECIMALS = 6
 const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
@@ -13,71 +11,6 @@ const HARDCODED_USD_TOKENS = new Set([
 	'0x20c000000000000000000000033abb6ac7d235e5', // DONOTUSE (presto faucet token)
 ])
 
-async function fetchTokenMetadataViaRpc(
-	token: string,
-): Promise<{ name: string; symbol: string } | null> {
-	const rpcUrl =
-		TEMPO_ENV === 'moderato'
-			? 'https://rpc.tempo.xyz'
-			: 'https://rpc.presto.tempo.xyz'
-
-	const { env } = await import('cloudflare:workers')
-	const auth = env.PRESTO_RPC_AUTH as string | undefined
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-	if (auth) {
-		headers.Authorization = `Basic ${btoa(auth)}`
-	}
-
-	try {
-		const response = await fetch(rpcUrl, {
-			method: 'POST',
-			headers,
-			body: JSON.stringify([
-				{
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'eth_call',
-					params: [{ to: token, data: '0x06fdde03' }, 'latest'],
-				},
-				{
-					jsonrpc: '2.0',
-					id: 2,
-					method: 'eth_call',
-					params: [{ to: token, data: '0x95d89b41' }, 'latest'],
-				},
-			]),
-		})
-		if (!response.ok) return null
-
-		const results = (await response.json()) as Array<{
-			id: number
-			result?: `0x${string}`
-			error?: unknown
-		}>
-
-		const nameResult = results.find((r) => r.id === 1)?.result
-		const symbolResult = results.find((r) => r.id === 2)?.result
-
-		if (!nameResult || !symbolResult) return null
-
-		const decodeString = (hex: `0x${string}`) => {
-			try {
-				const [value] = decodeAbiParameters([{ type: 'string' }], hex)
-				return value
-			} catch {
-				return ''
-			}
-		}
-
-		return {
-			name: decodeString(nameResult),
-			symbol: decodeString(symbolResult),
-		}
-	} catch {
-		return null
-	}
-}
-
 async function getIndexSupply() {
 	let apiKey: string | undefined
 	try {
@@ -86,12 +19,6 @@ async function getIndexSupply() {
 	} catch {
 		apiKey = process.env.INDEXER_API_KEY ?? import.meta.env.INDEXER_API_KEY
 	}
-	console.log(
-		'[getIndexSupply] apiKey present:',
-		!!apiKey,
-		'length:',
-		apiKey?.length,
-	)
 	const IS = IDX.IndexSupply.create({ apiKey })
 	return { IS, QB: IDX.QueryBuilder.from(IS) }
 }
@@ -133,158 +60,65 @@ export const fetchAssets = createServerFn({ method: 'GET' })
 			const { QB } = await getIndexSupply()
 			const qb = QB.withSignatures([TRANSFER_SIGNATURE])
 
-			console.log('[fetchAssets] chainId:', chainId, 'address:', address)
-
-			const incomingQuery = qb
+			// Single query: fetch all transfers involving this address
+			const transfersQuery = qb
 				.selectFrom('transfer')
-				.select((eb: any) => [
-					eb.ref('address').as('token'),
-					eb.fn.sum('amount').as('received'),
-				])
+				.select(['address', 'from', 'to', 'amount'])
 				.where('chain', '=', chainId)
-				.where('to', '=', address)
-				.groupBy('address')
+				.where((eb) =>
+					eb.or([eb('to', '=', address), eb('from', '=', address)]),
+				)
 
-			const outgoingQuery = qb
-				.selectFrom('transfer')
-				.select((eb: any) => [
-					eb.ref('address').as('token'),
-					eb.fn.sum('amount').as('sent'),
-				])
-				.where('chain', '=', chainId)
-				.where('from', '=', address)
-				.groupBy('address')
-
-			const tokenCreatedQuery = QB.withSignatures([TOKEN_CREATED_EVENT])
-				.selectFrom('tokencreated')
-				.select(['token', 'name', 'symbol', 'currency'])
-				.where('chain', '=', chainId as never)
-
-			const [incomingResult, outgoingResult, tokenCreatedResult] =
-				await Promise.all([
-					incomingQuery.execute(),
-					outgoingQuery.execute(),
-					tokenCreatedQuery.execute(),
-				])
-
-			console.log(
-				'[fetchAssets] incoming:',
-				incomingResult.length,
-				'outgoing:',
-				outgoingResult.length,
-				'tokens:',
-				tokenCreatedResult.length,
-			)
-
-			const tokenMetadata = new Map<
-				string,
-				{ name: string; symbol: string; currency: string }
-			>()
-			for (const row of tokenCreatedResult) {
-				tokenMetadata.set(String(row.token).toLowerCase(), {
-					name: String(row.name),
-					symbol: String(row.symbol),
-					currency: String(row.currency),
-				})
-			}
+			const transfersResult = await transfersQuery.execute()
 
 			const balances = new Map<string, bigint>()
+			const addrLower = address.toLowerCase()
 
-			for (const row of incomingResult) {
-				const token = String(row.token).toLowerCase()
-				const received = BigInt(row.received)
-				balances.set(token, (balances.get(token) ?? 0n) + received)
-			}
+			for (const row of transfersResult) {
+				const token = String(row.address).toLowerCase()
+				const amount = BigInt(row.amount)
+				const to = String(row.to).toLowerCase()
+				const from = String(row.from).toLowerCase()
 
-			for (const row of outgoingResult) {
-				const token = String(row.token).toLowerCase()
-				const sent = BigInt(row.sent)
-				balances.set(token, (balances.get(token) ?? 0n) - sent)
-			}
-
-			// Include all tokens from user's balance, plus all created tokens (with 0 balance if not held)
-			const allTokens = new Map<
-				string,
-				{
-					token: Address.Address
-					balance: bigint
-					metadata: ReturnType<typeof tokenMetadata.get>
+				if (to === addrLower) {
+					balances.set(token, (balances.get(token) ?? 0n) + amount)
 				}
-			>()
+				if (from === addrLower) {
+					balances.set(token, (balances.get(token) ?? 0n) - amount)
+				}
+			}
 
-			// Add user's balances
+			// Only include tokens with non-zero balance
+			const tokensArray: Array<{
+				token: Address.Address
+				balance: bigint
+				metadata: undefined
+			}> = []
 			for (const [token, balance] of balances.entries()) {
 				if (balance !== 0n) {
-					allTokens.set(token, {
+					tokensArray.push({
 						token: token as Address.Address,
 						balance,
-						metadata: tokenMetadata.get(token),
+						metadata: undefined,
 					})
 				}
 			}
-
-			// Add all created tokens with 0 balance if not already in user's assets
-			for (const [token, metadata] of tokenMetadata.entries()) {
-				if (!allTokens.has(token)) {
-					allTokens.set(token, {
-						token: token as Address.Address,
-						balance: 0n,
-						metadata,
-					})
-				}
-			}
-
-			const tokensArray = [...allTokens.values()]
 
 			if (tokensArray.length === 0) return []
 
 			const MAX_TOKENS = 50
 
-			const tokensMissingMetadata = tokensArray
-				.slice(0, MAX_TOKENS)
-				.filter((t) => !t.metadata)
-				.map((t) => t.token)
-
-			if (tokensMissingMetadata.length > 0) {
-				const rpcMetadataResults = await Promise.all(
-					tokensMissingMetadata.map(async (token) => {
-						const metadata = await fetchTokenMetadataViaRpc(token)
-						return { token, metadata }
-					}),
-				)
-
-				for (const { token, metadata } of rpcMetadataResults) {
-					if (metadata) {
-						tokenMetadata.set(token.toLowerCase(), {
-							name: metadata.name,
-							symbol: metadata.symbol,
-							currency: '',
-						})
-					}
-				}
-			}
-
 			const assets: AssetData[] = tokensArray
 				.slice(0, MAX_TOKENS)
 				.map((row) => {
-					const metadata = row.metadata ?? tokenMetadata.get(row.token)
-					// TODO: Replace hardcoded USD check with proper price oracle
-					const isUsd =
-						metadata?.currency === 'USD' ||
-						HARDCODED_USD_TOKENS.has(row.token.toLowerCase())
+					const isUsd = HARDCODED_USD_TOKENS.has(row.token.toLowerCase())
 					const valueUsd = isUsd
 						? Number(row.balance) / 10 ** TIP20_DECIMALS
 						: undefined
 
 					return {
 						address: row.token,
-						metadata: metadata
-							? {
-									name: metadata.name,
-									symbol: metadata.symbol,
-									decimals: TIP20_DECIMALS,
-								}
-							: undefined,
+						metadata: undefined,
 						balance: row.balance.toString(),
 						valueUsd,
 					}

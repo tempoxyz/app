@@ -1,4 +1,4 @@
-import { createCoinbaseJwt } from './coinbase-jwt.js'
+import { createCoinbaseJwt } from './coinbase-jwt'
 
 const COINBASE_API_HOST = 'api.cdp.coinbase.com'
 const COINBASE_API_PATH = '/platform/v2/onramp/orders'
@@ -69,9 +69,6 @@ export async function createOnrampOrder(
 		purchaseCurrency: 'USDC',
 	}
 
-	// Only include domain for production (HTTPS) domains
-	// Localhost testing skips domain to avoid "not allowlisted" errors
-	// Domain must be allowlisted in CDP Portal for production
 	if (
 		domain &&
 		!domain.includes('localhost') &&

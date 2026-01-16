@@ -3,33 +3,32 @@ import tailwind from '@tailwindcss/vite'
 import { devtools } from '@tanstack/devtools-vite'
 import { tanstackStart as tanstack } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
-import { readFileSync } from 'node:fs'
-import { parse } from 'jsonc-parser'
+import { visualizer } from 'rollup-plugin-visualizer'
 import Icons from 'unplugin-icons/vite'
+import * as z from 'zod/mini'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 
-const [, , , ...args] = process.argv
+import wranglerJSON from '#wrangler.json' with { type: 'json' }
 
-function getWranglerEnvVars(
-	envName: string | undefined,
-): Record<string, string> {
-	if (!envName) return {}
-	try {
-		const content = readFileSync('wrangler.jsonc', 'utf-8')
-		const wranglerConfig = parse(content) as {
-			env?: Record<string, { vars?: Record<string, string> }>
-		}
-		return wranglerConfig?.env?.[envName]?.vars ?? {}
-	} catch {
-		return {}
-	}
-}
+const [, , , ...args] = process.argv
 
 export default defineConfig((config) => {
 	const env = loadEnv(config.mode, process.cwd(), '')
 
-	const cloudflareEnv = process.env.CLOUDFLARE_ENV || env.CLOUDFLARE_ENV
-	const wranglerVars = getWranglerEnvVars(cloudflareEnv)
+	const { data: cloudflareEnv, success } = z.safeParse(
+		z.prefault(
+			z.union([
+				z.literal('devnet'),
+				z.literal('moderato'),
+				z.literal('presto'),
+			]),
+			'presto',
+		),
+		process.env.CLOUDFLARE_ENV || env.CLOUDFLARE_ENV,
+	)
+	if (!success) throw new Error('Invalid CLOUDFLARE_ENV')
+
+	const wranglerVars = wranglerJSON.env[cloudflareEnv].vars
 
 	const showDevtools = env.VITE_ENABLE_DEVTOOLS !== 'false'
 
@@ -55,7 +54,14 @@ export default defineConfig((config) => {
 				client: { entry: './src/index.client.tsx' },
 			}),
 			react(),
-		],
+			process.env.ANALYZE_JSON === 'true' &&
+				visualizer({
+					filename: 'stats.json',
+					template: 'raw-data',
+					gzipSize: true,
+					brotliSize: true,
+				}),
+		].filter(Boolean),
 
 		server: {
 			port,
