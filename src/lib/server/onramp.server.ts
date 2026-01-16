@@ -68,13 +68,4 @@ export const createOnrampOrderFn = createServerFn({ method: 'POST' })
 		return result
 	})
 
-export const getOnrampStatusFn = createServerFn({ method: 'GET' })
-	.inputValidator((address: string) => {
-		if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-			throw new Error('Invalid address')
-		}
-		return getAddress(address)
-	})
-	.handler(async () => {
-		return { eligible: true }
-	})
+
