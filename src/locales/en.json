@@ -145,6 +145,23 @@
 		"self": "self",
 		"andMore": "and {{count}} more"
 	},
+	"rewards": {
+		"title": "Rewards",
+		"pendingRewards": "Pending Rewards",
+		"claim": "Claim",
+		"claiming": "Claiming...",
+		"rewardRecipient": "Reward Recipient",
+		"yourself": "Yourself",
+		"delegated": "Delegated",
+		"notOptedIn": "Not opted in",
+		"optIn": "Opt In",
+		"change": "Change",
+		"delegateToSelf": "Receive rewards yourself",
+		"delegateToOther": "Delegate to another address",
+		"optOut": "Opt out of rewards",
+		"confirm": "Confirm",
+		"updating": "Updating..."
+	},
 	"a11y": {
 		"open": "Open",
 		"close": "Close",

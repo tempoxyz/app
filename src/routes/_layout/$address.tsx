@@ -34,6 +34,7 @@ import {
 	type GetTokenMetadataFn,
 } from '#comps/activity'
 import { AddFunds } from '#comps/AddFunds'
+import { RewardsPopoverButton } from '#comps/RewardsPopover'
 import { Layout } from '#comps/Layout'
 import { TokenIcon } from '#comps/TokenIcon'
 import { Section } from '#comps/Section'
@@ -1163,6 +1164,10 @@ function AddressView() {
 								>
 									<ExternalLinkIcon className="size-[14px] text-tertiary" />
 								</a>
+								<RewardsPopoverButton
+									assets={assetsData}
+									accountAddress={address}
+								/>
 							</div>
 						</div>
 					</div>
