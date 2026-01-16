@@ -107,7 +107,7 @@ export function Section(props: {
 					type="button"
 					onClick={handleClick}
 					aria-expanded={open}
-					className={`absolute inset-0 cursor-pointer select-none active:bg-black/[0.02] dark:active:bg-white/[0.03] focus-visible:!outline-2 focus-visible:!outline-accent focus-visible:!outline-offset-[-2px] ${open ? 'rounded-[10px_10px_0_0] focus-visible:!rounded-[10px_10px_0_0]' : 'rounded-[10px] focus-visible:!rounded-[10px]'}`}
+					className={`absolute inset-0 cursor-pointer select-none active:bg-black/[0.01] dark:active:bg-white/[0.02] focus-visible:!outline-2 focus-visible:!outline-accent focus-visible:!outline-offset-[-2px] ${open ? 'rounded-[10px_10px_0_0] focus-visible:!rounded-[10px_10px_0_0]' : 'rounded-[10px] focus-visible:!rounded-[10px]'}`}
 				/>
 				<div className="absolute inset-0 flex items-center pl-2 pr-2.5 pointer-events-none">
 					<span className="flex flex-1 min-w-0 items-center gap-2 overflow-hidden text-[15px] font-medium text-primary">
@@ -116,7 +116,7 @@ export function Section(props: {
 								<button
 									type="button"
 									onClick={backButton.onClick}
-									className="flex items-center gap-1.5 text-accent hover:text-accent/80 transition-colors cursor-pointer shrink-0 pointer-events-auto"
+									className="flex items-center gap-1.5 text-accent active:text-accent/80 transition-colors cursor-pointer shrink-0 pointer-events-auto"
 								>
 									<ArrowLeftIcon className="size-[14px] shrink-0" />
 									<span className="truncate max-w-[100px] sm:max-w-[150px]">
@@ -154,7 +154,7 @@ export function Section(props: {
 								href={externalLink}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors focus-ring"
+								className="flex items-center justify-center size-[24px] rounded-md bg-base-alt active:bg-base-alt/70 transition-colors focus-ring"
 								aria-label="View on external site"
 							>
 								<GlobeIcon className="size-[14px] text-tertiary" />
@@ -165,7 +165,7 @@ export function Section(props: {
 							onClick={handleClick}
 							aria-expanded={open}
 							aria-label={open ? 'Collapse section' : 'Expand section'}
-							className="flex items-center justify-center size-[24px] rounded-md bg-base-alt hover:bg-base-alt/70 transition-colors cursor-pointer focus-ring"
+							className="flex items-center justify-center size-[24px] rounded-md bg-base-alt active:bg-base-alt/70 transition-colors cursor-pointer focus-ring"
 						>
 							{open ? (
 								<MinusIcon className="size-[14px] text-tertiary" />
