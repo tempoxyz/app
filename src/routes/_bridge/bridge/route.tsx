@@ -2,8 +2,6 @@ import * as React from 'react'
 import {
 	type Connector,
 	useConnect,
-	useEnsName,
-	useEnsAvatar,
 	useConnection,
 	useConnectors,
 	useDisconnect,
@@ -12,35 +10,30 @@ import {
 import { erc20Abi, formatUnits } from 'viem'
 import { createFileRoute } from '@tanstack/react-router'
 import { cx } from '#lib/css'
+import { Section } from '#comps/Section'
 import { useRelayBridge, type BridgeStatus } from '../-/useRelayBridge'
-import type { OriginChain } from '../-/relay'
+import type { OriginChain, RelayQuote } from '../-/relay'
 import LoaderIcon from '~icons/lucide/loader-2'
 import CheckIcon from '~icons/lucide/check'
 import ArrowRightIcon from '~icons/lucide/arrow-right'
 import ExternalLinkIcon from '~icons/lucide/external-link'
+import WalletIcon from '~icons/lucide/wallet'
+import LogOutIcon from '~icons/lucide/log-out'
 
 export const Route = createFileRoute('/_bridge/bridge')({
 	component: BridgeRoute,
 })
 
 function BridgeRoute() {
-	return (
-		<main className="flex flex-col items-center gap-6 py-8">
-			<div className="flex flex-col gap-2 text-center">
-				<h1 className="text-2xl font-semibold">Bridge to Tempo</h1>
-				<p className="text-sm text-secondary">
-					Swap USDC from Sepolia or Base Sepolia to PathUSD on Tempo Testnet
-				</p>
-			</div>
-			<ConnectWallet />
-		</main>
-	)
-}
-
-function ConnectWallet() {
 	const { isConnected } = useConnection()
-	if (isConnected) return <BridgeForm />
-	return <WalletOptions />
+
+	return (
+		<div className="flex flex-col gap-2.5 w-full max-w-lg mx-auto px-4 py-6">
+			<Section title="Bridge to Tempo" defaultOpen>
+				{isConnected ? <BridgeForm /> : <WalletOptions />}
+			</Section>
+		</div>
+	)
 }
 
 function WalletOptions() {
@@ -48,9 +41,9 @@ function WalletOptions() {
 	const { mutate: connect } = useConnect()
 
 	return (
-		<div className="flex flex-col gap-3 w-full max-w-md">
-			<p className="text-sm text-tertiary text-center">
-				Connect your wallet to start bridging
+		<div className="flex flex-col gap-3 py-3">
+			<p className="text-[13px] text-tertiary">
+				Connect your wallet to bridge USDC to PathUSD on Tempo Testnet
 			</p>
 			<div className="flex flex-col gap-2">
 				{connectors.map((connector) => (
@@ -87,12 +80,13 @@ function WalletOption({
 			disabled={!ready}
 			onClick={onClick}
 			className={cx(
-				'flex items-center justify-center gap-2 h-12 px-4 text-sm font-medium rounded-xl',
-				'bg-white/5 border border-card-border hover:border-accent/50 hover:bg-white/10',
-				'cursor-pointer press-down transition-colors',
+				'flex items-center gap-3 h-[44px] px-3 text-[13px] font-medium rounded-lg',
+				'bg-base-alt active:bg-base-alt/70 transition-colors',
+				'cursor-pointer press-down focus-ring',
 				!ready && 'opacity-50 cursor-not-allowed',
 			)}
 		>
+			<WalletIcon className="size-[16px] text-tertiary" />
 			{connector.name}
 		</button>
 	)
@@ -101,12 +95,6 @@ function WalletOption({
 function BridgeForm() {
 	const { address } = useConnection()
 	const { mutate: disconnect } = useDisconnect()
-	const { data: ensName } = useEnsName({ address })
-	const { data: ensAvatar } = useEnsAvatar({
-		name: `${ensName}`,
-		query: { enabled: ensName?.endsWith('.eth') },
-	})
-
 	const bridge = useRelayBridge(address)
 
 	const { data: usdcBalanceRaw } = useReadContract({
@@ -134,14 +122,6 @@ function BridgeForm() {
 		bridge.setAmount(value)
 	}
 
-	const handleGetQuote = async () => {
-		await bridge.fetchQuote()
-	}
-
-	const handleBridge = async () => {
-		await bridge.executeBridge()
-	}
-
 	const isQuoting = bridge.isQuoting
 	const isBridging = ['approving', 'confirming', 'bridging'].includes(
 		bridge.status,
@@ -152,34 +132,32 @@ function BridgeForm() {
 	const canBridge = bridge.quote && !isBridging && !isSuccess
 
 	return (
-		<div className="flex flex-col gap-4 w-full max-w-md">
-			{/* Connected wallet */}
-			<div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-card-border">
+		<div className="flex flex-col gap-4 py-3">
+			{/* Connected wallet row */}
+			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2">
-					{ensAvatar && (
-						<img
-							alt="ENS Avatar"
-							src={ensAvatar}
-							className="size-8 rounded-full"
-						/>
-					)}
-					<span className="text-sm font-mono">
-						{ensName ??
-							(address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '')}
+					<div className="flex items-center justify-center size-[28px] rounded-md bg-base-alt">
+						<WalletIcon className="size-[14px] text-tertiary" />
+					</div>
+					<span className="text-[13px] font-mono text-secondary">
+						{address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}
 					</span>
 				</div>
 				<button
 					type="button"
 					onClick={() => disconnect()}
-					className="text-xs text-tertiary hover:text-primary transition-colors cursor-pointer"
+					className="flex items-center gap-1.5 text-[12px] text-tertiary hover:text-primary transition-colors cursor-pointer"
 				>
+					<LogOutIcon className="size-[12px]" />
 					Disconnect
 				</button>
 			</div>
 
 			{/* Chain selector */}
-			<div className="flex flex-col gap-2">
-				<span className="text-xs text-tertiary">From Chain</span>
+			<div className="flex flex-col gap-1.5">
+				<span className="text-[12px] text-tertiary font-medium">
+					From Chain
+				</span>
 				<div className="flex gap-2">
 					{bridge.originChains.map((chain) => (
 						<ChainButton
@@ -194,16 +172,18 @@ function BridgeForm() {
 			</div>
 
 			{/* Amount input */}
-			<div className="flex flex-col gap-2">
+			<div className="flex flex-col gap-1.5">
 				<div className="flex items-center justify-between">
-					<span className="text-xs text-tertiary">Amount (USDC)</span>
+					<span className="text-[12px] text-tertiary font-medium">
+						Amount (USDC)
+					</span>
 					{formattedBalance && (
 						<button
 							type="button"
 							onClick={() => bridge.setAmount(formattedBalance)}
-							className="text-xs text-accent hover:text-accent/80 cursor-pointer"
+							className="text-[12px] text-accent hover:text-accent/80 cursor-pointer transition-colors"
 						>
-							Max: {Number(formattedBalance).toFixed(2)} USDC
+							Max: {Number(formattedBalance).toFixed(2)}
 						</button>
 					)}
 				</div>
@@ -215,23 +195,22 @@ function BridgeForm() {
 					onChange={handleAmountChange}
 					disabled={isBridging}
 					className={cx(
-						'h-14 px-4 rounded-xl bg-white/5 border border-card-border',
-						'text-lg font-mono placeholder:text-tertiary',
-						'focus:outline-none focus:border-accent transition-colors',
+						'h-[44px] px-3 rounded-lg bg-base-alt text-[15px] font-mono',
+						'placeholder:text-tertiary focus:outline-none focus-ring transition-colors',
 						isBridging && 'opacity-50 cursor-not-allowed',
 					)}
 				/>
 			</div>
 
 			{/* Destination info */}
-			<div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-card-border">
+			<div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-base-alt">
 				<div className="flex flex-col gap-0.5">
-					<span className="text-xs text-tertiary">To</span>
-					<span className="text-sm font-medium">Tempo Testnet</span>
+					<span className="text-[11px] text-tertiary">To</span>
+					<span className="text-[13px] font-medium">Tempo Testnet</span>
 				</div>
 				<div className="flex flex-col gap-0.5 items-end">
-					<span className="text-xs text-tertiary">Receive</span>
-					<span className="text-sm font-medium">PathUSD</span>
+					<span className="text-[11px] text-tertiary">Receive</span>
+					<span className="text-[13px] font-medium">PathUSD</span>
 				</div>
 			</div>
 
@@ -240,8 +219,8 @@ function BridgeForm() {
 
 			{/* Error display */}
 			{bridge.error && (
-				<div className="p-3 rounded-xl bg-negative/10 border border-negative/30">
-					<p className="text-sm text-negative">{bridge.error}</p>
+				<div className="px-3 py-2.5 rounded-lg bg-negative/10 border border-negative/20">
+					<p className="text-[13px] text-negative">{bridge.error}</p>
 				</div>
 			)}
 
@@ -255,17 +234,17 @@ function BridgeForm() {
 			)}
 
 			{/* Action buttons */}
-			<div className="flex flex-col gap-2">
+			<div className="flex flex-col gap-2 pt-1">
 				{!bridge.quote && !isSuccess && (
 					<button
 						type="button"
-						onClick={handleGetQuote}
+						onClick={() => bridge.fetchQuote()}
 						disabled={!canGetQuote}
 						className={cx(
-							'flex items-center justify-center gap-2 h-14 rounded-xl text-sm font-medium transition-all',
+							'flex items-center justify-center gap-2 h-[44px] rounded-lg text-[14px] font-medium transition-all',
 							canGetQuote
-								? 'bg-accent text-white hover:bg-accent/90 cursor-pointer press-down'
-								: 'bg-accent/40 cursor-not-allowed',
+								? 'bg-accent text-white active:bg-accent/90 cursor-pointer press-down'
+								: 'bg-accent/40 text-white/60 cursor-not-allowed',
 						)}
 					>
 						{isQuoting ? (
@@ -282,13 +261,13 @@ function BridgeForm() {
 				{bridge.quote && !isSuccess && (
 					<button
 						type="button"
-						onClick={handleBridge}
+						onClick={() => bridge.executeBridge()}
 						disabled={!canBridge}
 						className={cx(
-							'flex items-center justify-center gap-2 h-14 rounded-xl text-sm font-medium transition-all',
+							'flex items-center justify-center gap-2 h-[44px] rounded-lg text-[14px] font-medium transition-all',
 							canBridge
-								? 'bg-accent text-white hover:bg-accent/90 cursor-pointer press-down'
-								: 'bg-accent/40 cursor-not-allowed',
+								? 'bg-accent text-white active:bg-accent/90 cursor-pointer press-down'
+								: 'bg-accent/40 text-white/60 cursor-not-allowed',
 						)}
 					>
 						{isBridging ? (
@@ -309,7 +288,7 @@ function BridgeForm() {
 					<button
 						type="button"
 						onClick={bridge.reset}
-						className="flex items-center justify-center gap-2 h-14 rounded-xl bg-white/10 text-sm font-medium hover:bg-white/15 cursor-pointer press-down transition-colors"
+						className="flex items-center justify-center gap-2 h-[44px] rounded-lg bg-base-alt text-[14px] font-medium active:bg-base-alt/70 cursor-pointer press-down transition-colors"
 					>
 						Bridge More
 					</button>
@@ -336,10 +315,10 @@ function ChainButton({
 			onClick={onClick}
 			disabled={disabled}
 			className={cx(
-				'flex-1 h-10 px-3 text-sm font-medium rounded-lg border transition-colors cursor-pointer press-down',
+				'flex-1 h-[36px] px-3 text-[13px] font-medium rounded-lg transition-colors cursor-pointer press-down',
 				isSelected
-					? 'bg-accent border-accent'
-					: 'bg-white/5 text-secondary hover:text-primary border-card-border hover:border-accent/50',
+					? 'bg-accent text-white'
+					: 'bg-base-alt text-secondary active:bg-base-alt/70',
 				disabled && 'opacity-50 cursor-not-allowed',
 			)}
 		>
@@ -348,43 +327,55 @@ function ChainButton({
 	)
 }
 
-function QuoteDetails({
-	quote,
-}: {
-	quote: NonNullable<ReturnType<typeof useRelayBridge>['quote']>
-}) {
+function QuoteDetails({ quote }: { quote: RelayQuote }) {
 	const { details, fees } = quote
 
 	return (
-		<div className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-card-border">
-			<div className="flex items-center justify-between">
-				<span className="text-xs text-tertiary">You send</span>
-				<span className="text-sm font-medium">
-					{details.currencyIn.amountFormatted}{' '}
-					{details.currencyIn.currency.symbol}
-				</span>
-			</div>
-			<div className="flex items-center justify-between">
-				<span className="text-xs text-tertiary">You receive</span>
-				<span className="text-sm font-medium text-positive">
-					~{details.currencyOut.amountFormatted}{' '}
-					{details.currencyOut.currency.symbol}
-				</span>
-			</div>
-			<div className="flex items-center justify-between">
-				<span className="text-xs text-tertiary">Rate</span>
-				<span className="text-xs font-mono text-secondary">{details.rate}</span>
-			</div>
-			<div className="flex items-center justify-between">
-				<span className="text-xs text-tertiary">Fees</span>
-				<span className="text-xs font-mono text-secondary">
-					~${fees.relayer.amountUsd}
-				</span>
-			</div>
-			<div className="flex items-center justify-between">
-				<span className="text-xs text-tertiary">Time estimate</span>
-				<span className="text-xs text-secondary">~{details.timeEstimate}s</span>
-			</div>
+		<div className="flex flex-col gap-2 px-3 py-2.5 rounded-lg bg-base-alt">
+			<QuoteRow
+				label="You send"
+				value={`${details.currencyIn.amountFormatted} ${details.currencyIn.currency.symbol}`}
+			/>
+			<QuoteRow
+				label="You receive"
+				value={`~${details.currencyOut.amountFormatted} ${details.currencyOut.currency.symbol}`}
+				valueClassName="text-positive"
+			/>
+			<div className="h-px bg-card-border my-0.5" />
+			<QuoteRow label="Rate" value={details.rate} mono />
+			<QuoteRow label="Fees" value={`~$${fees.relayer.amountUsd}`} mono />
+			<QuoteRow
+				label="Time estimate"
+				value={`~${details.timeEstimate}s`}
+				mono
+			/>
+		</div>
+	)
+}
+
+function QuoteRow({
+	label,
+	value,
+	valueClassName,
+	mono,
+}: {
+	label: string
+	value: string
+	valueClassName?: string
+	mono?: boolean
+}) {
+	return (
+		<div className="flex items-center justify-between">
+			<span className="text-[12px] text-tertiary">{label}</span>
+			<span
+				className={cx(
+					'text-[13px]',
+					mono ? 'font-mono text-secondary' : 'font-medium',
+					valueClassName,
+				)}
+			>
+				{value}
+			</span>
 		</div>
 	)
 }
@@ -417,21 +408,21 @@ function SuccessDisplay({
 			: 'https://sepolia.basescan.org/tx'
 
 	return (
-		<div className="flex flex-col gap-3 p-4 rounded-xl bg-positive/10 border border-positive/30">
+		<div className="flex flex-col gap-3 px-3 py-2.5 rounded-lg bg-positive/10 border border-positive/20">
 			<div className="flex items-center gap-2 text-positive">
-				<CheckIcon className="size-5" />
-				<span className="font-medium">Bridge Successful!</span>
+				<CheckIcon className="size-[16px]" />
+				<span className="text-[14px] font-medium">Bridge Successful!</span>
 			</div>
-			<div className="flex flex-col gap-2 text-sm">
+			<div className="flex flex-col gap-1.5">
 				{txHash && (
 					<a
 						href={`${explorerUrl}/${txHash}`}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="flex items-center gap-1 text-accent hover:underline"
+						className="flex items-center gap-1 text-[13px] text-accent hover:underline"
 					>
 						View origin transaction
-						<ExternalLinkIcon className="size-3" />
+						<ExternalLinkIcon className="size-[12px]" />
 					</a>
 				)}
 				{outTxHash && (
@@ -439,10 +430,10 @@ function SuccessDisplay({
 						href={`https://explore.tempo.xyz/tx/${outTxHash}`}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="flex items-center gap-1 text-accent hover:underline"
+						className="flex items-center gap-1 text-[13px] text-accent hover:underline"
 					>
 						View Tempo transaction
-						<ExternalLinkIcon className="size-3" />
+						<ExternalLinkIcon className="size-[12px]" />
 					</a>
 				)}
 			</div>
