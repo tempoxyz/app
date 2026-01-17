@@ -215,7 +215,7 @@ export function Intro() {
 				<div className="flex gap-1.5 flex-wrap isolate">
 					<a
 						ref={button1Ref}
-						className="flex items-center gap-1 px-2 py-0.5 text-[13px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
+						className="flex items-center gap-1 px-2 py-0.5 text-[13px] font-medium bg-white/20 border border-white/25 !rounded-full hover:bg-white/30 hover:border-white/40 active:bg-white/40 active:translate-y-px transition-[color,background-color,border-color]"
 						style={{
 							color: 'light-dark(#505050, white)',
 							opacity: isReady ? undefined : 0,
@@ -230,7 +230,7 @@ export function Intro() {
 					</a>
 					<a
 						ref={button2Ref}
-						className="flex items-center gap-1 px-2 py-0.5 text-[13px] font-medium bg-white/20 border border-white/25 rounded-full hover:bg-white/30 hover:border-white/40 transition-all"
+						className="flex items-center gap-1 px-2 py-0.5 text-[13px] font-medium bg-white/20 border border-white/25 !rounded-full hover:bg-white/30 hover:border-white/40 active:bg-white/40 active:translate-y-px transition-[color,background-color,border-color]"
 						style={{
 							color: 'light-dark(#505050, white)',
 							opacity: isReady ? undefined : 0,

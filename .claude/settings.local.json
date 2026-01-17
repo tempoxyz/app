@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr checks:*)",
+      "Bash(gh run view:*)",
+      "Bash(pnpm biome:*)",
+      "Bash(ANALYZE_JSON=true pnpm build:*)"
+    ]
+  }
+}
