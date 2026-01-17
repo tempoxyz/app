@@ -46,17 +46,16 @@ import { useTranslation } from 'react-i18next'
 import i18n, { isRtl } from '#lib/i18n'
 import { useAnnounce } from '#lib/a11y'
 import * as z from 'zod/mini'
+import { DONOTUSE_TOKEN_ADDRESS } from '#lib/constants'
 
 // Tokens that can be funded via the faucet
-const FAUCET_TOKEN_ADDRESSES = new Set([
-	'0x20c000000000000000000000033abb6ac7d235e5', // DONOTUSE
-])
+const FAUCET_TOKEN_ADDRESSES = new Set([DONOTUSE_TOKEN_ADDRESS])
 
 // Default faucet token data to inject when user has no assets
 // TODO: Remove priceUsd: 1 assumption once proper price oracle is implemented
 const FAUCET_TOKEN_DEFAULTS: AssetData[] = [
 	{
-		address: '0x20c000000000000000000000033abb6ac7d235e5' as `0x${string}`,
+		address: DONOTUSE_TOKEN_ADDRESS,
 		metadata: {
 			name: 'DONOTUSE',
 			symbol: 'DONOTUSE',

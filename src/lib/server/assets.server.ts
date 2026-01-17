@@ -1,15 +1,14 @@
 import { createServerFn } from '@tanstack/react-start'
 import * as IDX from 'idxs'
 import type { Address } from 'ox'
+import { DONOTUSE_TOKEN_ADDRESS } from '#lib/constants'
 
 const TIP20_DECIMALS = 6
 const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
 
 // TODO: Remove this hardcoded USD assumption once proper price oracle is implemented
 // DONOTUSE is a test faucet token that we treat as USD-denominated for demo purposes
-const HARDCODED_USD_TOKENS = new Set([
-	'0x20c000000000000000000000033abb6ac7d235e5', // DONOTUSE (presto faucet token)
-])
+const HARDCODED_USD_TOKENS = new Set([DONOTUSE_TOKEN_ADDRESS])
 
 async function getIndexSupply() {
 	let apiKey: string | undefined

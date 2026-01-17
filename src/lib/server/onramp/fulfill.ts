@@ -4,8 +4,7 @@ import { tempoDevnet, tempoModerato } from 'viem/chains'
 import { tempoActions } from 'viem/tempo'
 import { tempoPresto } from '#lib/chains'
 import { env } from 'cloudflare:workers'
-
-const DONOTUSE_TOKEN = '0x20c00000000000000000000016c6514b53947fdc' as const
+import { DONOTUSE_TOKEN_ADDRESS } from '#lib/constants'
 
 type EnvVars = {
 	VITE_TEMPO_ENV: 'presto' | 'devnet' | 'moderato'
@@ -77,13 +76,13 @@ export async function fulfillOnramp(
 	console.log('[Onramp Fulfill] Sending DONOTUSE:', {
 		recipient: recipientAddress,
 		amount: amount.toString(),
-		token: DONOTUSE_TOKEN,
+		token: DONOTUSE_TOKEN_ADDRESS,
 	})
 
 	const { receipt } = await client.token.transferSync({
 		amount,
 		to: recipientAddress,
-		token: DONOTUSE_TOKEN,
+		token: DONOTUSE_TOKEN_ADDRESS,
 	})
 
 	console.log('[Onramp Fulfill] Transfer complete:', {
