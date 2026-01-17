@@ -134,30 +134,7 @@ function RouteComponent() {
 
 	// Block timeline state
 	const [currentBlock, setCurrentBlock] = React.useState<bigint | null>(null)
-
-	// Poll for current block number (500ms for smooth single-block transitions)
-	React.useEffect(() => {
-		let mounted = true
-
-		const pollBlock = async () => {
-			try {
-				const result = await fetchCurrentBlockNumber()
-				if (mounted && result.blockNumber) {
-					setCurrentBlock(BigInt(result.blockNumber))
-				}
-			} catch {
-				// Ignore errors
-			}
-		}
-
-		pollBlock()
-		const interval = setInterval(pollBlock, 2000)
-
-		return () => {
-			mounted = false
-			clearInterval(interval)
-		}
-	}, [])
+	const lastRefetchBlock = React.useRef<bigint | null>(null)
 
 	// Sync assets with loader data when address changes
 	React.useEffect(() => {
@@ -238,6 +215,41 @@ function RouteComponent() {
 		)
 		setActivity(newActivity)
 	}, [address, tokenMetadataMap])
+
+	// Poll for current block number and refetch assets/activity on new blocks
+	React.useEffect(() => {
+		let mounted = true
+
+		const pollBlock = async () => {
+			try {
+				const result = await fetchCurrentBlockNumber()
+				if (mounted && result.blockNumber) {
+					const newBlock = BigInt(result.blockNumber)
+					setCurrentBlock(newBlock)
+
+					// Refetch assets and activity when new blocks arrive
+					if (
+						lastRefetchBlock.current !== null &&
+						newBlock > lastRefetchBlock.current
+					) {
+						refetchAssetsBalances()
+						refetchActivity()
+					}
+					lastRefetchBlock.current = newBlock
+				}
+			} catch {
+				// Ignore errors
+			}
+		}
+
+		pollBlock()
+		const interval = setInterval(pollBlock, 2000)
+
+		return () => {
+			mounted = false
+			clearInterval(interval)
+		}
+	}, [refetchAssetsBalances, refetchActivity])
 
 	// Optimistic balance adjustments: Map<tokenAddress, amountToSubtract>
 	const [optimisticAdjustments, setOptimisticAdjustments] = React.useState<
