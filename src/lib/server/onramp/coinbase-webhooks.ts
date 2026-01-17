@@ -6,27 +6,36 @@ export type OnrampTransactionEventType =
 	| 'onramp.transaction.success'
 	| 'onramp.transaction.failed'
 
-export type OnrampTransactionStatus =
-	| 'ONRAMP_TRANSACTION_STATUS_IN_PROGRESS'
-	| 'ONRAMP_TRANSACTION_STATUS_SUCCESS'
-	| 'ONRAMP_TRANSACTION_STATUS_FAILED'
+export type OnrampOrderStatus =
+	| 'ONRAMP_ORDER_STATUS_PENDING'
+	| 'ONRAMP_ORDER_STATUS_IN_PROGRESS'
+	| 'ONRAMP_ORDER_STATUS_COMPLETED'
+	| 'ONRAMP_ORDER_STATUS_FAILED'
+
+export type OnrampFee = {
+	feeAmount: string
+	feeCurrency: string
+	feeType: 'FEE_TYPE_NETWORK' | 'FEE_TYPE_EXCHANGE'
+}
 
 export type OnrampTransactionEvent = {
 	eventType: OnrampTransactionEventType
-	data: {
-		orderId: string
-		partnerUserRef: string
-		status: OnrampTransactionStatus
-		purchaseAmount: string
-		purchaseCurrency: string
-		destinationAddress: string
-		destinationNetwork: string
-		transactionHash?: string
-		cryptoAmount?: string
-		cryptoCurrency?: string
-		createdAt?: string
-		updatedAt?: string
-	}
+	orderId: string
+	partnerUserRef: string
+	status: OnrampOrderStatus
+	purchaseAmount: string
+	purchaseCurrency: string
+	destinationAddress: string
+	destinationNetwork: string
+	paymentMethod: string
+	paymentCurrency: string
+	paymentSubtotal: string
+	paymentTotal: string
+	exchangeRate: string
+	fees: OnrampFee[]
+	txHash?: string
+	createdAt: string
+	updatedAt: string
 }
 
 export async function handleCoinbaseWebhook(
@@ -58,19 +67,25 @@ export async function handleCoinbaseWebhook(
 		return new Response('Invalid signature', { status: 401 })
 	}
 
-	let event: OnrampTransactionEvent
+	let parsed: unknown
 	try {
-		event = JSON.parse(body) as OnrampTransactionEvent
+		parsed = JSON.parse(body)
 	} catch {
 		console.error('[Coinbase Webhook] Failed to parse webhook body')
 		return new Response('Invalid JSON', { status: 400 })
 	}
 
+	const event = parsed as OnrampTransactionEvent
+	if (!event.orderId) {
+		console.error('[Coinbase Webhook] Missing orderId in payload:', parsed)
+		return new Response('Invalid payload structure', { status: 400 })
+	}
+
 	console.log('[Coinbase Webhook] Received event:', {
 		eventType: event.eventType,
-		orderId: event.data.orderId,
-		status: event.data.status,
-		destinationAddress: event.data.destinationAddress,
+		orderId: event.orderId,
+		status: event.status,
+		destinationAddress: event.destinationAddress,
 	})
 
 	await processWebhookEvent(event)
@@ -173,33 +188,34 @@ function timingSafeEqual(a: string, b: string): boolean {
 async function processWebhookEvent(
 	event: OnrampTransactionEvent,
 ): Promise<void> {
-	const { eventType, data } = event
+	const { eventType } = event
 
 	switch (eventType) {
 		case 'onramp.transaction.created':
-			console.log('[Coinbase Webhook] Transaction created:', data.orderId)
+			console.log('[Coinbase Webhook] Transaction created:', event.orderId)
 			break
 
 		case 'onramp.transaction.updated':
 			console.log('[Coinbase Webhook] Transaction updated:', {
-				orderId: data.orderId,
-				status: data.status,
+				orderId: event.orderId,
+				status: event.status,
 			})
 			break
 
 		case 'onramp.transaction.success':
 			console.log('[Coinbase Webhook] Transaction succeeded:', {
-				orderId: data.orderId,
-				destinationAddress: data.destinationAddress,
-				cryptoAmount: data.cryptoAmount,
-				transactionHash: data.transactionHash,
+				orderId: event.orderId,
+				destinationAddress: event.destinationAddress,
+				purchaseAmount: event.purchaseAmount,
+				purchaseCurrency: event.purchaseCurrency,
+				txHash: event.txHash,
 			})
 			break
 
 		case 'onramp.transaction.failed':
 			console.error('[Coinbase Webhook] Transaction failed:', {
-				orderId: data.orderId,
-				destinationAddress: data.destinationAddress,
+				orderId: event.orderId,
+				destinationAddress: event.destinationAddress,
 			})
 			break
 

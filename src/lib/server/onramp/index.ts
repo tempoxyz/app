@@ -1,7 +1,8 @@
 export { createOnrampOrder } from './coinbase-api'
 export {
 	handleCoinbaseWebhook,
+	type OnrampFee,
+	type OnrampOrderStatus,
 	type OnrampTransactionEvent,
 	type OnrampTransactionEventType,
-	type OnrampTransactionStatus,
 } from './coinbase-webhooks'
