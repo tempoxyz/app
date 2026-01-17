@@ -54,13 +54,7 @@ export default defineConfig((config) => {
 				client: { entry: './src/index.client.tsx' },
 			}),
 			react(),
-			process.env.ANALYZE_JSON === 'true' &&
-				visualizer({
-					filename: 'stats.json',
-					template: 'raw-data',
-					gzipSize: true,
-					brotliSize: true,
-				}),
+			process.env.ANALYZE_JSON === 'true' && clientOnlyVisualizer(),
 		].filter(Boolean),
 
 		server: {
@@ -110,6 +104,24 @@ function vitePluginAlias(): Plugin {
 			if (id.startsWith('#tanstack')) return
 			if (!id.startsWith('#')) return
 			return this.resolve(`${__dirname}/src/${id.slice(1)}`)
+		},
+	}
+}
+
+function clientOnlyVisualizer(): Plugin {
+	const viz = visualizer({
+		filename: 'stats.json',
+		template: 'raw-data',
+		gzipSize: true,
+		brotliSize: true,
+	})
+	return {
+		name: 'client-only-visualizer',
+		generateBundle(options, bundle) {
+			if (options.dir?.includes('/client')) {
+				// biome-ignore lint/style/noNonNullAssertion: viz.generateBundle exists
+				return viz.generateBundle!.call(this, options, bundle)
+			}
 		},
 	}
 }
