@@ -21,8 +21,10 @@ import ArrowRightIcon from '~icons/lucide/arrow-right'
 import ExternalLinkIcon from '~icons/lucide/external-link'
 import WalletIcon from '~icons/lucide/wallet'
 import LogOutIcon from '~icons/lucide/log-out'
+import { isAddress } from 'viem'
 import { createServerFn } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
+import * as z from 'zod/mini'
 
 const tempoWagmiCookie = createServerFn().handler(() => {
 	const cookie = getCookie('wagmi.store')
@@ -33,23 +35,26 @@ const tempoWagmiCookie = createServerFn().handler(() => {
 			if (connection.connector.type !== 'webAuthn') continue
 			const address = connection.accounts.at(0)
 			if (!address) continue
-			return { tempoAddress: address, has: true }
+			return { address, has: true }
 		}
-		return { tempoAddress: null, has: false }
+		return { address: null, has: false }
 	} catch (error) {
 		console.error(error)
-		return { tempoAddress: null, has: false }
+		return { address: null, has: false }
 	}
 })
 
 export const Route = createFileRoute('/_bridge/bridge')({
+	validateSearch: z.object({ address: z.string() }),
 	component: BridgeRoute,
-	loader: () => tempoWagmiCookie(),
+	loaderDeps: ({ search }) => [search.address],
+	loader: ({ deps: [address] }) =>
+		isAddress(address) ? { address } : tempoWagmiCookie(),
 })
 
 function BridgeRoute() {
 	const { isConnected } = useConnection()
-	const { tempoAddress } = Route.useLoaderData()
+	const { address: tempoAddress } = Route.useLoaderData()
 
 	return (
 		<div className="flex flex-col gap-2.5 w-full max-w-lg mx-auto px-4 py-6">
