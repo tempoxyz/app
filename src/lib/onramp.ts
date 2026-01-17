@@ -132,7 +132,13 @@ export function useOnrampOrder(props: UseOnrampOrderProps) {
 				},
 			})
 
-			setIframeUrl(result.url)
+			let iframeUrl = result.url
+			if (result.sandbox) {
+				const url = new URL(result.url)
+				url.searchParams.set('useApplePaySandbox', 'true')
+				iframeUrl = url.toString()
+			}
+			setIframeUrl(iframeUrl)
 			return result
 		},
 	})
