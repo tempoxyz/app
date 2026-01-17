@@ -23,7 +23,10 @@ export type BridgeStatus =
 	| 'success'
 	| 'error'
 
-export function useRelayBridge(userAddress: Address | undefined) {
+export function useRelayBridge(
+	userAddress: Address | undefined,
+	recipient?: Address,
+) {
 	const config = useConfig()
 	const currentChainId = useChainId()
 	const { mutateAsync: switchChainAsync } = useSwitchChain()
@@ -44,6 +47,7 @@ export function useRelayBridge(userAddress: Address | undefined) {
 
 			return getRelayQuote({
 				user: userAddress,
+				recipient: recipient ?? userAddress,
 				originChainId: selectedChain.chainId,
 				originCurrency: selectedChain.usdc,
 				destinationChainId: TEMPO_MODERATO_CHAIN_ID,
@@ -92,9 +96,8 @@ export function useRelayBridge(userAddress: Address | undefined) {
 			if (!userAddress) throw new Error('Wallet not connected')
 
 			const depositStep = quote.steps.find((s) => s.id === 'deposit')
-			if (!depositStep?.items[0]?.data) {
+			if (!depositStep?.items[0]?.data)
 				throw new Error('Invalid quote: no deposit step')
-			}
 
 			const txData = depositStep.items[0].data
 

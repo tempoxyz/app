@@ -1,6 +1,8 @@
 import * as React from 'react'
 import {
 	type Connector,
+	deserialize,
+	type State,
 	useConnect,
 	useConnection,
 	useConnectors,
@@ -19,18 +21,44 @@ import ArrowRightIcon from '~icons/lucide/arrow-right'
 import ExternalLinkIcon from '~icons/lucide/external-link'
 import WalletIcon from '~icons/lucide/wallet'
 import LogOutIcon from '~icons/lucide/log-out'
+import { createServerFn } from '@tanstack/react-start'
+import { getCookie } from '@tanstack/react-start/server'
+
+const tempoWagmiCookie = createServerFn().handler(() => {
+	const cookie = getCookie('wagmi.store')
+
+	try {
+		const deserialized = deserialize<{ state: State }>(cookie || '{}')
+		for (const [_, connection] of deserialized.state.connections) {
+			if (connection.connector.type !== 'webAuthn') continue
+			const address = connection.accounts.at(0)
+			if (!address) continue
+			return { tempoAddress: address, has: true }
+		}
+		return { tempoAddress: null, has: false }
+	} catch (error) {
+		console.error(error)
+		return { tempoAddress: null, has: false }
+	}
+})
 
 export const Route = createFileRoute('/_bridge/bridge')({
 	component: BridgeRoute,
+	loader: () => tempoWagmiCookie(),
 })
 
 function BridgeRoute() {
 	const { isConnected } = useConnection()
+	const { tempoAddress } = Route.useLoaderData()
 
 	return (
 		<div className="flex flex-col gap-2.5 w-full max-w-lg mx-auto px-4 py-6">
 			<Section title="Bridge to Tempo" defaultOpen>
-				{isConnected ? <BridgeForm /> : <WalletOptions />}
+				{isConnected ? (
+					<BridgeForm tempoAddress={tempoAddress} />
+				) : (
+					<WalletOptions />
+				)}
 			</Section>
 		</div>
 	)
@@ -92,10 +120,11 @@ function WalletOption({
 	)
 }
 
-function BridgeForm() {
+function BridgeForm({ tempoAddress }: { tempoAddress: `0x${string}` | null }) {
 	const { address } = useConnection()
 	const { mutate: disconnect } = useDisconnect()
-	const bridge = useRelayBridge(address)
+	const recipient = tempoAddress ?? address
+	const bridge = useRelayBridge(address, recipient)
 
 	const { data: usdcBalanceRaw } = useReadContract({
 		address: bridge.selectedChain.usdc,
@@ -136,8 +165,8 @@ function BridgeForm() {
 			{/* Connected wallet row */}
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2">
-					<div className="flex items-center justify-center size-[28px] rounded-md bg-base-alt">
-						<WalletIcon className="size-[14px] text-tertiary" />
+					<div className="flex items-center justify-center size-3.5 rounded-md bg-base-alt">
+						<WalletIcon className="size-1.75 text-tertiary" />
 					</div>
 					<span className="text-[13px] font-mono text-secondary">
 						{address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}
@@ -148,7 +177,7 @@ function BridgeForm() {
 					onClick={() => disconnect()}
 					className="flex items-center gap-1.5 text-[12px] text-tertiary hover:text-primary transition-colors cursor-pointer"
 				>
-					<LogOutIcon className="size-[12px]" />
+					<LogOutIcon className="size-1.5" />
 					Disconnect
 				</button>
 			</div>
@@ -195,7 +224,7 @@ function BridgeForm() {
 					onChange={handleAmountChange}
 					disabled={isBridging}
 					className={cx(
-						'h-[44px] px-3 rounded-lg bg-base-alt text-[15px] font-mono',
+						'h-5.5 px-3 rounded-lg bg-base-alt text-[15px] font-mono',
 						'placeholder:text-tertiary focus:outline-none focus-ring transition-colors',
 						isBridging && 'opacity-50 cursor-not-allowed',
 					)}
@@ -203,15 +232,25 @@ function BridgeForm() {
 			</div>
 
 			{/* Destination info */}
-			<div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-base-alt">
-				<div className="flex flex-col gap-0.5">
-					<span className="text-[11px] text-tertiary">To</span>
-					<span className="text-[13px] font-medium">Tempo Testnet</span>
+			<div className="flex flex-col gap-2 px-3 py-2.5 rounded-lg bg-base-alt">
+				<div className="flex items-center justify-between">
+					<div className="flex flex-col gap-0.5">
+						<span className="text-[11px] text-tertiary">To</span>
+						<span className="text-[13px] font-medium">Tempo Testnet</span>
+					</div>
+					<div className="flex flex-col gap-0.5 items-end">
+						<span className="text-[11px] text-tertiary">Receive</span>
+						<span className="text-[13px] font-medium">PathUSD</span>
+					</div>
 				</div>
-				<div className="flex flex-col gap-0.5 items-end">
-					<span className="text-[11px] text-tertiary">Receive</span>
-					<span className="text-[13px] font-medium">PathUSD</span>
-				</div>
+				{recipient && (
+					<div className="flex items-center justify-between pt-1 border-t border-card-border">
+						<span className="text-[11px] text-tertiary">Recipient</span>
+						<span className="text-[12px] font-mono text-secondary">
+							{`${recipient.slice(0, 6)}...${recipient.slice(-4)}`}
+						</span>
+					</div>
+				)}
 			</div>
 
 			{/* Quote display */}
@@ -241,9 +280,9 @@ function BridgeForm() {
 						onClick={() => bridge.fetchQuote()}
 						disabled={!canGetQuote}
 						className={cx(
-							'flex items-center justify-center gap-2 h-[44px] rounded-lg text-[14px] font-medium transition-all',
+							'flex items-center justify-center gap-2 h-5.5 rounded-lg text-[14px] font-medium transition-all',
 							canGetQuote
-								? 'bg-accent text-white active:bg-accent/90 cursor-pointer press-down'
+								? 'bg-accent active:bg-accent/90 cursor-pointer press-down'
 								: 'bg-accent/40 text-white/60 cursor-not-allowed',
 						)}
 					>
@@ -264,10 +303,10 @@ function BridgeForm() {
 						onClick={() => bridge.executeBridge()}
 						disabled={!canBridge}
 						className={cx(
-							'flex items-center justify-center gap-2 h-[44px] rounded-lg text-[14px] font-medium transition-all',
+							'flex items-center justify-center gap-2 h-5.5 rounded-lg text-[14px] font-medium transition-all',
 							canBridge
 								? 'bg-accent text-white active:bg-accent/90 cursor-pointer press-down'
-								: 'bg-accent/40 text-white/60 cursor-not-allowed',
+								: 'bg-accent/40 cursor-not-allowed',
 						)}
 					>
 						{isBridging ? (
@@ -288,7 +327,7 @@ function BridgeForm() {
 					<button
 						type="button"
 						onClick={bridge.reset}
-						className="flex items-center justify-center gap-2 h-[44px] rounded-lg bg-base-alt text-[14px] font-medium active:bg-base-alt/70 cursor-pointer press-down transition-colors"
+						className="flex items-center justify-center gap-2 h-5.5 rounded-lg bg-base-alt text-[14px] font-medium active:bg-base-alt/70 cursor-pointer press-down transition-colors"
 					>
 						Bridge More
 					</button>
@@ -315,7 +354,7 @@ function ChainButton({
 			onClick={onClick}
 			disabled={disabled}
 			className={cx(
-				'flex-1 h-[36px] px-3 text-[13px] font-medium rounded-lg transition-colors cursor-pointer press-down',
+				'flex-1 h-4.5 px-3 text-[13px] font-medium rounded-lg transition-colors cursor-pointer press-down',
 				isSelected
 					? 'bg-accent text-white'
 					: 'bg-base-alt text-secondary active:bg-base-alt/70',

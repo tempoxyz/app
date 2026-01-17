@@ -8,7 +8,6 @@ import {
 } from 'wagmi/actions'
 
 export const RELAY_TESTNETS_API = 'https://api.testnets.relay.link'
-export const TEMPO_PRIVATE_CHAIN_ID = '6f255b8f-64e3-4a87-bb8f-1f984f20f763'
 
 export const TEMPO_MODERATO_CHAIN_ID = tempoModerato.id
 export const PATH_USD_ADDRESS =
@@ -105,7 +104,6 @@ export async function getRelayQuote(
 			tradeType: params.tradeType ?? 'EXACT_INPUT',
 			referrer: params.referrer ?? 'tempo.xyz',
 			useExternalLiquidity: false,
-			privateChainsToInclude: [TEMPO_PRIVATE_CHAIN_ID],
 		}),
 	})
 
@@ -133,7 +131,7 @@ export async function getRelayIntentStatus(
 	requestId: string,
 ): Promise<RelayIntentStatus> {
 	const response = await fetch(
-		`${RELAY_TESTNETS_API}/intents/status/v3?requestId=${requestId}&privateChainsToInclude=${TEMPO_PRIVATE_CHAIN_ID}`,
+		`${RELAY_TESTNETS_API}/intents/status/v3?requestId=${requestId}`,
 	)
 
 	if (!response.ok) {
