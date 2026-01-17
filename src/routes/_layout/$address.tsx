@@ -501,7 +501,7 @@ function RouteComponent() {
 						<Link
 							to="/bridge"
 							search={{ address }}
-							className="text-lg font-medium text-accent hover:text-accent/80 cursor-pointer transition-colors"
+							className="w-fit text-lg font-medium text-accent hover:text-accent/80 cursor-pointer transition-colors"
 						>
 							Bridge to Tempo
 						</Link>
