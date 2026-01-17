@@ -199,8 +199,8 @@ export function AddFunds(props: AddFunds.Props) {
 
 			{createOrder.error && (
 				<p className="text-[12px] text-negative">
-					Amount must be between ${MIN_AMOUNT} and $
-					{MAX_AMOUNT.toLocaleString()}
+					{createOrder.error.message ||
+						`Amount must be between $${MIN_AMOUNT} and $${MAX_AMOUNT.toLocaleString()}`}
 				</p>
 			)}
 		</div>
