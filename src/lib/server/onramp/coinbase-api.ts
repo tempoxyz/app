@@ -20,6 +20,7 @@ export type CreateOnrampOrderResult = {
 	orderId: string
 	type: 'apple' | 'card'
 	url: string
+	sandbox: boolean
 }
 
 const paymentLinkTypeMap: Record<string, 'apple' | 'card'> = {
@@ -118,5 +119,6 @@ export async function createOnrampOrder(
 		orderId: data.order.orderId,
 		type,
 		url: data.paymentLink.url,
+		sandbox,
 	}
 }
