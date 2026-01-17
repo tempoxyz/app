@@ -7,12 +7,14 @@ on:
       - "src/**"
       - "package.json"
       - "pnpm-lock.yaml"
+      - "vite.config.ts"
   pull_request:
     types: [opened, reopened, synchronize]
     paths:
       - "src/**"
       - "package.json"
       - "pnpm-lock.yaml"
+      - "vite.config.ts"
 
 concurrency:
   group: bundle-size-${{ github.head_ref || github.ref }}
