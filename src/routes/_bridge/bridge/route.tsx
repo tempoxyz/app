@@ -46,18 +46,21 @@ const tempoWagmiCookie = createServerFn().handler(() => {
 
 export const Route = createFileRoute('/_bridge/bridge')({
 	validateSearch: z.object({ address: z.string() }),
-	component: BridgeRoute,
+	component: RouteComponent,
 	loaderDeps: ({ search }) => [search.address],
 	loader: ({ deps: [address] }) =>
 		isAddress(address) ? { address } : tempoWagmiCookie(),
 })
 
-function BridgeRoute() {
+function RouteComponent() {
 	const { isConnected } = useConnection()
 	const { address: tempoAddress } = Route.useLoaderData()
 
 	return (
 		<div className="flex flex-col gap-2.5 w-full max-w-lg mx-auto px-4 py-6">
+			<div className="px-1">
+				<p>Testnet only (42431). Mainnet coming soon.</p>
+			</div>
 			<Section title="Bridge to Tempo" defaultOpen>
 				{isConnected ? (
 					<BridgeForm tempoAddress={tempoAddress} />
