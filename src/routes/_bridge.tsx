@@ -1,13 +1,13 @@
 import * as React from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { deserialize, type State, WagmiProvider } from 'wagmi'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 import {
 	getBridgeWagmiConfig,
 	getBridgeWagmiStateSSR,
 } from './_bridge/-/wagmi.config'
-import { Layout } from '#comps/Layout.tsx'
 import { Intro } from '#comps/Intro.tsx'
+import { Layout } from '#comps/Layout.tsx'
 
 export const Route = createFileRoute('/_bridge')({
 	loader: () => getBridgeWagmiStateSSR(),

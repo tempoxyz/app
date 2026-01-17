@@ -7,29 +7,30 @@ import {
 	createStorage,
 	cookieToInitialState,
 } from 'wagmi'
-import { tempoPresto } from '#lib/chains.ts'
-import { base, mainnet } from 'wagmi/chains'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeader } from '@tanstack/react-start/server'
-import { coinbaseWallet, walletConnect } from 'wagmi/connectors'
+import { coinbaseWallet } from 'wagmi/connectors'
+import { sepolia, tempoModerato, baseSepolia } from 'wagmi/chains'
+
+const TEMPO_TESTNET_PATH_USD = '0x20c0000000000000000000000000000000000000'
 
 export function getBridgeWagmiConfig() {
 	return createConfig({
 		ssr: true,
-		chains: [mainnet, base, tempoPresto],
-		connectors: [
-			injected(),
-			coinbaseWallet({ appName: 'Tempo Bridge' }),
-			walletConnect({
-				projectId: 'fa6fa7bb341b84d563e665cbd8f91e65',
+		chains: [
+			sepolia,
+			baseSepolia,
+			tempoModerato.extend({
+				feeToken: TEMPO_TESTNET_PATH_USD,
 			}),
 		],
+		connectors: [injected(), coinbaseWallet({ appName: 'Tempo Bridge' })],
 		multiInjectedProviderDiscovery: true,
 		storage: createStorage({ storage: cookieStorage, key: 'wagmi-bridge' }),
 		transports: {
-			[base.id]: http(),
-			[mainnet.id]: http(),
-			[tempoPresto.id]: http(),
+			[sepolia.id]: http(),
+			[baseSepolia.id]: http(),
+			[tempoModerato.id]: http(),
 		},
 	})
 }

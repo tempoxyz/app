@@ -11,6 +11,7 @@ import {
 export function useOnrampStatus(address: string | undefined) {
 	return useQuery({
 		queryKey: ['onramp', 'status', address],
+		// biome-ignore lint/style/noNonNullAssertion: _
 		queryFn: () => getOnrampStatusFn({ data: { address: address! } }),
 		enabled: !!address,
 		staleTime: 30 * 1000,
@@ -20,6 +21,7 @@ export function useOnrampStatus(address: string | undefined) {
 export function useContactInfo(address: string | undefined) {
 	return useQuery({
 		queryKey: ['onramp', 'contact', address],
+		// biome-ignore lint/style/noNonNullAssertion: _
 		queryFn: () => getContactInfoFn({ data: { address: address! } }),
 		enabled: !!address,
 		staleTime: 30 * 1000,

@@ -479,7 +479,7 @@ function RouteComponent() {
 					)}
 				</div>
 				<div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4 mb-5">
-					<div className="flex-1 min-w-0 flex flex-col gap-2 order-2 sm:order-1">
+					<div className="flex-1 min-w-0 flex flex-col gap-1 order-2 sm:order-1">
 						<div className="flex items-baseline gap-2">
 							<LottoNumber
 								value={formatUsd(totalValue)}
@@ -487,6 +487,13 @@ function RouteComponent() {
 								className="text-[36px] sm:text-[40px] md:text-[56px] font-sans font-semibold text-primary -tracking-[0.02em] tabular-nums"
 							/>
 						</div>
+						<Link
+							to="/bridge"
+							search={{ address }}
+							className="text-lg font-medium text-accent hover:text-accent/80 cursor-pointer transition-colors"
+						>
+							Bridge to Tempo
+						</Link>
 						<div className="flex items-center gap-1.5 max-w-full">
 							<button
 								type="button"
