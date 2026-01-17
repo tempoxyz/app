@@ -27,7 +27,7 @@ import { getCookie } from '@tanstack/react-start/server'
 const tempoWagmiCookie = createServerFn().handler(() => {
 	const cookie = getCookie('wagmi.store')
 
-    try {
+	try {
 		const deserialized = deserialize<{ state: State }>(cookie || '{}')
 		for (const [_, connection] of deserialized.state.connections) {
 			if (connection.connector.type !== 'webAuthn') continue
