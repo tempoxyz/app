@@ -14,6 +14,7 @@ import { Route as BridgeRouteImport } from './routes/_bridge'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAddressRouteImport } from './routes/_layout/$address'
 import { Route as BridgeBridgeRouteRouteImport } from './routes/_bridge/bridge/route'
+import { Route as ApiWebhooksCoinbaseRouteImport } from './routes/api/webhooks/coinbase'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -38,16 +39,23 @@ const BridgeBridgeRouteRoute = BridgeBridgeRouteRouteImport.update({
   path: '/bridge',
   getParentRoute: () => BridgeRoute,
 } as any)
+const ApiWebhooksCoinbaseRoute = ApiWebhooksCoinbaseRouteImport.update({
+  id: '/api/webhooks/coinbase',
+  path: '/api/webhooks/coinbase',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/bridge': typeof BridgeBridgeRouteRoute
   '/$address': typeof LayoutAddressRoute
   '/': typeof LayoutIndexRoute
+  '/api/webhooks/coinbase': typeof ApiWebhooksCoinbaseRoute
 }
 export interface FileRoutesByTo {
   '/bridge': typeof BridgeBridgeRouteRoute
   '/$address': typeof LayoutAddressRoute
   '/': typeof LayoutIndexRoute
+  '/api/webhooks/coinbase': typeof ApiWebhooksCoinbaseRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -56,12 +64,13 @@ export interface FileRoutesById {
   '/_bridge/bridge': typeof BridgeBridgeRouteRoute
   '/_layout/$address': typeof LayoutAddressRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/api/webhooks/coinbase': typeof ApiWebhooksCoinbaseRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/bridge' | '/$address' | '/'
+  fullPaths: '/bridge' | '/$address' | '/' | '/api/webhooks/coinbase'
   fileRoutesByTo: FileRoutesByTo
-  to: '/bridge' | '/$address' | '/'
+  to: '/bridge' | '/$address' | '/' | '/api/webhooks/coinbase'
   id:
     | '__root__'
     | '/_bridge'
@@ -69,11 +78,13 @@ export interface FileRouteTypes {
     | '/_bridge/bridge'
     | '/_layout/$address'
     | '/_layout/'
+    | '/api/webhooks/coinbase'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   BridgeRoute: typeof BridgeRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
+  ApiWebhooksCoinbaseRoute: typeof ApiWebhooksCoinbaseRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -113,6 +124,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BridgeBridgeRouteRouteImport
       parentRoute: typeof BridgeRoute
     }
+    '/api/webhooks/coinbase': {
+      id: '/api/webhooks/coinbase'
+      path: '/api/webhooks/coinbase'
+      fullPath: '/api/webhooks/coinbase'
+      preLoaderRoute: typeof ApiWebhooksCoinbaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -143,6 +161,7 @@ const LayoutRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   BridgeRoute: BridgeRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
+  ApiWebhooksCoinbaseRoute: ApiWebhooksCoinbaseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
