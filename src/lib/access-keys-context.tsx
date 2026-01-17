@@ -109,9 +109,7 @@ export function AccessKeysProvider({
 
 		try {
 			// Fetch events from IndexSupply via server function
-			const eventData = await fetchAccessKeyEvents({
-				data: { account: checksummedAddress },
-			})
+			const eventData = await fetchAccessKeyEvents(checksummedAddress)
 
 			if (!eventData) {
 				console.error('[AccessKeysProvider] Failed to fetch events')

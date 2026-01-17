@@ -1,4 +1,5 @@
-import { createServerFn } from '@tanstack/react-start'
+'use server'
+
 import { decodeAbiParameters } from 'viem'
 import type { Address } from 'ox'
 import {
@@ -6,14 +7,46 @@ import {
 	type KnownEvent,
 	type GetTokenMetadataFn,
 } from '#comps/activity'
+import { convertRpcReceiptToViemReceipt } from '#lib/receipts'
 
-export type ApiTransaction = {
+type ApiTransaction = {
 	hash: string
 	from: string
 	to: string | null
 	value: string
 	blockNumber: string
 	timestamp?: string
+}
+
+const TEMPO_ENV =
+	typeof process !== 'undefined' ? process.env.VITE_TEMPO_ENV : undefined
+
+async function getTempoEnv(): Promise<string | undefined> {
+	try {
+		const { env } = await import('cloudflare:workers')
+		return env.VITE_TEMPO_ENV as string | undefined
+	} catch {
+		return TEMPO_ENV
+	}
+}
+
+function getRpcUrl(tempoEnv: string | undefined): string {
+	return tempoEnv === 'moderato'
+		? 'https://rpc.tempo.xyz'
+		: 'https://rpc.presto.tempo.xyz'
+}
+
+function shouldUseAuth(tempoEnv: string | undefined): boolean {
+	return tempoEnv !== 'moderato'
+}
+
+async function getRpcAuth(): Promise<string | undefined> {
+	try {
+		const { env } = await import('cloudflare:workers')
+		return env.PRESTO_RPC_AUTH as string | undefined
+	} catch {
+		return undefined
+	}
 }
 
 export type RpcLog = {
@@ -50,235 +83,141 @@ export type ActivityItem = {
 	blockNumber?: bigint
 }
 
-const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
+export async function faucetFundAddress(address: string) {
+	const auth = await getRpcAuth()
+	if (!auth) {
+		return { success: false as const, error: 'Auth not configured' }
+	}
 
-async function getTempoEnv(): Promise<string | undefined> {
 	try {
-		const { env } = await import('cloudflare:workers')
-		return env.VITE_TEMPO_ENV as string | undefined
-	} catch {
-		return TEMPO_ENV
+		const res = await fetch('https://rpc.presto.tempo.xyz', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Basic ${btoa(auth)}`,
+			},
+			body: JSON.stringify({
+				jsonrpc: '2.0',
+				id: 1,
+				method: 'tempo_fundAddress',
+				params: [address],
+			}),
+		})
+
+		if (!res.ok) {
+			return { success: false as const, error: `HTTP ${res.status}` }
+		}
+
+		const result = (await res.json()) as {
+			result?: unknown
+			error?: { message: string }
+		}
+		if (result.error) {
+			return { success: false as const, error: result.error.message }
+		}
+		return { success: true as const }
+	} catch (e) {
+		return { success: false as const, error: String(e) }
 	}
 }
 
-function getRpcUrl(tempoEnv: string | undefined): string {
-	return tempoEnv === 'moderato'
-		? 'https://rpc.tempo.xyz'
-		: 'https://rpc.presto.tempo.xyz'
-}
-
-function shouldUseAuth(tempoEnv: string | undefined): boolean {
-	return tempoEnv !== 'moderato'
-}
-
-export const faucetFundAddress = createServerFn({ method: 'POST' })
-	.inputValidator((data: { address: string }) => data)
-	.handler(async ({ data }) => {
-		const { address } = data
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		if (!auth) {
-			return { success: false as const, error: 'Auth not configured' }
-		}
-
-		try {
-			const res = await fetch('https://rpc.presto.tempo.xyz', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Basic ${btoa(auth)}`,
-				},
-				body: JSON.stringify({
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'tempo_fundAddress',
-					params: [address],
-				}),
-			})
-
-			if (!res.ok) {
-				return { success: false as const, error: `HTTP ${res.status}` }
-			}
-
-			const result = (await res.json()) as {
-				result?: unknown
-				error?: { message: string }
-			}
-			if (result.error) {
-				return { success: false as const, error: result.error.message }
-			}
-			return { success: true as const }
-		} catch (e) {
-			return { success: false as const, error: String(e) }
-		}
-	})
-
-export const fetchTransactionReceipts = createServerFn({ method: 'POST' })
-	.inputValidator((data: { hashes: string[] }) => data)
-	.handler(async ({ data }) => {
-		const { hashes } = data
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		const batchRequest = hashes.map((hash, i) => ({
-			jsonrpc: '2.0',
-			id: i + 1,
-			method: 'eth_getTransactionReceipt',
-			params: [hash],
-		}))
-
-		try {
-			const response = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(batchRequest),
-			})
-			if (!response.ok) {
-				return { receipts: hashes.map((hash) => ({ hash, receipt: null })) }
-			}
-			const results = (await response.json()) as Array<{
-				id: number
-				result?: RpcTransactionReceipt
-			}>
-
-			const receipts = hashes.map((hash, i) => {
-				const result = results.find((r) => r.id === i + 1)
-				return { hash, receipt: result?.result ?? null }
-			})
-			return { receipts }
-		} catch {
-			return { receipts: hashes.map((hash) => ({ hash, receipt: null })) }
-		}
-	})
-
-export const fetchBlockTimestamps = createServerFn({ method: 'POST' })
-	.inputValidator((data: { blockNumbers: string[] }) => data)
-	.handler(async ({ data }) => {
-		const { blockNumbers } = data
-		if (blockNumbers.length === 0) return { timestamps: {} }
-
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		try {
-			const batchRequest = blockNumbers.map((blockNum, i) => ({
-				jsonrpc: '2.0',
-				id: i + 1,
-				method: 'eth_getBlockByNumber',
-				params: [blockNum, false],
-			}))
-
-			const response = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(batchRequest),
-			})
-
-			if (!response.ok) return { timestamps: {} }
-
-			const results = (await response.json()) as Array<{
-				id: number
-				result?: { timestamp?: string }
-			}>
-
-			const timestamps: Record<string, number> = {}
-			for (let i = 0; i < blockNumbers.length; i++) {
-				const result = results.find((r) => r.id === i + 1)
-				if (result?.result?.timestamp) {
-					timestamps[blockNumbers[i]] =
-						Number.parseInt(result.result.timestamp, 16) * 1000
-				}
-			}
-			return { timestamps }
-		} catch {
-			return { timestamps: {} }
-		}
-	})
-
-export const fetchBlockData = createServerFn({ method: 'GET' })
-	.inputValidator((data: { fromBlock: string; count: number }) => data)
-	.handler(async ({ data }) => {
-		const { fromBlock, count } = data
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		const startBlock = BigInt(fromBlock)
-		const requests = []
-		for (let i = 0; i < count; i++) {
-			const blockNum = startBlock - BigInt(i)
-			if (blockNum > 0n) {
-				requests.push({
-					jsonrpc: '2.0',
-					id: i + 1,
-					method: 'eth_getBlockByNumber',
-					params: [`0x${blockNum.toString(16)}`, false],
-				})
-			}
-		}
-
-		try {
-			const response = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(requests),
-			})
-			if (response.ok) {
-				const results = (await response.json()) as Array<{
-					id: number
-					result?: { number: string; transactions: string[] }
-				}>
-				const blocks: Array<{ blockNumber: string; txCount: number }> = []
-				for (const r of results) {
-					if (r.result) {
-						blocks.push({
-							blockNumber: r.result.number,
-							txCount: r.result.transactions?.length ?? 0,
-						})
-					}
-				}
-				return { blocks }
-			}
-			return { blocks: [] }
-		} catch {
-			return { blocks: [] }
-		}
-	})
-
-export const fetchCurrentBlockNumber = createServerFn({
-	method: 'GET',
-}).handler(async () => {
+export async function fetchTransactionReceipts(hashes: string[]) {
 	const tempoEnv = await getTempoEnv()
 	const rpcUrl = getRpcUrl(tempoEnv)
 
-	const { env } = await import('cloudflare:workers')
-	const auth = env.PRESTO_RPC_AUTH as string | undefined
+	const auth = await getRpcAuth()
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	}
+	if (auth && shouldUseAuth(tempoEnv)) {
+		headers.Authorization = `Basic ${btoa(auth)}`
+	}
+
+	const batchRequest = hashes.map((hash, i) => ({
+		jsonrpc: '2.0',
+		id: i + 1,
+		method: 'eth_getTransactionReceipt',
+		params: [hash],
+	}))
+
+	try {
+		const response = await fetch(rpcUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(batchRequest),
+		})
+		if (!response.ok) {
+			return { receipts: hashes.map((hash) => ({ hash, receipt: null })) }
+		}
+		const results = (await response.json()) as Array<{
+			id: number
+			result?: RpcTransactionReceipt
+		}>
+
+		const receipts = hashes.map((hash, i) => {
+			const result = results.find((r) => r.id === i + 1)
+			return { hash, receipt: result?.result ?? null }
+		})
+		return { receipts }
+	} catch {
+		return { receipts: hashes.map((hash) => ({ hash, receipt: null })) }
+	}
+}
+
+export async function fetchBlockTimestamps(blockNumbers: string[]) {
+	if (blockNumbers.length === 0) return { timestamps: {} }
+
+	const tempoEnv = await getTempoEnv()
+	const rpcUrl = getRpcUrl(tempoEnv)
+
+	const auth = await getRpcAuth()
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	}
+	if (auth && shouldUseAuth(tempoEnv)) {
+		headers.Authorization = `Basic ${btoa(auth)}`
+	}
+
+	try {
+		const batchRequest = blockNumbers.map((blockNum, i) => ({
+			jsonrpc: '2.0',
+			id: i + 1,
+			method: 'eth_getBlockByNumber',
+			params: [blockNum, false],
+		}))
+
+		const response = await fetch(rpcUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(batchRequest),
+		})
+
+		if (!response.ok) return { timestamps: {} }
+
+		const results = (await response.json()) as Array<{
+			id: number
+			result?: { timestamp?: string }
+		}>
+
+		const timestamps: Record<string, number> = {}
+		for (let i = 0; i < blockNumbers.length; i++) {
+			const result = results.find((r) => r.id === i + 1)
+			if (result?.result?.timestamp) {
+				timestamps[blockNumbers[i]] =
+					Number.parseInt(result.result.timestamp, 16) * 1000
+			}
+		}
+		return { timestamps }
+	} catch {
+		return { timestamps: {} }
+	}
+}
+
+export async function fetchCurrentBlockNumber() {
+	const tempoEnv = await getTempoEnv()
+	const rpcUrl = getRpcUrl(tempoEnv)
+
+	const auth = await getRpcAuth()
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 	}
@@ -307,255 +246,239 @@ export const fetchCurrentBlockNumber = createServerFn({
 	} catch {
 		return { blockNumber: null }
 	}
-})
+}
 
-export const fetchTransactionsFromExplorer = createServerFn({ method: 'GET' })
-	.inputValidator((data: { address: string }) => data)
-	.handler(async ({ data }) => {
-		const { address } = data
-		const tempoEnv = await getTempoEnv()
-		const explorerUrl =
-			tempoEnv === 'presto'
-				? 'https://explore.presto.tempo.xyz'
-				: 'https://explore.mainnet.tempo.xyz'
+export async function fetchTransactionsFromExplorer(address: string) {
+	const tempoEnv = await getTempoEnv()
+	const explorerUrl =
+		tempoEnv === 'presto'
+			? 'https://explore.presto.tempo.xyz'
+			: 'https://explore.mainnet.tempo.xyz'
 
-		const { env } = await import('cloudflare:workers')
-		const auth = env.PRESTO_RPC_AUTH as string | undefined
-		const headers: Record<string, string> = {}
-		if (auth) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
+	const auth = await getRpcAuth()
+	const headers: Record<string, string> = {}
+	if (auth) {
+		headers.Authorization = `Basic ${btoa(auth)}`
+	}
 
-		try {
-			const response = await fetch(
-				`${explorerUrl}/api/address/${address}?include=all&limit=50`,
-				{ headers },
-			)
-			if (!response.ok) {
-				return {
-					transactions: [] as ApiTransaction[],
-					error: `HTTP ${response.status}`,
-				}
-			}
-			const json = (await response.json()) as {
-				transactions?: ApiTransaction[]
-				error?: string | null
-			}
+	try {
+		const response = await fetch(
+			`${explorerUrl}/api/address/${address}?include=all&limit=50`,
+			{ headers },
+		)
+		if (!response.ok) {
 			return {
-				transactions: json.transactions ?? [],
-				error: json.error ?? null,
+				transactions: [] as ApiTransaction[],
+				error: `HTTP ${response.status}`,
 			}
-		} catch (e) {
-			return { transactions: [] as ApiTransaction[], error: String(e) }
 		}
-	})
-
-export const fetchBlockWithReceipts = createServerFn({ method: 'GET' })
-	.inputValidator((data: { blockNumber: string }) => data)
-	.handler(async ({ data }) => {
-		const { blockNumber } = data
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		let auth: string | undefined
-		try {
-			const { env } = await import('cloudflare:workers')
-			auth = env.PRESTO_RPC_AUTH as string | undefined
-		} catch {
-			// Not in Cloudflare Workers environment
+		const json = (await response.json()) as {
+			transactions?: ApiTransaction[]
+			error?: string | null
 		}
-
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
+		return {
+			transactions: json.transactions ?? [],
+			error: json.error ?? null,
 		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
+	} catch (e) {
+		return { transactions: [] as ApiTransaction[], error: String(e) }
+	}
+}
 
-		try {
-			const blockHex = `0x${BigInt(blockNumber).toString(16)}`
+export async function fetchBlockData(fromBlock: string, count: number) {
+	const tempoEnv = await getTempoEnv()
+	const rpcUrl = getRpcUrl(tempoEnv)
 
-			const blockRes = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify({
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'eth_getBlockByNumber',
-					params: [blockHex, true],
-				}),
-			})
-			if (!blockRes.ok) {
-				return {
-					receipts: [] as RpcTransactionReceipt[],
-					timestamp: undefined,
-					error: `HTTP ${blockRes.status}`,
-				}
-			}
-			const blockJson = (await blockRes.json()) as {
-				result?: {
-					transactions?: Array<{ hash: string }>
-					timestamp?: string
-				}
-			}
-			const txHashes =
-				blockJson.result?.transactions?.map((tx) => tx.hash) ?? []
-			const timestamp = blockJson.result?.timestamp
-				? Number.parseInt(blockJson.result.timestamp, 16) * 1000
-				: undefined
+	const auth = await getRpcAuth()
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	}
+	if (auth && shouldUseAuth(tempoEnv)) {
+		headers.Authorization = `Basic ${btoa(auth)}`
+	}
 
-			if (txHashes.length === 0) {
-				return { receipts: [], timestamp, error: null }
-			}
+	try {
+		const fromBlockNum = BigInt(fromBlock)
+		const batchRequest = Array.from({ length: count }, (_, i) => ({
+			jsonrpc: '2.0',
+			id: i + 1,
+			method: 'eth_getBlockByNumber',
+			params: [`0x${(fromBlockNum - BigInt(i)).toString(16)}`, false],
+		}))
 
-			const batchRequest = txHashes.map((hash, i) => ({
-				jsonrpc: '2.0',
-				id: i + 1,
-				method: 'eth_getTransactionReceipt',
-				params: [hash],
+		const response = await fetch(rpcUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(batchRequest),
+		})
+
+		if (!response.ok) return { blocks: [] }
+
+		const results = (await response.json()) as Array<{
+			id: number
+			result?: { number: string; transactions: string[] }
+		}>
+
+		const blocks = results
+			.filter((r): r is typeof r & { result: NonNullable<typeof r.result> } =>
+				Boolean(r.result),
+			)
+			.map((r) => ({
+				blockNumber: r.result.number,
+				txCount: r.result.transactions?.length ?? 0,
 			}))
 
-			const receiptsRes = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(batchRequest),
-			})
-			if (!receiptsRes.ok) {
-				return { receipts: [], timestamp, error: `HTTP ${receiptsRes.status}` }
+		return { blocks }
+	} catch {
+		return { blocks: [] }
+	}
+}
+
+export async function fetchBlockWithReceipts(blockNumber: string) {
+	const tempoEnv = await getTempoEnv()
+	const rpcUrl = getRpcUrl(tempoEnv)
+
+	const auth = await getRpcAuth()
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	}
+	if (auth && shouldUseAuth(tempoEnv)) {
+		headers.Authorization = `Basic ${btoa(auth)}`
+	}
+
+	try {
+		const blockResponse = await fetch(rpcUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify({
+				jsonrpc: '2.0',
+				id: 1,
+				method: 'eth_getBlockByNumber',
+				params: [`0x${BigInt(blockNumber).toString(16)}`, true],
+			}),
+		})
+
+		if (!blockResponse.ok) return { receipts: [], timestamp: undefined }
+
+		const blockResult = (await blockResponse.json()) as {
+			result?: { transactions: Array<{ hash: string }>; timestamp?: string }
+		}
+
+		const txHashes =
+			blockResult.result?.transactions?.map((tx) => tx.hash) ?? []
+		const timestamp = blockResult.result?.timestamp
+			? Number.parseInt(blockResult.result.timestamp, 16) * 1000
+			: undefined
+		if (txHashes.length === 0) return { receipts: [], timestamp }
+
+		const batchRequest = txHashes.map((hash, i) => ({
+			jsonrpc: '2.0',
+			id: i + 1,
+			method: 'eth_getTransactionReceipt',
+			params: [hash],
+		}))
+
+		const receiptsResponse = await fetch(rpcUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(batchRequest),
+		})
+
+		if (!receiptsResponse.ok) return { receipts: [] }
+
+		const receiptsResult = (await receiptsResponse.json()) as Array<{
+			id: number
+			result?: RpcTransactionReceipt
+		}>
+
+		const receipts = receiptsResult
+			.filter((r): r is typeof r & { result: NonNullable<typeof r.result> } =>
+				Boolean(r.result),
+			)
+			.map((r) => r.result)
+
+		return { receipts, timestamp }
+	} catch {
+		return { receipts: [], timestamp: undefined }
+	}
+}
+
+export async function fetchTokenMetadata(addresses: string[]) {
+	if (addresses.length === 0) return { tokens: {} }
+
+	const tempoEnv = await getTempoEnv()
+	const rpcUrl = getRpcUrl(tempoEnv)
+
+	let auth: string | undefined
+	try {
+		const { env } = await import('cloudflare:workers')
+		auth = env.PRESTO_RPC_AUTH as string | undefined
+	} catch {
+		// Not in Cloudflare Workers environment
+	}
+
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	}
+	if (auth && shouldUseAuth(tempoEnv)) {
+		headers.Authorization = `Basic ${btoa(auth)}`
+	}
+
+	try {
+		const batchRequest = addresses.flatMap((addr, i) => [
+			{
+				jsonrpc: '2.0',
+				id: i * 2 + 1,
+				method: 'eth_call',
+				params: [{ to: addr, data: '0x06fdde03' }, 'latest'],
+			},
+			{
+				jsonrpc: '2.0',
+				id: i * 2 + 2,
+				method: 'eth_call',
+				params: [{ to: addr, data: '0x95d89b41' }, 'latest'],
+			},
+		])
+
+		const res = await fetch(rpcUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(batchRequest),
+		})
+		if (!res.ok) return { tokens: {} }
+
+		const results = (await res.json()) as Array<{
+			id: number
+			result?: `0x${string}`
+		}>
+
+		const decodeString = (hex: `0x${string}` | undefined): string => {
+			if (!hex || hex === '0x') return ''
+			try {
+				const [value] = decodeAbiParameters([{ type: 'string' }], hex)
+				return value
+			} catch {
+				return ''
 			}
-			const receiptsJson = (await receiptsRes.json()) as Array<{
-				id: number
-				result?: RpcTransactionReceipt
-			}>
+		}
 
-			const receipts = txHashes
-				.map((_, i) => receiptsJson.find((r) => r.id === i + 1)?.result)
-				.filter((r): r is RpcTransactionReceipt => r !== undefined)
-
-			return { receipts, timestamp, error: null }
-		} catch (e) {
-			return {
-				receipts: [] as RpcTransactionReceipt[],
-				timestamp: undefined,
-				error: String(e),
+		const tokens: Record<
+			string,
+			{ name: string; symbol: string; decimals: number }
+		> = {}
+		for (let i = 0; i < addresses.length; i++) {
+			const nameResult = results.find((r) => r.id === i * 2 + 1)?.result
+			const symbolResult = results.find((r) => r.id === i * 2 + 2)?.result
+			const name = decodeString(nameResult)
+			const symbol = decodeString(symbolResult)
+			if (symbol) {
+				tokens[addresses[i].toLowerCase()] = { name, symbol, decimals: 6 }
 			}
 		}
-	})
 
-export const fetchTokenMetadata = createServerFn({ method: 'POST' })
-	.inputValidator((data: { addresses: string[] }) => data)
-	.handler(async ({ data }) => {
-		const { addresses } = data
-		if (addresses.length === 0) return { tokens: {} }
-
-		const tempoEnv = await getTempoEnv()
-		const rpcUrl = getRpcUrl(tempoEnv)
-
-		let auth: string | undefined
-		try {
-			const { env } = await import('cloudflare:workers')
-			auth = env.PRESTO_RPC_AUTH as string | undefined
-		} catch {
-			// Not in Cloudflare Workers environment
-		}
-
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json',
-		}
-		if (auth && shouldUseAuth(tempoEnv)) {
-			headers.Authorization = `Basic ${btoa(auth)}`
-		}
-
-		try {
-			const batchRequest = addresses.flatMap((addr, i) => [
-				{
-					jsonrpc: '2.0',
-					id: i * 2 + 1,
-					method: 'eth_call',
-					params: [{ to: addr, data: '0x06fdde03' }, 'latest'], // name()
-				},
-				{
-					jsonrpc: '2.0',
-					id: i * 2 + 2,
-					method: 'eth_call',
-					params: [{ to: addr, data: '0x95d89b41' }, 'latest'], // symbol()
-				},
-			])
-
-			const res = await fetch(rpcUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(batchRequest),
-			})
-			if (!res.ok) return { tokens: {} }
-
-			const results = (await res.json()) as Array<{
-				id: number
-				result?: `0x${string}`
-			}>
-
-			const decodeString = (hex: `0x${string}` | undefined): string => {
-				if (!hex || hex === '0x') return ''
-				try {
-					const [value] = decodeAbiParameters([{ type: 'string' }], hex)
-					return value
-				} catch {
-					return ''
-				}
-			}
-
-			const tokens: Record<
-				string,
-				{ name: string; symbol: string; decimals: number }
-			> = {}
-			for (let i = 0; i < addresses.length; i++) {
-				const nameResult = results.find((r) => r.id === i * 2 + 1)?.result
-				const symbolResult = results.find((r) => r.id === i * 2 + 2)?.result
-				const name = decodeString(nameResult)
-				const symbol = decodeString(symbolResult)
-				if (symbol) {
-					tokens[addresses[i].toLowerCase()] = { name, symbol, decimals: 6 }
-				}
-			}
-
-			return { tokens }
-		} catch {
-			return { tokens: {} }
-		}
-	})
-
-export function convertRpcReceiptToViemReceipt(
-	rpcReceipt: RpcTransactionReceipt,
-): import('viem').TransactionReceipt {
-	return {
-		transactionHash: rpcReceipt.transactionHash as `0x${string}`,
-		from: rpcReceipt.from,
-		to: rpcReceipt.to,
-		logs: rpcReceipt.logs.map((log) => ({
-			address: log.address,
-			topics:
-				log.topics.length > 0
-					? (log.topics as [`0x${string}`, ...`0x${string}`[]])
-					: ([] as unknown as [`0x${string}`, ...`0x${string}`[]]),
-			data: log.data,
-			blockNumber: BigInt(log.blockNumber),
-			transactionHash: log.transactionHash as `0x${string}`,
-			transactionIndex: Number.parseInt(log.transactionIndex, 16),
-			blockHash: log.blockHash as `0x${string}`,
-			logIndex: Number.parseInt(log.logIndex, 16),
-			removed: log.removed,
-		})),
-		status: rpcReceipt.status === '0x1' ? 'success' : 'reverted',
-		blockNumber: BigInt(rpcReceipt.blockNumber),
-		blockHash: rpcReceipt.blockHash as `0x${string}`,
-		gasUsed: BigInt(rpcReceipt.gasUsed),
-		effectiveGasPrice: BigInt(rpcReceipt.effectiveGasPrice),
-		cumulativeGasUsed: BigInt(rpcReceipt.cumulativeGasUsed),
-		type: rpcReceipt.type as '0x0' | '0x1' | '0x2',
-		contractAddress: rpcReceipt.contractAddress,
-		transactionIndex: 0,
-		logsBloom: '0x' as `0x${string}`,
-		root: undefined,
+		return { tokens }
+	} catch {
+		return { tokens: {} }
 	}
 }
 
@@ -566,7 +489,7 @@ export async function fetchTransactions(
 	>,
 ): Promise<ActivityItem[]> {
 	try {
-		const result = await fetchTransactionsFromExplorer({ data: { address } })
+		const result = await fetchTransactionsFromExplorer(address)
 
 		if (result.error || result.transactions.length === 0) {
 			return []
@@ -581,19 +504,15 @@ export async function fetchTransactions(
 
 		const txsWithTimestamp = txData.filter((tx) => tx.timestamp).length
 
-		// Get unique block numbers from explorer response for parallel fetch
 		const blockNumbersFromExplorer = new Set<string>()
 		for (const tx of txData) {
 			if (tx.blockNumber) blockNumbersFromExplorer.add(tx.blockNumber)
 		}
 
-		// Fetch receipts and timestamps in parallel
 		const [receiptsResult, timestampsResult] = await Promise.all([
-			fetchTransactionReceipts({ data: { hashes } }),
+			fetchTransactionReceipts(hashes),
 			txsWithTimestamp < txData.length && blockNumbersFromExplorer.size > 0
-				? fetchBlockTimestamps({
-						data: { blockNumbers: Array.from(blockNumbersFromExplorer) },
-					})
+				? fetchBlockTimestamps(Array.from(blockNumbersFromExplorer))
 				: Promise.resolve({ timestamps: {} }),
 		])
 

@@ -17,9 +17,9 @@ import { cx } from '#lib/css'
 import {
 	fetchBlockWithReceipts,
 	fetchTokenMetadata,
-	convertRpcReceiptToViemReceipt,
 	type ActivityItem,
 } from '#lib/server/transactions.server'
+import { convertRpcReceiptToViemReceipt } from '#lib/receipts'
 import ExternalLinkIcon from '~icons/lucide/external-link'
 import ReceiptIcon from '~icons/lucide/receipt'
 import BoxIcon from '~icons/lucide/box'
@@ -476,9 +476,7 @@ export function ActivitySection({
 		let cancelled = false
 		const loadBlockTxs = async () => {
 			try {
-				const result = await fetchBlockWithReceipts({
-					data: { blockNumber: selectedBlock.toString() },
-				})
+				const result = await fetchBlockWithReceipts(selectedBlock.toString())
 
 				if (cancelled) return
 
@@ -498,9 +496,9 @@ export function ActivitySection({
 
 					if (unknownTokens.size > 0 && !cancelled) {
 						try {
-							const metadataResult = await fetchTokenMetadata({
-								data: { addresses: Array.from(unknownTokens) },
-							})
+							const metadataResult = await fetchTokenMetadata(
+								Array.from(unknownTokens),
+							)
 							for (const [addr, meta] of Object.entries(
 								metadataResult.tokens,
 							)) {

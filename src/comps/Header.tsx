@@ -1,4 +1,6 @@
-import { Link } from '@tanstack/react-router'
+'use client'
+
+import { Link } from 'waku/router/client'
 import { cx } from '#lib/css'
 import Music4 from '~icons/lucide/music-4'
 

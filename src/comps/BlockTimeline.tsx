@@ -95,12 +95,10 @@ export function BlockTimeline({
 				: blocksBeforeCurrent + 1
 
 			try {
-				const result = await fetchBlockData({
-					data: {
-						fromBlock: `0x${currentBlock.toString(16)}`,
-						count: blocksToFetch,
-					},
-				})
+				const result = await fetchBlockData(
+					`0x${currentBlock.toString(16)}`,
+					blocksToFetch,
+				)
 				if (result.blocks.length > 0) {
 					setBlockTxCounts((prev) => {
 						const next = new Map(prev)
@@ -142,12 +140,10 @@ export function BlockTimeline({
 
 			try {
 				const maxBlock = missingBlocks.reduce((a, b) => (a > b ? a : b))
-				const result = await fetchBlockData({
-					data: {
-						fromBlock: `0x${maxBlock.toString(16)}`,
-						count: 5,
-					},
-				})
+				const result = await fetchBlockData(
+					`0x${maxBlock.toString(16)}`,
+					5,
+				)
 				if (result.blocks.length > 0) {
 					setBlockTxCounts((prev) => {
 						const next = new Map(prev)

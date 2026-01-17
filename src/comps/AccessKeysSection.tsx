@@ -8,8 +8,6 @@
  */
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import Picker from '@emoji-mart/react'
-import data from '@emoji-mart/data'
 
 import { Address } from 'ox'
 import { WebCryptoP256 } from 'ox'
@@ -204,79 +202,10 @@ const DEFAULT_EMOJIS = [
 	'☀️',
 ]
 
-function EmojiPicker({
-	onSelect,
-	anchorRef,
-	onClose,
-}: {
-	selectedEmoji: string | null
-	onSelect: (emoji: string) => void
-	anchorRef: React.RefObject<HTMLButtonElement | null>
-	onClose: () => void
-}) {
-	const [position, setPosition] = React.useState({ top: 0, left: 0 })
-	const pickerRef = React.useRef<HTMLDivElement>(null)
-
-	React.useLayoutEffect(() => {
-		if (anchorRef.current) {
-			const rect = anchorRef.current.getBoundingClientRect()
-			const viewportWidth = window.innerWidth
-			const viewportHeight = window.innerHeight
-			const pickerWidth = 352
-			const pickerHeight = 435
-
-			let left = rect.left
-			if (left + pickerWidth > viewportWidth - 8) {
-				left = viewportWidth - pickerWidth - 8
-			}
-			if (left < 8) left = 8
-
-			// Position above if not enough space below
-			let top = rect.bottom + 8
-			if (top + pickerHeight > viewportHeight - 8) {
-				top = rect.top - pickerHeight - 8
-			}
-
-			setPosition({ top, left })
-		}
-	}, [anchorRef])
-
-	// Close on click outside
-	React.useEffect(() => {
-		const handleClick = (e: MouseEvent) => {
-			if (
-				pickerRef.current &&
-				!pickerRef.current.contains(e.target as Node) &&
-				anchorRef.current &&
-				!anchorRef.current.contains(e.target as Node)
-			) {
-				onClose()
-			}
-		}
-		document.addEventListener('mousedown', handleClick)
-		return () => document.removeEventListener('mousedown', handleClick)
-	}, [anchorRef, onClose])
-
-	return createPortal(
-		<div
-			ref={pickerRef}
-			className="fixed z-[9999]"
-			style={{ top: position.top, left: position.left }}
-		>
-			<Picker
-				data={data}
-				onEmojiSelect={(emoji: { native: string }) => onSelect(emoji.native)}
-				theme="dark"
-				previewPosition="none"
-				skinTonePosition="none"
-				perLine={9}
-				emojiSize={22}
-				emojiButtonSize={32}
-				maxFrequentRows={2}
-			/>
-		</div>,
-		document.body,
-	)
+function getNextEmoji(current: string | null): string {
+	const currentIndex = current ? DEFAULT_EMOJIS.indexOf(current) : -1
+	const nextIndex = (currentIndex + 1) % DEFAULT_EMOJIS.length
+	return DEFAULT_EMOJIS[nextIndex]
 }
 
 export function formatCreatedAt(timestamp: number): string {
@@ -680,8 +609,6 @@ function AccessKeyRow({
 
 	const [keyName, setKeyName] = React.useState<string | null>(null)
 	const [emoji, setEmoji] = React.useState<string | null>(null)
-	const [showEmojiPicker, setShowEmojiPicker] = React.useState(false)
-	const emojiButtonRef = React.useRef<HTMLButtonElement>(null)
 
 	React.useEffect(() => {
 		if (typeof window === 'undefined') return
@@ -689,10 +616,10 @@ function AccessKeyRow({
 		setEmoji(getAccessKeyEmoji(accessKey.keyId))
 	}, [accessKey.keyId])
 
-	const handleEmojiSelect = (selectedEmoji: string) => {
-		setAccessKeyEmoji(accessKey.keyId, selectedEmoji)
-		setEmoji(selectedEmoji)
-		setShowEmojiPicker(false)
+	const handleEmojiClick = () => {
+		const nextEmoji = getNextEmoji(emoji)
+		setAccessKeyEmoji(accessKey.keyId, nextEmoji)
+		setEmoji(nextEmoji)
 	}
 
 	const explorerUrl = txHash
@@ -711,12 +638,11 @@ function AccessKeyRow({
 			{/* Emoji with translucent tinted background */}
 			<div className="shrink-0">
 				<button
-					ref={emojiButtonRef}
 					type="button"
 					onClick={(e) => {
 						e.preventDefault()
 						e.stopPropagation()
-						if (isOwner) setShowEmojiPicker(!showEmojiPicker)
+						if (isOwner) handleEmojiClick()
 					}}
 					className={cx(
 						'flex items-center justify-center size-5 rounded-full text-[15px] transition-all',
@@ -727,14 +653,6 @@ function AccessKeyRow({
 				>
 					{displayEmoji}
 				</button>
-				{showEmojiPicker && (
-					<EmojiPicker
-						selectedEmoji={emoji}
-						onSelect={handleEmojiSelect}
-						anchorRef={emojiButtonRef}
-						onClose={() => setShowEmojiPicker(false)}
-					/>
-				)}
 			</div>
 			<div className="flex flex-1 min-w-0 items-center gap-2">
 				<span className="text-[16px] sm:text-[17px] text-primary font-medium truncate flex items-center gap-1.5">
@@ -857,13 +775,11 @@ function CreateKeyForm({
 	const [selectedEmoji, setSelectedEmoji] = React.useState(
 		() => DEFAULT_EMOJIS[Math.floor(Math.random() * DEFAULT_EMOJIS.length)],
 	)
-	const [showEmojiPicker, setShowEmojiPicker] = React.useState(false)
 	const [showTokenDropdown, setShowTokenDropdown] = React.useState(false)
 	const [dropdownPosition, setDropdownPosition] = React.useState({
 		top: 0,
 		left: 0,
 	})
-	const emojiButtonRef = React.useRef<HTMLButtonElement>(null)
 	const tokenButtonRef = React.useRef<HTMLButtonElement>(null)
 	const tokenDropdownRef = React.useRef<HTMLDivElement>(null)
 
@@ -906,28 +822,16 @@ function CreateKeyForm({
 	return (
 		<div className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all">
 			{/* Emoji button with tinted background */}
-			<div className="shrink-0 relative">
+			<div className="shrink-0">
 				<button
-					ref={emojiButtonRef}
 					type="button"
-					onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+					onClick={() => setSelectedEmoji(getNextEmoji(selectedEmoji))}
 					className="flex items-center justify-center size-5 rounded-full text-[15px] transition-all cursor-pointer hover:scale-110"
 					style={{ backgroundColor: getEmojiBackgroundColor(selectedEmoji) }}
 					title={t('common.clickToChangeEmoji')}
 				>
 					{selectedEmoji}
 				</button>
-				{showEmojiPicker && (
-					<EmojiPicker
-						selectedEmoji={selectedEmoji}
-						onSelect={(emoji) => {
-							setSelectedEmoji(emoji)
-							setShowEmojiPicker(false)
-						}}
-						anchorRef={emojiButtonRef}
-						onClose={() => setShowEmojiPicker(false)}
-					/>
-				)}
 			</div>
 			<div className="flex flex-1 min-w-0 items-center gap-2">
 				<input

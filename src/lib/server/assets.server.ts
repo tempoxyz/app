@@ -1,4 +1,5 @@
-import { createServerFn } from '@tanstack/react-start'
+'use server'
+
 import * as IDX from 'idxs'
 import type { Address } from 'ox'
 
@@ -35,11 +36,11 @@ export type AssetData = {
 	valueUsd: number | undefined
 }
 
-export const fetchAssets = createServerFn({ method: 'POST' })
-	.inputValidator((input: { address: string }) => input)
-	.handler(async ({ data }): Promise<AssetData[] | null> => {
-		try {
-			const address = data.address as Address.Address
+export async function fetchAssets(
+	addressInput: string,
+): Promise<AssetData[] | null> {
+	try {
+		const address = addressInput as Address.Address
 			// Get chain ID from runtime env for server functions
 			let chainId: number
 			try {
@@ -144,8 +145,8 @@ export const fetchAssets = createServerFn({ method: 'POST' })
 				})
 
 			return assets
-		} catch (error) {
-			console.error('fetchAssets error:', error)
-			return null
-		}
-	})
+	} catch (error) {
+		console.error('fetchAssets error:', error)
+		return null
+	}
+}

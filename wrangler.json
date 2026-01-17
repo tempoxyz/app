@@ -3,7 +3,8 @@
 	"name": "app-presto",
 	"compatibility_date": "2025-12-17",
 	"compatibility_flags": ["nodejs_compat"],
-	"main": "./src/index.server.ts",
+	"main": "dist/server/serve-cloudflare.js",
+	"assets": { "directory": "dist/public" },
 	"keep_vars": true,
 	"workers_dev": true,
 	"preview_urls": true,
@@ -24,7 +25,8 @@
 		"devnet": {
 			"name": "app-devnet",
 			"keep_vars": true,
-			"main": "./src/index.server.ts",
+			"main": "dist/server/serve-cloudflare.js",
+	"assets": { "directory": "dist/public" },
 			"routes": [
 				{
 					"custom_domain": true,
@@ -56,7 +58,8 @@
 		"moderato": {
 			"name": "app-moderato",
 			"keep_vars": true,
-			"main": "./src/index.server.ts",
+			"main": "dist/server/serve-cloudflare.js",
+	"assets": { "directory": "dist/public" },
 			"routes": [
 				{
 					"custom_domain": true,
@@ -88,7 +91,8 @@
 		"presto": {
 			"name": "app-presto",
 			"keep_vars": true,
-			"main": "./src/index.server.ts",
+			"main": "dist/server/serve-cloudflare.js",
+	"assets": { "directory": "dist/public" },
 			"routes": [
 				{
 					"custom_domain": true,

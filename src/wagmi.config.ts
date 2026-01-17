@@ -1,15 +1,11 @@
-import { createIsomorphicFn, createServerFn } from '@tanstack/react-start'
-import { getRequestHeader } from '@tanstack/react-start/server'
 import { tempoDevnet, tempoLocalnet, tempoModerato } from 'viem/chains'
 import { tempoPresto } from './lib/chains'
 import {
 	cookieStorage,
-	cookieToInitialState,
 	createConfig,
 	createStorage,
 	fallback,
 	http,
-	serialize,
 	webSocket,
 } from 'wagmi'
 import { type KeyManager, webAuthn } from 'wagmi/tempo'
@@ -149,43 +145,18 @@ function getKeyManager() {
 
 export type WagmiConfig = ReturnType<typeof getWagmiConfig>
 
-export const getTempoChain = createIsomorphicFn()
-	.client(() =>
-		TEMPO_ENV === 'moderato'
-			? tempoModerato
-			: TEMPO_ENV === 'devnet'
-				? tempoDevnet
-				: tempoPresto,
-	)
-	.server(() =>
-		TEMPO_ENV === 'moderato'
-			? tempoModerato
-			: TEMPO_ENV === 'devnet'
-				? tempoDevnet
-				: tempoPresto,
-	)
+export function getTempoChain() {
+	return TEMPO_ENV === 'moderato'
+		? tempoModerato
+		: TEMPO_ENV === 'devnet'
+			? tempoDevnet
+			: tempoPresto
+}
 
-const getRpcUrls = createIsomorphicFn()
-	.client(() => {
-		const chain = getTempoChain()
-		return chain.rpcUrls.default
-	})
-	.server(() => {
-		const chain = getTempoChain()
-		const isModerato = TEMPO_ENV === 'moderato'
-		// Moderato uses path-based key, mainnet (presto) uses HTTP Basic Auth
-		if (isModerato) {
-			return {
-				webSocket: chain.rpcUrls.default.webSocket.map(
-					(url: string) => `${url}/${process.env.TEMPO_RPC_KEY}`,
-				),
-				http: chain.rpcUrls.default.http.map(
-					(url: string) => `${url}/${process.env.TEMPO_RPC_KEY}`,
-				),
-			}
-		}
-		return chain.rpcUrls.default
-	})
+function getRpcUrls() {
+	const chain = getTempoChain()
+	return chain.rpcUrls.default
+}
 
 function getTempoTransport() {
 	const rpcUrls = getRpcUrls()
@@ -217,12 +188,6 @@ export function getWagmiConfig() {
 		} as never,
 	})
 }
-
-export const getWagmiStateSSR = createServerFn().handler(() => {
-	const cookie = getRequestHeader('cookie')
-	const initialState = cookieToInitialState(getWagmiConfig(), cookie)
-	return serialize(initialState || {})
-})
 
 declare module 'wagmi' {
 	interface Register {

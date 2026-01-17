@@ -1,6 +1,8 @@
+'use client'
+
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from '@tanstack/react-router'
+import { useRouter } from 'waku/router/client'
 import {
 	createClient,
 	createPublicClient,
@@ -496,7 +498,7 @@ export function AssetRow({
 		setFaucetInitialBalance(asset.balance ?? null)
 		setFaucetState('loading')
 		try {
-			const result = await faucetFundAddress({ data: { address } })
+			const result = await faucetFundAddress(address)
 			if (!result.success) {
 				console.error('Faucet error:', result.error)
 				setFaucetState('idle')
@@ -901,7 +903,7 @@ export function HoldingsTable({
 	accessKeys: AccessKeyData[]
 }) {
 	const { t } = useTranslation()
-	const navigate = useNavigate()
+	const router = useRouter()
 	const [toastMessage, setToastMessage] = React.useState<string | null>(null)
 
 	React.useEffect(() => {
@@ -958,16 +960,11 @@ export function HoldingsTable({
 						onToggleSend={() => {
 							if (!isOwnProfile) {
 								if (connectedAddress) {
-									navigate({
-										to: '/$address',
-										params: { address: connectedAddress },
-										search: {
-											sendTo: address,
-											token: asset.address,
-										},
-									})
+									router.push(
+										`/${connectedAddress}?sendTo=${address}&token=${asset.address}`,
+									)
 								} else {
-									navigate({ to: '/' })
+									router.push('/')
 								}
 								return
 							}

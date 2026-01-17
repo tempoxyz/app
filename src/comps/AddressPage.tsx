@@ -1,9 +1,6 @@
-import {
-	Link,
-	createFileRoute,
-	notFound,
-	useNavigate,
-} from '@tanstack/react-router'
+'use client'
+
+import { Link, useRouter } from 'waku/router/client'
 import { Address } from 'ox'
 import * as React from 'react'
 import { useConnection, useDisconnect } from 'wagmi'
@@ -45,15 +42,11 @@ import ChevronDownIcon from '~icons/lucide/chevron-down'
 import { useTranslation } from 'react-i18next'
 import i18n, { isRtl } from '#lib/i18n'
 import { useAnnounce } from '#lib/a11y'
-import * as z from 'zod/mini'
 
-// Tokens that can be funded via the faucet
 const FAUCET_TOKEN_ADDRESSES = new Set([
-	'0x20c000000000000000000000033abb6ac7d235e5', // DONOTUSE
+	'0x20c000000000000000000000033abb6ac7d235e5',
 ])
 
-// Default faucet token data to inject when user has no assets
-// TODO: Remove priceUsd: 1 assumption once proper price oracle is implemented
 const FAUCET_TOKEN_DEFAULTS: AssetData[] = [
 	{
 		address: '0x20c000000000000000000000033abb6ac7d235e5' as `0x${string}`,
@@ -68,55 +61,35 @@ const FAUCET_TOKEN_DEFAULTS: AssetData[] = [
 	},
 ]
 
-export const Route = createFileRoute('/_layout/$address')({
-	component: RouteComponent,
-	validateSearch: z.object({
-		test: z.optional(z.boolean()),
-		sendTo: z.optional(z.string()),
-		token: z.optional(z.string()),
-	}),
-	beforeLoad: ({ params }) => {
-		if (!Address.validate(params.address)) throw notFound()
-	},
-	loader: async ({ params }) => {
-		// Only fetch assets SSR - activity loads client-side for faster initial render
-		const assets = await fetchAssets({ data: { address: params.address } })
-		return { assets: assets ?? [] }
-	},
-})
+type Props = {
+	address: Address.Address
+	initialAssets: AssetData[]
+}
 
-function RouteComponent() {
-	const { address } = Route.useParams()
-	const { assets: initialAssets } = Route.useLoaderData()
+export function AddressPage({ address, initialAssets }: Props) {
+	const router = useRouter()
 	const { copy, notifying } = useCopy()
 	const { setSummary } = useActivitySummary()
 	const { disconnect } = useDisconnect()
-	const navigate = useNavigate()
 	const [searchValue, setSearchValue] = React.useState('')
 	const [searchFocused, setSearchFocused] = React.useState(false)
 	const connection = useConnection()
-	const { sendTo, token: initialToken } = Route.useSearch()
 	const { t } = useTranslation()
 	const { announce } = useAnnounce()
-	const [sendingToken, setSendingToken] = React.useState<string | null>(
-		initialToken ?? null,
-	)
+	const [sendingToken, setSendingToken] = React.useState<string | null>(null)
 
-	// Assets state - starts from loader, can be refetched without page refresh
 	const [assetsData, setAssetsData] = React.useState(initialAssets)
-	// Activity state - fetched client-side for faster initial render
 	const [activity, setActivity] = React.useState<
 		Awaited<ReturnType<typeof fetchTransactions>>
 	>([])
 	const [activityLoading, setActivityLoading] = React.useState(true)
 
-	// Fetch token metadata client-side (async, non-blocking)
 	React.useEffect(() => {
 		const assetsMissingMetadata = initialAssets.filter((a) => !a.metadata)
 		if (assetsMissingMetadata.length === 0) return
 
 		const addresses = assetsMissingMetadata.map((a) => a.address)
-		fetchTokenMetadata({ data: { addresses } }).then((result) => {
+		fetchTokenMetadata(addresses).then((result) => {
 			if (!result.tokens || Object.keys(result.tokens).length === 0) return
 
 			setAssetsData((prev) =>
@@ -133,10 +106,8 @@ function RouteComponent() {
 		})
 	}, [initialAssets])
 
-	// Block timeline state
 	const [currentBlock, setCurrentBlock] = React.useState<bigint | null>(null)
 
-	// Poll for current block number (500ms for smooth single-block transitions)
 	React.useEffect(() => {
 		let mounted = true
 
@@ -160,12 +131,10 @@ function RouteComponent() {
 		}
 	}, [])
 
-	// Sync assets with loader data when address changes
 	React.useEffect(() => {
 		setAssetsData(initialAssets)
 	}, [initialAssets])
 
-	// Fetch activity client-side (not SSR for faster initial render)
 	React.useEffect(() => {
 		let cancelled = false
 		setActivityLoading(true)
@@ -203,12 +172,10 @@ function RouteComponent() {
 		}
 	}, [address, initialAssets])
 
-	// Refetch balances without full page refresh
 	const refetchAssetsBalances = React.useCallback(async () => {
-		const newAssets = await fetchAssets({ data: { address } })
+		const newAssets = await fetchAssets(address)
 		if (!newAssets) return
 		setAssetsData((prev) => {
-			// Merge: update existing, add new
 			const prevMap = new Map(prev.map((a) => [a.address.toLowerCase(), a]))
 			for (const asset of newAssets) {
 				prevMap.set(asset.address.toLowerCase(), asset)
@@ -217,7 +184,6 @@ function RouteComponent() {
 		})
 	}, [address])
 
-	// Build token metadata map for activity parsing
 	const tokenMetadataMap = React.useMemo(() => {
 		const map = new Map<Address.Address, { decimals: number; symbol: string }>()
 		for (const asset of assetsData) {
@@ -231,7 +197,6 @@ function RouteComponent() {
 		return map
 	}, [assetsData])
 
-	// Refetch activity without full page refresh
 	const refetchActivity = React.useCallback(async () => {
 		const newActivity = await fetchTransactions(
 			address as Address.Address,
@@ -240,7 +205,6 @@ function RouteComponent() {
 		setActivity(newActivity)
 	}, [address, tokenMetadataMap])
 
-	// Optimistic balance adjustments: Map<tokenAddress, amountToSubtract>
 	const [optimisticAdjustments, setOptimisticAdjustments] = React.useState<
 		Map<string, bigint>
 	>(new Map())
@@ -269,16 +233,13 @@ function RouteComponent() {
 	}, [])
 
 	const handleFaucetSuccess = React.useCallback(() => {
-		// Refetch balances and activity without page refresh
 		refetchAssetsBalances()
-		// Delay activity refetch slightly to allow transaction to be indexed
 		setTimeout(() => {
 			refetchActivity()
 		}, 1500)
 	}, [refetchAssetsBalances, refetchActivity])
 
 	const handleSendSuccess = React.useCallback(() => {
-		// For sends, we rely on optimistic updates and delayed refresh
 		setTimeout(() => {
 			refetchAssetsBalances()
 			refetchActivity()
@@ -312,7 +273,6 @@ function RouteComponent() {
 		return () => setSummary(null)
 	}, [activity, setSummary])
 
-	// Ensure faucet tokens are always in the list
 	const assetsWithFaucet = React.useMemo(() => {
 		const existing = new Set(assetsData.map((a) => a.address.toLowerCase()))
 		const missing = FAUCET_TOKEN_DEFAULTS.filter(
@@ -325,7 +285,6 @@ function RouteComponent() {
 		(a, i, arr) => arr.findIndex((b) => b.address === a.address) === i,
 	)
 
-	// Apply optimistic adjustments to assets
 	const adjustedAssets = React.useMemo(() => {
 		return dedupedAssets.map((asset) => {
 			const adjustment = optimisticAdjustments.get(asset.address.toLowerCase())
@@ -335,7 +294,6 @@ function RouteComponent() {
 			const newBalance = currentBalance - adjustment
 			const newBalanceStr = newBalance > 0n ? newBalance.toString() : '0'
 
-			// Recalculate USD value
 			const decimals = asset.metadata?.decimals ?? 18
 			const priceUsd = asset.metadata?.priceUsd ?? 0
 			const newValueUsd = (Number(newBalance) / 10 ** decimals) * priceUsd
@@ -359,14 +317,12 @@ function RouteComponent() {
 	)
 	const displayedAssets = assetsWithBalance
 
-	// Find selected asset for send form header
 	const selectedSendAsset = sendingToken
 		? (displayedAssets.find(
 				(a) => a.address.toLowerCase() === sendingToken.toLowerCase(),
 			) ?? null)
 		: null
 
-	// Get token addresses for access key spending limit queries
 	const tokenAddresses = React.useMemo(
 		() => dedupedAssets.map((a) => a.address),
 		[dedupedAssets],
@@ -407,7 +363,7 @@ function RouteComponent() {
 								e.preventDefault()
 								const trimmed = searchValue.trim()
 								if (trimmed.match(/^0x[a-fA-F0-9]{40}$/)) {
-									navigate({ to: '/$address', params: { address: trimmed } })
+									router.push(`/${trimmed}`)
 									setSearchValue('')
 									setSearchFocused(false)
 								}
@@ -435,10 +391,7 @@ function RouteComponent() {
 										type="button"
 										onMouseDown={(e) => {
 											e.preventDefault()
-											navigate({
-												to: '/$address',
-												params: { address: searchValue.trim() },
-											})
+											router.push(`/${searchValue.trim()}`)
 											setSearchValue('')
 											setSearchFocused(false)
 										}}
@@ -460,7 +413,7 @@ function RouteComponent() {
 							type="button"
 							onClick={() => {
 								disconnect()
-								navigate({ to: '/' })
+								router.push('/')
 							}}
 							className="flex items-center justify-center size-[36px] rounded-full bg-base-alt hover:bg-base-alt/80 active:bg-base-alt/60 transition-colors cursor-pointer focus-ring"
 							aria-label={t('common.logOut')}
@@ -470,7 +423,7 @@ function RouteComponent() {
 					) : (
 						<button
 							type="button"
-							onClick={() => navigate({ to: '/' })}
+							onClick={() => router.push('/')}
 							className="flex items-center justify-center size-[36px] rounded-full bg-accent hover:bg-accent/90 active:bg-accent/80 transition-colors cursor-pointer focus-ring"
 							aria-label={t('common.signIn')}
 						>
@@ -558,7 +511,6 @@ function RouteComponent() {
 						clearOptimisticUpdate={clearOptimisticUpdate}
 						isOwnProfile={isOwnProfile}
 						connectedAddress={connection.address}
-						sendTo={sendTo}
 						announce={announce}
 					/>
 
@@ -598,7 +550,6 @@ function AssetsSection({
 	clearOptimisticUpdate,
 	isOwnProfile,
 	connectedAddress,
-	sendTo,
 	announce,
 }: {
 	assets: AssetData[]
@@ -613,7 +564,6 @@ function AssetsSection({
 	clearOptimisticUpdate: (tokenAddress: string) => void
 	isOwnProfile: boolean
 	connectedAddress?: string
-	sendTo?: string
 	announce: (message: string) => void
 }) {
 	const { t } = useTranslation()
@@ -636,7 +586,6 @@ function AssetsSection({
 						onOptimisticClear={clearOptimisticUpdate}
 						isOwnProfile={isOwnProfile}
 						connectedAddress={connectedAddress}
-						initialSendTo={sendTo}
 						sendingToken={sendingToken}
 						onSendingTokenChange={setSendingToken}
 						announce={announce}
@@ -656,7 +605,6 @@ function AssetsSection({
 		clearOptimisticUpdate,
 		isOwnProfile,
 		connectedAddress,
-		sendTo,
 		sendingToken,
 		setSendingToken,
 		announce,
@@ -683,7 +631,6 @@ function AssetsSection({
 				onOptimisticClear={clearOptimisticUpdate}
 				isOwnProfile={isOwnProfile}
 				connectedAddress={connectedAddress}
-				initialSendTo={sendTo}
 				sendingToken={sendingToken}
 				onSendingTokenChange={setSendingToken}
 				announce={announce}

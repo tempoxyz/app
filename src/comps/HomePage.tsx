@@ -1,4 +1,6 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+'use client'
+
+import { Link, useRouter } from 'waku/router/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -18,11 +20,9 @@ import ClockIcon from '~icons/lucide/clock'
 
 const TEMPO_ENV = import.meta.env.VITE_TEMPO_ENV
 
-// Parse connection/auth errors into user-friendly messages
 function parseConnectionError(error: Error): string {
 	const message = error.message
 
-	// User cancelled/aborted
 	if (
 		message.includes('User rejected') ||
 		message.includes('user rejected') ||
@@ -34,7 +34,6 @@ function parseConnectionError(error: Error): string {
 		return 'Sign-in cancelled'
 	}
 
-	// Passkey not found
 	if (
 		message.includes('not registered') ||
 		message.includes('not found') ||
@@ -43,7 +42,6 @@ function parseConnectionError(error: Error): string {
 		return 'Passkey not found. Please sign up first.'
 	}
 
-	// Network errors
 	if (
 		message.includes('network') ||
 		message.includes('fetch') ||
@@ -52,12 +50,10 @@ function parseConnectionError(error: Error): string {
 		return 'Network error. Please check your connection.'
 	}
 
-	// Timeout
 	if (message.includes('timeout') || message.includes('timed out')) {
 		return 'Request timed out. Please try again.'
 	}
 
-	// WebAuthn not supported
 	if (
 		message.includes('WebAuthn') ||
 		message.includes('not supported') ||
@@ -66,7 +62,6 @@ function parseConnectionError(error: Error): string {
 		return 'Passkeys are not supported on this device.'
 	}
 
-	// Fallback: truncate long messages
 	if (message.length > 80) {
 		return 'Authentication failed. Please try again.'
 	}
@@ -95,13 +90,9 @@ function truncateAddress(address: string) {
 	return `${address.slice(0, 5)}…${address.slice(-3)}`
 }
 
-export const Route = createFileRoute('/_layout/')({
-	component: RouteComponent,
-})
-
-function RouteComponent() {
+export function HomePage() {
 	const { t } = useTranslation()
-	const navigate = useNavigate()
+	const router = useRouter()
 	const [address, setAddress] = React.useState('')
 	const inputRef = React.useRef<HTMLInputElement>(null)
 
@@ -114,8 +105,7 @@ function RouteComponent() {
 
 	useConnectionEffect({
 		onConnect: (data) => {
-			if (data.address)
-				navigate({ to: '/$address', params: { address: data.address } })
+			if (data.address) router.push(`/${data.address}`)
 		},
 	})
 
@@ -130,7 +120,7 @@ function RouteComponent() {
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
-		if (isValidAddress) navigate({ to: '/$address', params: { address } })
+		if (isValidAddress) router.push(`/${address}`)
 	}
 
 	React.useEffect(() => {
@@ -183,8 +173,7 @@ function RouteComponent() {
 						{getExampleAccounts().map((addr) => (
 							<Link
 								key={addr}
-								to="/$address"
-								params={{ address: addr }}
+								to={`/${addr}`}
 								className={cx(
 									'flex items-center gap-0.5 text-tertiary hover:text-secondary',
 									'px-2 py-1 sm:px-1.5 sm:py-0.5 rounded press-down focus-visible:outline-none',
@@ -277,10 +266,7 @@ function RouteComponent() {
 								type="button"
 								onClick={() => {
 									if (connection.address) {
-										navigate({
-											to: '/$address',
-											params: { address: connection.address },
-										})
+										router.push(`/${connection.address}`)
 									}
 								}}
 								className={cx(

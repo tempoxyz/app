@@ -123,13 +123,11 @@ export function useOnrampOrder(props: UseOnrampOrderProps) {
 			setOrderEvents([])
 
 			const result = await createOnrampOrderFn({
-				data: {
-					address,
-					amount: params.amount,
-					email,
-					phoneNumber,
-					phoneNumberVerifiedAt,
-				},
+				address,
+				amount: params.amount,
+				email,
+				phoneNumber,
+				phoneNumberVerifiedAt,
 			})
 
 			let iframeUrl = result.url

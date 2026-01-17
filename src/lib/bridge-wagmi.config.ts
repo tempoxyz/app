@@ -1,16 +1,12 @@
 import {
 	http,
 	injected,
-	serialize,
 	createConfig,
 	cookieStorage,
 	createStorage,
-	cookieToInitialState,
 } from 'wagmi'
-import { tempoPresto } from '#lib/chains.ts'
+import { tempoPresto } from '#lib/chains'
 import { base, mainnet } from 'wagmi/chains'
-import { createServerFn } from '@tanstack/react-start'
-import { getRequestHeader } from '@tanstack/react-start/server'
 import { coinbaseWallet, walletConnect } from 'wagmi/connectors'
 
 export function getBridgeWagmiConfig() {
@@ -33,9 +29,3 @@ export function getBridgeWagmiConfig() {
 		},
 	})
 }
-
-export const getBridgeWagmiStateSSR = createServerFn().handler(() => {
-	const cookie = getRequestHeader('cookie')
-	const initialState = cookieToInitialState(getBridgeWagmiConfig(), cookie)
-	return serialize(initialState || {})
-})

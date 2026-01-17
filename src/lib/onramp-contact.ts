@@ -11,8 +11,8 @@ import {
 export function useOnrampStatus(address: string | undefined) {
 	return useQuery({
 		queryKey: ['onramp', 'status', address],
-		queryFn: () => getOnrampStatusFn({ data: { address: address! } }),
-		enabled: !!address,
+		queryFn: () => getOnrampStatusFn(address!),
+		enabled: Boolean(address),
 		staleTime: 30 * 1000,
 	})
 }
@@ -20,8 +20,8 @@ export function useOnrampStatus(address: string | undefined) {
 export function useContactInfo(address: string | undefined) {
 	return useQuery({
 		queryKey: ['onramp', 'contact', address],
-		queryFn: () => getContactInfoFn({ data: { address: address! } }),
-		enabled: !!address,
+		queryFn: () => getContactInfoFn(address!),
+		enabled: Boolean(address),
 		staleTime: 30 * 1000,
 	})
 }
@@ -30,7 +30,7 @@ export function useSetEmail(address: string) {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: (email: string) => setEmailFn({ data: { address, email } }),
+		mutationFn: (email: string) => setEmailFn(address, email),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['onramp', 'status', address] })
 			queryClient.invalidateQueries({
@@ -44,7 +44,7 @@ export function useSetPhone(address: string) {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: (phone: string) => setPhoneFn({ data: { address, phone } }),
+		mutationFn: (phone: string) => setPhoneFn(address, phone),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['onramp', 'status', address] })
 			queryClient.invalidateQueries({
@@ -56,7 +56,7 @@ export function useSetPhone(address: string) {
 
 export function useSendOtp(address: string) {
 	return useMutation({
-		mutationFn: () => sendOtpFn({ data: { address } }),
+		mutationFn: () => sendOtpFn(address),
 	})
 }
 
@@ -64,7 +64,7 @@ export function useVerifyOtp(address: string) {
 	const queryClient = useQueryClient()
 
 	return useMutation({
-		mutationFn: (code: string) => verifyOtpFn({ data: { address, code } }),
+		mutationFn: (code: string) => verifyOtpFn(address, code),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['onramp', 'status', address] })
 			queryClient.invalidateQueries({

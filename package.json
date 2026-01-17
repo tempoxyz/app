@@ -10,10 +10,10 @@
 	"scripts": {
 		"postinstall": "pnpm gen:types",
 		"dev": "pnpm dev:presto",
-		"dev:devnet": "CLOUDFLARE_ENV='devnet' vite dev --port 3001",
-		"dev:moderato": "CLOUDFLARE_ENV='moderato' vite dev --port 3001",
-		"dev:presto": "CLOUDFLARE_ENV='presto' vite dev --port 3001",
-		"build": "vite build",
+		"dev:devnet": "CLOUDFLARE=1 VITE_TEMPO_ENV=devnet waku dev --port 3001",
+		"dev:moderato": "CLOUDFLARE=1 VITE_TEMPO_ENV=moderato waku dev --port 3001",
+		"dev:presto": "CLOUDFLARE=1 VITE_TEMPO_ENV=presto waku dev --port 3001",
+		"build": "CLOUDFLARE=1 waku build",
 		"bundle:analyze": "ANALYZE=true pnpm build",
 		"bundle:analyze:json": "ANALYZE_JSON=true pnpm build",
 		"bundle:diff": "node --experimental-strip-types scripts/bundle-diff.ts",
@@ -24,15 +24,12 @@
 		"predeploy": "pnpm build",
 		"deploy": "wrangler deploy",
 		"gen:types": "test -f .env || cp .env.example .env; CLOUDFLARE_ENV= wrangler types",
-		"preview": "vite preview --mode='preview'"
+		"preview": "waku start --port 3001"
 	},
 	"dependencies": {
 		"@emoji-mart/data": "^1.2.1",
 		"@emoji-mart/react": "^1.1.1",
 		"@tanstack/react-query": "^5.90.17",
-		"@tanstack/react-router": "^1.150.0",
-		"@tanstack/react-router-ssr-query": "^1.150.0",
-		"@tanstack/react-start": "^1.150.0",
 		"@wagmi/core": "^3.2.2",
 		"@walletconnect/ethereum-provider": "^2.23.3",
 		"animejs": "^4.2.2",
@@ -45,7 +42,8 @@
 		"react-i18next": "^15.5.3",
 		"uqr": "^0.1.2",
 		"viem": "^2.44.4",
-		"wagmi": "^3.3.2"
+		"wagmi": "^3.3.2",
+		"waku": "1.0.0-alpha.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.11",
@@ -54,11 +52,6 @@
 		"@svgr/core": "^8.1.0",
 		"@svgr/plugin-jsx": "^8.1.0",
 		"@tailwindcss/vite": "^4.1.18",
-		"@tanstack/devtools-vite": "^0.4.1",
-		"@tanstack/react-devtools": "^0.9.2",
-		"@tanstack/react-query-devtools": "^5.91.2",
-		"@tanstack/react-router-devtools": "^1.150.0",
-		"@tanstack/router-plugin": "^1.150.0",
 		"@total-typescript/ts-reset": "^0.6.1",
 		"@types/animejs": "^3.1.13",
 		"@types/node": "^25.0.9",
