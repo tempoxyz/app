@@ -4,6 +4,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getAddress } from 'viem'
 import * as z from 'zod'
 import { createOnrampOrder } from './onramp'
+import { config } from '#lib/config'
 
 const createOrderSchema = z.object({
 	address: z
@@ -35,8 +36,6 @@ export const createOnrampOrderFn = createServerFn({ method: 'POST' })
 			origin.startsWith('http') ? origin : `https://${origin}`,
 		).host
 
-		const sandbox = import.meta.env.DEV
-
 		const result = await createOnrampOrder({
 			keyId: cbApiKeyId,
 			keySecret: cbApiKeySecret,
@@ -47,7 +46,7 @@ export const createOnrampOrderFn = createServerFn({ method: 'POST' })
 			phoneNumber: phoneNumber ?? '+17147147144',
 			phoneNumberVerifiedAt: phoneNumberVerifiedAt ?? new Date().toISOString(),
 			purchaseAmount: amount.toFixed(2),
-			sandbox,
+			sandbox: config.onramp.sandbox,
 		})
 
 		console.log('Created onramp order:', result.orderId)

@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers'
+import { config } from '#lib/config'
 import { fulfillOnramp } from './fulfill'
 
 export type OnrampTransactionEventType =
@@ -212,23 +213,28 @@ async function processWebhookEvent(
 				txHash: event.txHash,
 			})
 
-			try {
-				const receipt = await fulfillOnramp(
-					event.destinationAddress as `0x${string}`,
-					event.purchaseAmount,
-				)
-				console.log('[Coinbase Webhook] DONOTUSE sent:', {
-					orderId: event.orderId,
-					txHash: receipt.transactionHash,
-				})
-			} catch (error) {
-				console.error(
-					'[Coinbase Webhook] Failed to send DONOTUSE fulfillment:',
-					{
+			// Only send DONOTUSE tokens in sandbox mode
+			if (config.onramp.sandbox) {
+				try {
+					const receipt = await fulfillOnramp(
+						event.destinationAddress as `0x${string}`,
+						event.purchaseAmount,
+					)
+					console.log('[Coinbase Webhook] DONOTUSE sent:', {
 						orderId: event.orderId,
-						error,
-					},
-				)
+						txHash: receipt.transactionHash,
+					})
+				} catch (error) {
+					console.error(
+						'[Coinbase Webhook] Failed to send DONOTUSE fulfillment:',
+						{
+							orderId: event.orderId,
+							error,
+						},
+					)
+				}
+			} else {
+				console.log('[Coinbase Webhook] Skipping DONOTUSE fulfillment')
 			}
 			break
 

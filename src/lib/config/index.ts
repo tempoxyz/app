@@ -1,7 +1,7 @@
 export type TempoEnv = 'presto' | 'moderato' | 'devnet'
 
 const tempoEnv = import.meta.env.VITE_TEMPO_ENV as TempoEnv
-const isDev = import.meta.env.MODE === 'development'
+const isDev = import.meta.env.DEV
 const isMainnet = tempoEnv === 'presto'
 
 export const config = {
@@ -12,6 +12,7 @@ export const config = {
 	onramp: {
 		enabled: isDev,
 		coinbasePayOrigin: 'https://pay.coinbase.com',
+		sandbox: isDev,
 	},
 
 	devtools: {
