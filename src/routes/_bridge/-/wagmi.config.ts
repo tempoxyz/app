@@ -24,13 +24,7 @@ export function getBridgeWagmiConfig() {
 				feeToken: TEMPO_TESTNET_PATH_USD,
 			}),
 		],
-		connectors: [
-			injected(),
-			coinbaseWallet({ appName: 'Tempo Bridge' }),
-			// walletConnect({
-			// 	projectId: 'fa6fa7bb341b84d563e665cbd8f91e65',
-			// }),
-		],
+		connectors: [injected(), coinbaseWallet({ appName: 'Tempo Bridge' })],
 		multiInjectedProviderDiscovery: true,
 		storage: createStorage({ storage: cookieStorage, key: 'wagmi-bridge' }),
 		transports: {
