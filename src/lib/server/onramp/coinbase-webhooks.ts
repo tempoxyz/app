@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers'
+import { fulfillOnramp } from './fulfill'
 
 export type OnrampTransactionEventType =
 	| 'onramp.transaction.created'
@@ -210,6 +211,25 @@ async function processWebhookEvent(
 				purchaseCurrency: event.purchaseCurrency,
 				txHash: event.txHash,
 			})
+
+			try {
+				const receipt = await fulfillOnramp(
+					event.destinationAddress as `0x${string}`,
+					event.purchaseAmount,
+				)
+				console.log('[Coinbase Webhook] DONOTUSE sent:', {
+					orderId: event.orderId,
+					txHash: receipt.transactionHash,
+				})
+			} catch (error) {
+				console.error(
+					'[Coinbase Webhook] Failed to send DONOTUSE fulfillment:',
+					{
+						orderId: event.orderId,
+						error,
+					},
+				)
+			}
 			break
 
 		case 'onramp.transaction.failed':
