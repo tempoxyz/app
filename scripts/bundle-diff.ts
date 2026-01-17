@@ -176,6 +176,9 @@ function printReport(
 	}
 }
 
+const GZIP_WARNING_KB = 10
+const GZIP_STRONG_WARNING_KB = 25
+
 function printTerminalReport(
 	current: BundleStats,
 	baseline: BundleStats | null,
@@ -248,6 +251,15 @@ function printMarkdownReport(
 	} else {
 		output += `**Total:** ${formatBytes(current.total.size)} (gzip: ${formatBytes(current.total.gzip)}, brotli: ${formatBytes(current.total.brotli)})\n\n`
 		output += `*No baseline available for comparison*\n`
+	}
+
+	if (baseline) {
+		const deltaKb = (current.total.gzip - baseline.total.gzip) / 1024
+		if (deltaKb > GZIP_STRONG_WARNING_KB) {
+			output += `\n> [!WARNING]\n> Bundle gzip increased by ${deltaKb.toFixed(1)} KB (exceeds ${GZIP_STRONG_WARNING_KB} KB)!\n`
+		} else if (deltaKb > GZIP_WARNING_KB) {
+			output += `\n> [!NOTE]\n> Bundle gzip increased by ${deltaKb.toFixed(1)} KB (exceeds ${GZIP_WARNING_KB} KB)\n`
+		}
 	}
 
 	output += '\n<details>\n<summary>Top 10 chunks</summary>\n\n'
