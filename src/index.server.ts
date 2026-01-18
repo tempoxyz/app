@@ -50,10 +50,10 @@ function checkHttpAuth(request: Request): Response | null {
 		headers: { 'WWW-Authenticate': 'Basic realm="App"' },
 	})
 
-	// Check Authorization header first, then fall back to cookie
+	// Check Authorization header first, then fall back to cookies (http_auth or rpc_auth)
 	let authHeader = request.headers.get('Authorization')
 	if (!authHeader) {
-		authHeader = getAuthFromCookie(request)
+		authHeader = getAuthFromCookie(request) ?? getRpcAuthFromCookie(request)
 	}
 
 	if (!authHeader?.startsWith('Basic ')) return unauthorized
